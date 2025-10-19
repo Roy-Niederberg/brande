@@ -1,0 +1,19 @@
+# For Production use (without the http:// so Caddy will issue certificate for https):
+# *.mooo.com {
+# For development on localhost use:
+http://*.mooo.com {
+        @apps path_regexp app ^/(\w+)
+
+        handle @apps {
+                uri strip_prefix /{re.app.1}
+                reverse_proxy {labels.2}-{re.app.1}-1:9876
+        }
+
+        handle {
+                respond "Welcome to {host}" 200
+        }
+
+        handle_errors 502 {
+                respond "Not found" 404
+        }
+}

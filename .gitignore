@@ -1,0 +1,14 @@
+# Ignore everything
+*
+# But not directories (so we can traverse into them)
+!*/
+
+# and not docker stuff
+!docker-compose.yml
+!Dockerfile
+
+# don't ignore .gitignore and gitlab-ci
+!.gitignore
+!.gitlab-ci.yml
+
+# Excluding other files will be done in the files directory itself!

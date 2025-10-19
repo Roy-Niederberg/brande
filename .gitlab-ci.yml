@@ -1,0 +1,50 @@
+stages:
+  - trigger
+
+router:
+  stage: trigger
+  trigger:
+    include: services/router/.gitlab-ci.yml
+    strategy: depend
+  rules:
+    - if: '$CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH'
+      changes:
+        - services/router/**/*
+      when: always
+    - when: never
+
+# facebook_connect:
+#   stage: trigger
+#   trigger:
+#     include: services/facebook_connect/.gitlab-ci.yml
+#     strategy: depend
+#   rules:
+#     - if: '$CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH'
+#       changes:
+#         - services/facebook_connect/**/*
+#       when: always
+#     - when: never
+#
+# ui:
+#   stage: trigger
+#   trigger:
+#     include: services/ui/.gitlab-ci.yml
+#     strategy: depend
+#   rules:
+#     - if: '$CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH'
+#       changes:
+#         - services/ui/**/*
+#       when: always
+#     - when: never
+#
+# prompt_composer:
+#   stage: trigger
+#   trigger:
+#     include: services/prompt_composer/.gitlab-ci.yml
+#     strategy: depend
+#   rules:
+#     - if: '$CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH'
+#       changes:
+#         - services/prompt_composer/**/*
+#       when: always
+#     - when: never
