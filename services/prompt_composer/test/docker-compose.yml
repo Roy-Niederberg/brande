@@ -1,0 +1,33 @@
+services:
+  prompt-composer:
+    build:
+      context: ..
+      target: development
+    working_dir: /app
+    ports:
+      - "3000:4321"
+    environment:
+      - LLM=http://mock-llm:3001  # comment this if you want to work with real LLM
+    depends_on:
+      - mock-llm
+    secrets:
+      - llm_api_key
+    volumes:
+      - ./mock_shared_data/:/app/data
+      - ../src:/app/src
+
+  mock-llm:
+    image: node:22-alpine
+    stop_grace_period: 0s
+    command:
+      - node
+      - -e
+      - |
+        require('http').createServer((req, res) => {
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({candidates:[{content:{parts:[{text: 'This is the mock response'}]}}]}));
+        }).listen(3001);
+
+secrets:
+  llm_api_key:
+    file: ./secrets/llm_api_key
