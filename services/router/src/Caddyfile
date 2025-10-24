@@ -1,4 +1,4 @@
-http://craftkids-toys.mooo.com, http://ori-elbaz.mooo.com {
+http://craftkidstoys.mooo.com, http://orielbaz.mooo.com {
         @apps path_regexp app ^/(\w+)
 
         handle @apps {
