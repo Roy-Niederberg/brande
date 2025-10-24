@@ -1,6 +1,3 @@
-# For Production use (without the http:// so Caddy will issue certificate for https):
-# *.mooo.com {
-# For development on localhost use:
 http://*.mooo.com {
         @apps path_regexp app ^/(\w+)
 
