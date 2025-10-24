@@ -17,10 +17,8 @@ let knowledge_base = read('knowledge_base')
 const role = read('role')
 const response_guidelines = read('response_guidelines')
 const llm_api_key = read_scrt('llm_api_key')
-console.log(llm_api_key)
 const url = process.env.LLM || 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent'
 const { data, cfg } = JSON.parse(read('llm_config','json'))
-console.log(data)
 
 // =============== Endpoints =========================================================================================//
 // In this section the server should keep running and give the best answer it can. ===================================//
