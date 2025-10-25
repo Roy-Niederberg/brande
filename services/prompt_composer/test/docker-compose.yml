@@ -3,7 +3,6 @@ services:
     build:
       context: ..
       target: development
-    working_dir: /app
     ports:
       - "3000:4321"
     environment:
@@ -13,7 +12,7 @@ services:
     secrets:
       - llm_api_key
     volumes:
-      - ./mock_shared_data/:/app/data
+      - ./mock_shared_data:/app/data
       - ../src:/app/src
 
   mock-llm:

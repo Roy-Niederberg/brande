@@ -1,0 +1,49 @@
+services:
+  admin:
+    build:
+      context: ..
+      target: development
+    ports:
+      - "3000:9876"
+    volumes:
+      - ./mock_shared_data:/app/data
+      - ../src/:/app/src
+      - ../src/views:/app/views
+    secrets:
+      - google_strategy
+      - session_config
+
+  prompt-composer:
+    build:
+      context: ../../prompt_composer/
+      target: development
+    working_dir: /app
+    environment:
+      - LLM=http://mock-llm:3011  # comment this if you want to work with real LLM
+    depends_on:
+      - mock-llm
+    volumes:
+      - ../../prompt_composer/test/mock_shared_data:/app/data
+      - ../../prompt_composer/src:/app/src
+    secrets:
+      - llm_api_key
+
+  mock-llm:
+    image: node:22-alpine
+    stop_grace_period: 0s
+    command:
+      - node
+      - -e
+      - |
+        require('http').createServer((req, res) => {
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({candidates:[{content:{parts:[{text: 'This is the mock response'}]}}]}));
+        }).listen(3011);
+
+secrets:
+  llm_api_key:
+    file: ./secrets/llm_api_key
+  google_strategy:
+    file: ./secrets/google_strategy
+  session_config:
+    file: ./secrets/session_config
