@@ -25,6 +25,18 @@ prompt_composer:
       when: always
     - when: never
 
+admin:
+  stage: trigger
+  trigger:
+    include: services/admin/.gitlab-ci.yml
+    strategy: depend
+  rules:
+    - if: '$CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH'
+      changes:
+        - services/admin/**/*
+      when: always
+    - when: never
+
 # facebook_connect:
 #   stage: trigger
 #   trigger:
@@ -34,18 +46,6 @@ prompt_composer:
 #     - if: '$CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH'
 #       changes:
 #         - services/facebook_connect/**/*
-#       when: always
-#     - when: never
-#
-# ui:
-#   stage: trigger
-#   trigger:
-#     include: services/ui/.gitlab-ci.yml
-#     strategy: depend
-#   rules:
-#     - if: '$CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH'
-#       changes:
-#         - services/ui/**/*
 #       when: always
 #     - when: never
 #
