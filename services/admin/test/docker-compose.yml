@@ -9,6 +9,7 @@ services:
       - ./mock_shared_data:/app/data
       - ../src/:/app/src
       - ../src/views:/app/views
+      - admin_sessions:/app/sessions
     secrets:
       - google_strategy
       - session_config
@@ -39,6 +40,9 @@ services:
           res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({candidates:[{content:{parts:[{text: 'This is the mock response'}]}}]}));
         }).listen(3011);
+
+volumes:
+  admin_sessions:
 
 secrets:
   llm_api_key:

@@ -10,6 +10,7 @@ CMD ["npx", "nodemon", "./src/server.js"]
 
 # Production stage
 FROM base AS production
+RUN npm install -g npm@latest
 RUN npm ci --production
 COPY ./src/views ./src
 COPY ./src/server.js ./src

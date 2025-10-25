@@ -1,6 +1,7 @@
 const fs = require('fs')
 const express = require('express')
 const session = require('express-session')
+const FileStore = require('session-file-store')(session)
 const passport = require('passport')
 const GoogleStrategy = require('passport-google-oauth20').Strategy
 const axios = require('axios').create({ baseURL: 'http://prompt-composer:4321' })
@@ -12,6 +13,7 @@ const { authorized_emails } = JSON.parse(fs.readFileSync('./data/authorized_emai
 const google_strategy = JSON.parse(fs.readFileSync(`/run/secrets/google_strategy`, 'utf-8').trim())
 const session_config = JSON.parse(fs.readFileSync(`/run/secrets/session_config`, 'utf-8').trim())
 session_config.cookie.secure = process.env.NODE_ENV === 'production'
+session_config.store = new FileStore({ path: './sessions', ttl: 1800, retries: 0 })
 
 // Middleware
 const isAuthorized = (rq, rs, nx) => !rq.isAuthenticated()
