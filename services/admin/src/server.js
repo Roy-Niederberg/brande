@@ -9,53 +9,39 @@ const axios = require('axios').create({ baseURL: 'http://prompt-composer:4321' }
 const app = express()
 app.use(express.json())
 
-const { authorized_emails } = JSON.parse(fs.readFileSync('./data/authorized_emails.json', 'utf-8'))
+const { emails } = JSON.parse(fs.readFileSync('./data/authorized_emails.json', 'utf-8'))
 const google_strategy = JSON.parse(fs.readFileSync(`/run/secrets/google_strategy`, 'utf-8').trim())
 const session_config = JSON.parse(fs.readFileSync(`/run/secrets/session_config`, 'utf-8').trim())
 session_config.cookie.secure = process.env.NODE_ENV === 'production'
 session_config.store = new FileStore({ path: './sessions', ttl: 1800, retries: 0 })
 
 // Middleware
-const isAuthorized = (rq, rs, nx) => !rq.isAuthenticated()
-  ? rs.sendFile('/app/public/landing.html')
-  : authorized_emails.includes(rq.user.email)
-    ? nx()
-    : rq.logout(() => rs.redirect('/notfound'))
-
-const checkSession = (rq, rs, nx) => !rq.isAuthenticated()
-  ? rs.sendStatus(401)
-  : authorized_emails.includes(rq.user.email)
-    ? nx()
-    : rs.sendStatus(403)
+const isAuthorized = (rq, rs, nx) => rq.isAuthenticated() && emails.includes(rq.user.email) ? nx() : rs.redirect('/')
+const checkSession = (rq, rs, nx) => rq.isAuthenticated() && emails.includes(rq.user.email) ? nx() : rs.sendStatus(401)
 
 app.use(session(session_config))
 app.use(passport.initialize())
 app.use(passport.session())
 
-// Configure Google OAuth Strategy
-passport.use(new GoogleStrategy(
-  google_strategy,
-  (_accessToken, _refreshToken, profile, done) => {
-    return done(null,
-    {
-      googleId: profile.id,
-      email: profile.emails[0].value,
-      displayName: profile.displayName,
-      picture: profile.photos && profile.photos.length > 0 ? profile.photos[0].value : null
-    })
-  }
-))
-
-// Serialize/Deserialize user for session
+// Passport config
+passport.use(new GoogleStrategy(google_strategy, (_at, _rt, p, done) => done(null, { googleId: p.id, email: p.emails[0].value, displayName: p.displayName, picture: p.photos?.[0]?.value })))
 passport.serializeUser((user, done) => done(null, user))
 passport.deserializeUser((user, done) => done(null, user))
 
-// Auth routes
+// Public routes
+app.get('/', (_, rs) => rs.sendFile('/app/public/landing.html'))
 app.get('/login/', passport.authenticate('google', { scope: ['profile', 'email'] }))
-app.get('/login/callback', passport.authenticate('google', { failureRedirect: '/login' }), (_, rs) => rs.redirect('..'))
+app.get('/login/callback', passport.authenticate('google', { failureRedirect: '/' }), (_, rs) => rs.redirect('/chatQA'))
+
+// Protected routes
+app.get('/chatQA', isAuthorized, (_, rs) => rs.sendFile('/app/views/index.html'))
+app.get('/style.css', isAuthorized, (_, rs) => rs.sendFile('/app/views/style.css'))
+app.get('/script.js', isAuthorized, (_, rs) => rs.sendFile('/app/views/script.js'))
 
 // API routes
-app.get('/api/user', checkSession, (rq, rs) => rs.json({ email: rq.user.email, name: rq.user.displayName, picture: rq.user.picture }))
+app.get('/api/user', checkSession, (rq, rs) => 
+  rs.json({ email: rq.user.email, name: rq.user.displayName, picture: rq.user.picture }))
+
 app.get('/api/initial-content', checkSession, async (_rq, rs) => {
   try {
     const [instructionsRes, knowledgeBaseRes] = await Promise.all([
@@ -88,8 +74,7 @@ app.post('/api/chat', checkSession, async (rq, rs) => {
   }
 })
 
-// Static files
-app.get('/:file?', isAuthorized, (rq, rs) => rs.sendFile(`/app/views/${rq.params.file || 'index.html'}`))
+// Error handling
 app.use((_, rs) => rs.sendStatus(404))
-app.use((e, _, rs, _nxt) => { console.error(e.stack); rs.sendStatus(500) })
+app.use((e, _, rs, _nxt) => { console.error(e.response?.data || e.message, `\n${e.stack}`), rs.sendStatus(500) })
 app.listen(9876, ()=> console.log('Server Start Up'))
