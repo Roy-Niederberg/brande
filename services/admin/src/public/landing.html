@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Welcome</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    .container {
+      text-align: center;
+      background: white;
+      padding: 40px;
+      border-radius: 10px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    }
+    h1 {
+      margin: 0 0 20px 0;
+      color: #333;
+    }
+    a {
+      display: inline-block;
+      margin-top: 20px;
+      padding: 10px 20px;
+      background: #667eea;
+      color: white;
+      text-decoration: none;
+      border-radius: 5px;
+    }
+    a:hover {
+      background: #764ba2;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1 id="greeting">Loading...</h1>
+    <a href="/login" id="loginLink" style="display: none;">Go to Admin</a>
+  </div>
+
+  <script>
+    async function checkUser() {
+      try {
+        const response = await fetch('/api/user');
+        if (response.status === 401) { // Unauthorized
+          window.location.href = `${window.location.origin}/login/`;
+        }
+        if (response.status === 403) { // Forbidden
+          document.getElementById('greeting').textContent = 'FORBIDDEN';
+        }
+        if (response.ok) {
+          window.location.href = `${window.location.origin}/chatview`;
+        } else {
+          document.getElementById('greeting').textContent = 'ERROR';
+        }
+      } catch (error) {
+        document.getElementById('greeting').textContent = 'ERROR';
+      }
+    }
+
+    // Wait for DOM to be fully loaded
+    document.addEventListener('DOMContentLoaded', checkUser);
+  </script>
+</body>
+</html>

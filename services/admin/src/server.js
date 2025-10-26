@@ -17,14 +17,16 @@ session_config.store = new FileStore({ path: './sessions', ttl: 1800, retries: 0
 
 // Middleware
 const isAuthorized = (rq, rs, nx) => !rq.isAuthenticated()
-  ? rs.redirect('/login')
+  ? rs.sendFile('/app/public/landing.html')
   : authorized_emails.includes(rq.user.email)
     ? nx()
-    : rq.logout(() => rs.sendStatus(403))
+    : rq.logout(() => rs.redirect('/notfound'))
 
-const checkSession = (rq, rs, nx) => rq.isAuthenticated()
-  ? nx()
-  : rs.status(401).json({ error: 'Session expired', redirectTo: '/login' })
+const checkSession = (rq, rs, nx) => !rq.isAuthenticated()
+  ? rs.sendStatus(401)
+  : authorized_emails.includes(rq.user.email)
+    ? nx()
+    : rs.sendStatus(403)
 
 app.use(session(session_config))
 app.use(passport.initialize())
@@ -49,14 +51,11 @@ passport.serializeUser((user, done) => done(null, user))
 passport.deserializeUser((user, done) => done(null, user))
 
 // Auth routes
-app.get('/login', (rq, rs) => rs.redirect(rq.isAuthenticated() ? '/' : '/login/google'))
-app.get('/login/google', passport.authenticate('google', { scope: ['profile', 'email'] }))
-app.get('/login/callback', passport.authenticate('google', { failureRedirect: '/login' }), (_, rs) => rs.redirect('/'))
+app.get('/login/', passport.authenticate('google', { scope: ['profile', 'email'] }))
+app.get('/login/callback', passport.authenticate('google', { failureRedirect: '/login' }), (_, rs) => rs.redirect('..'))
 
 // API routes
 app.get('/api/user', checkSession, (rq, rs) => rs.json({ email: rq.user.email, name: rq.user.displayName, picture: rq.user.picture }))
-app.get('/api/session-check', (rq, rs) => rq.isAuthenticated() ? rs.json({ valid: true }) : rs.status(401).json({ valid: false, redirectTo: '/login' }))
-
 app.get('/api/initial-content', checkSession, async (_rq, rs) => {
   try {
     const [instructionsRes, knowledgeBaseRes] = await Promise.all([

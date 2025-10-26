@@ -3,12 +3,14 @@ services:
     build:
       context: ..
       target: development
+    stop_grace_period: 0s
     ports:
       - "3000:9876"
     volumes:
-      - ./mock_shared_data:/app/data
-      - ../src/:/app/src
+      - ../src/server.js:/app/src/server.js
       - ../src/views:/app/views
+      - ../src/public:/app/public
+      - ./mock_shared_data:/app/data
       - admin_sessions:/app/sessions
     secrets:
       - google_strategy
@@ -18,6 +20,7 @@ services:
     build:
       context: ../../prompt_composer/
       target: development
+    stop_grace_period: 0s
     working_dir: /app
     environment:
       - LLM=http://mock-llm:3011  # comment this if you want to work with real LLM

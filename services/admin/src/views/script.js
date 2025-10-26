@@ -7,30 +7,21 @@ const state = {
 
 // Initialize application
 document.addEventListener('DOMContentLoaded', async () => {
-  await checkSession();
   await loadUserInfo();
   await loadInitialContent();
   setupEventListeners();
 });
 
-// Check session validity
-async function checkSession() {
-  try {
-    const response = await fetch('/api/session-check');
-    const data = await response.json();
-    if (!data.valid) {
-      window.location.href = '/login';
-    }
-  } catch (error) {
-    console.error('Session check failed:', error);
-    window.location.href = '/login';
-  }
-}
-
 // Load user information
 async function loadUserInfo() {
   try {
     const response = await fetch('/api/user');
+    if (response.status === 401) { // Unauthorized
+      window.location.href = '/login';
+    }
+    if (response.status === 403) { // Forbidden
+      window.location.href = '/';
+    }
     const user = await response.json();
     state.currentUser = user;
 
