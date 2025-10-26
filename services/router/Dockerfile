@@ -7,4 +7,5 @@ FROM base AS development
 # Production stage
 FROM base AS production
 COPY ./src/Caddyfile /etc/caddy/Caddyfile
+COPY ./public/ /srv
 RUN sed -i 's/http/https/g' /etc/caddy/Caddyfile
