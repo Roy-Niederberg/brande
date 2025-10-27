@@ -5,6 +5,22 @@ const state = {
   activeTab: 'instructions'
 };
 
+// Detect text direction based on content
+function detectTextDirection(text) {
+  const hebrewPattern = /[\u0590-\u05FF]/g;
+  const hebrewChars = (text.match(hebrewPattern) || []).length;
+  const totalChars = text.replace(/\s/g, '').length;
+  return hebrewChars / totalChars > 0.3 ? 'rtl' : 'ltr';
+}
+
+// Apply auto-direction to element
+function applyAutoDirection(element) {
+  const text = element.value || element.textContent || '';
+  if (text.trim()) {
+    element.dir = detectTextDirection(text);
+  }
+}
+
 // Initialize application
 document.addEventListener('DOMContentLoaded', async () => {
   await loadUserInfo();
@@ -40,8 +56,14 @@ async function loadInitialContent() {
     const response = await fetch('/api/initial-content');
     const data = await response.json();
 
-    document.getElementById('instructionsEditor').value = data.instructions || '';
-    document.getElementById('knowledgeBaseEditor').value = data.knowledgeBase || '';
+    const instructionsEl = document.getElementById('instructionsEditor');
+    const knowledgeBaseEl = document.getElementById('knowledgeBaseEditor');
+
+    instructionsEl.value = data.instructions || '';
+    knowledgeBaseEl.value = data.knowledgeBase || '';
+
+    applyAutoDirection(instructionsEl);
+    applyAutoDirection(knowledgeBaseEl);
 
     if (data.error) {
       console.warn('Could not fetch initial content:', data.error);
@@ -58,6 +80,12 @@ function setupEventListeners() {
     btn.addEventListener('click', () => switchTab(btn.dataset.tab));
   });
 
+  // Auto-direction for textareas
+  const instructionsEl = document.getElementById('instructionsEditor');
+  const knowledgeBaseEl = document.getElementById('knowledgeBaseEditor');
+  instructionsEl.addEventListener('input', () => applyAutoDirection(instructionsEl));
+  knowledgeBaseEl.addEventListener('input', () => applyAutoDirection(knowledgeBaseEl));
+
   // Customer chat
   const customerInput = document.getElementById('customer-input');
   const customerSend = document.getElementById('customer-send');
@@ -70,8 +98,11 @@ function setupEventListeners() {
     }
   });
 
-  // Auto-resize textarea
-  customerInput.addEventListener('input', () => autoResizeTextarea(customerInput));
+  // Auto-resize and auto-direction for chat input
+  customerInput.addEventListener('input', () => {
+    autoResizeTextarea(customerInput);
+    applyAutoDirection(customerInput);
+  });
 }
 
 // Switch left panel tabs
@@ -106,9 +137,10 @@ async function sendCustomerMessage() {
   addMessage('user', message);
   state.customerChat.push({ sender: 'user', text: message });
 
-  // Clear input
+  // Clear input and reset to LTR
   input.value = '';
   input.style.height = 'auto';
+  input.dir = 'ltr';
 
   // Show loading
   const loadingEl = document.getElementById('customer-loading');
@@ -160,6 +192,7 @@ function addMessage(sender, text, isError = false) {
   const textDiv = document.createElement('div');
   textDiv.className = 'message-text';
   textDiv.textContent = text;
+  textDiv.dir = detectTextDirection(text);
 
   const timeDiv = document.createElement('div');
   timeDiv.className = 'message-time';
