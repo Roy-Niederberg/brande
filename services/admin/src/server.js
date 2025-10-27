@@ -7,6 +7,7 @@ const GoogleStrategy = require('passport-google-oauth20').Strategy
 const axios = require('axios').create({ baseURL: 'http://prompt-composer:4321' })
 
 const app = express()
+app.set('trust proxy', true)
 app.use(express.json())
 
 const { emails } = JSON.parse(fs.readFileSync('./data/authorized_emails.json', 'utf-8'))
