@@ -447,23 +447,54 @@ body {
 }
 
 @media (max-width: 768px) {
+  body {
+    overflow: hidden;
+    position: fixed;
+    width: 100%;
+    height: 100vh;
+    height: 100dvh;
+  }
+
+  .app-header {
+    height: 50px;
+  }
+
   .app-header h1 {
-    font-size: 16px;
+    font-size: 14px;
   }
 
   .user-info span {
     display: none;
   }
 
-  .message-bubble {
-    max-width: 80%;
+  .main-container {
+    height: calc(100vh - 50px);
+    height: calc(100dvh - 50px);
+    margin-top: 50px;
+    grid-template-rows: 25% 75%;
   }
 
-  .main-container {
-    grid-template-rows: 35% 65%;
+  .message-bubble {
+    max-width: 85%;
+  }
+
+  .messages-container {
+    padding: 10px;
   }
 
   .input-container {
-    padding-bottom: max(10px, env(safe-area-inset-bottom));
+    padding: 8px 10px;
+    padding-bottom: max(8px, env(safe-area-inset-bottom));
+    position: sticky;
+    bottom: 0;
+  }
+
+  .message-input {
+    font-size: 16px;
+  }
+
+  .send-btn {
+    width: 40px;
+    height: 40px;
   }
 }

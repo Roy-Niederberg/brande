@@ -103,6 +103,13 @@ function setupEventListeners() {
     autoResizeTextarea(customerInput);
     applyAutoDirection(customerInput);
   });
+
+  // Mobile keyboard handling
+  customerInput.addEventListener('focus', () => {
+    setTimeout(() => {
+      customerInput.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, 300);
+  });
 }
 
 // Switch left panel tabs
