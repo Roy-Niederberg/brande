@@ -316,6 +316,9 @@ body {
   background: #f0f0f0;
   padding: 10px 15px;
   border-top: 1px solid #ddd;
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
 }
 
 .loading-indicator {
@@ -446,6 +449,19 @@ body {
   }
 
   .main-container {
-    grid-template-rows: 40vh 60vh;
+    grid-template-rows: 35vh 65vh;
+  }
+
+  .chat-container {
+    position: relative;
+    min-height: 0;
+  }
+
+  .messages-container {
+    padding-bottom: 20px;
+  }
+
+  .input-container {
+    padding-bottom: max(10px, env(safe-area-inset-bottom));
   }
 }
