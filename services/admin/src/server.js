@@ -60,7 +60,7 @@ app.post('/api/chat', checkSession, async (rq, rs) => {
   try {
     const { chatHistory } = rq.body
     if (!chatHistory || !Array.isArray(chatHistory)) return rs.status(400)
-    const chat_meta_data = "# CHAT METADATA:\nadmin user interface. This chat is like a direct messaging app (WhatsApp, Telegram...). The chat is private and between you and a single customer.\n\n# CHAT:\n"
+    const chat_meta_data = `# CHAT METADATA:\nadmin user interface. This chat is like a direct messaging app (WhatsApp, Telegram...). The chat is private and between you and a single customer. The customer name from his login ${rq.user.?displayName}\n\n# CHAT:\n`
     const query = chatHistory.map(msg => `${msg.sender === 'user' ? '<<<USER>>>: ' : '<<<ASSISTANT>>>: '}${msg.text}`).join('\n')
     const complete_query = chat_meta_data + query + '\n\n'
 
