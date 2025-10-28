@@ -148,6 +148,36 @@ body {
   color: #333;
 }
 
+.edit-btn {
+  padding: 8px 16px;
+  background: #667eea;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.edit-btn:hover {
+  background: #5568d3;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(102,126,234,0.3);
+}
+
+.edit-btn:active {
+  transform: translateY(0);
+}
+
+.edit-btn.editing {
+  background: #28a745;
+}
+
+.edit-btn.editing:hover {
+  background: #218838;
+}
+
 .update-indicator {
   font-size: 12px;
   padding: 4px 8px;

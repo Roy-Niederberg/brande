@@ -86,6 +86,11 @@ function setupEventListeners() {
   instructionsEl.addEventListener('input', () => applyAutoDirection(instructionsEl));
   knowledgeBaseEl.addEventListener('input', () => applyAutoDirection(knowledgeBaseEl));
 
+  // Instructions edit button
+  const editBtn = document.getElementById('instructions-edit-btn');
+  editBtn.addEventListener('click', () => toggleInstructionsEdit());
+  instructionsEl.addEventListener('blur', () => saveInstructionsOnBlur());
+
   // Customer chat
   const customerInput = document.getElementById('customer-input');
   const customerSend = document.getElementById('customer-send');
@@ -212,6 +217,52 @@ function addMessage(sender, text, isError = false) {
 
   // Scroll to bottom
   messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+// Toggle instructions edit mode
+function toggleInstructionsEdit() {
+  const instructionsEl = document.getElementById('instructionsEditor');
+  const editBtn = document.getElementById('instructions-edit-btn');
+
+  if (instructionsEl.readOnly) {
+    instructionsEl.readOnly = false;
+    instructionsEl.focus();
+    editBtn.textContent = 'Editing...';
+    editBtn.classList.add('editing');
+  } else {
+    instructionsEl.readOnly = true;
+    editBtn.textContent = 'Edit';
+    editBtn.classList.remove('editing');
+  }
+}
+
+// Save instructions when textarea loses focus
+async function saveInstructionsOnBlur() {
+  const instructionsEl = document.getElementById('instructionsEditor');
+  const editBtn = document.getElementById('instructions-edit-btn');
+
+  if (!instructionsEl.readOnly) {
+    instructionsEl.readOnly = true;
+    editBtn.textContent = 'Edit';
+    editBtn.classList.remove('editing');
+
+    try {
+      const response = await fetch('/api/instructions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ instructions: instructionsEl.value })
+      });
+
+      if (response.ok) {
+        showUpdateIndicator('instructions', 'Saved successfully');
+      } else {
+        showUpdateIndicator('instructions', 'Failed to save');
+      }
+    } catch (error) {
+      console.error('Failed to save instructions:', error);
+      showUpdateIndicator('instructions', 'Failed to save');
+    }
+  }
 }
 
 // Show update indicator

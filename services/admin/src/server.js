@@ -75,6 +75,18 @@ app.post('/api/chat', checkSession, async (rq, rs) => {
   }
 })
 
+app.post('/api/instructions', checkSession, async (rq, rs) => {
+  try {
+    const { instructions } = rq.body
+    if (!instructions) return rs.status(400).json({ error: 'Instructions required' })
+    await axios.post('/instructions', instructions, { headers: { 'Content-Type': 'text/plain' }, timeout: 10000 })
+    rs.json({ success: true })
+  } catch (error) {
+    console.error(`[${new Date().toISOString()}] Update instructions error:`, error.message)
+    rs.status(500).json({ error: 'Failed to update instructions' })
+  }
+})
+
 // Error handling
 app.use((_, rs) => rs.sendStatus(404))
 app.use((e, _, rs, _nxt) => { console.error(e.response?.data || e.message, `\n${e.stack}`), rs.sendStatus(500) })
