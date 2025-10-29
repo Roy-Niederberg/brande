@@ -11,6 +11,7 @@ http://craftkidstoys.mooo.com, http://orielbaz.mooo.com {
 	}
 
 	handle /webhook* {
+		uri strip_prefix /webhook
 		reverse_proxy {labels.2}-facebook-connect-1:3210
 	}
 
