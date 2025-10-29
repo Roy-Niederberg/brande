@@ -19,7 +19,6 @@ http://craftkidstoys.mooo.com, http://orielbaz.mooo.com {
 		reverse_proxy {labels.2}-admin-1:9876 {
 			@error status 404 5xx
 			handle_response @error {
-				copy_response_headers
 				root * /srv
 				rewrite * /404.html
 				file_server
