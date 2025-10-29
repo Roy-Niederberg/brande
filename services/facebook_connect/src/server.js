@@ -162,7 +162,7 @@ const app = express();
 //}
 
 // ENDPOINT: GET /health/
-app.get('/health', (_req, res) => {
+app.get('/health', (_, res) => {
   res.status(200).json({ status: 'ok' });
 });
 
