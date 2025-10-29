@@ -6,7 +6,7 @@ COPY ./src/package*.json ./
 FROM base AS development
 RUN npm ci
 ENV NODE_ENV=development
-CMD ["npx", "nodemon", "--watch", "src", "--ignore", "sessions", "src/server.js"]
+CMD ["npx", "nodemon", "--watch", "src", "src/server.js"]
 
 # Production stage
 FROM base AS production

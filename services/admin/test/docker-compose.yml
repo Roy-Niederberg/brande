@@ -7,7 +7,7 @@ services:
     ports:
       - "3000:9876"
     volumes:
-      - ../src/server.js:/app/src/server.js
+      - ../src/:/app/src/
       - ../src/views:/app/views
       - ../src/public:/app/public
       - ./mock_shared_data:/app/data
