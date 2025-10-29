@@ -12,7 +12,7 @@ CMD ["npx", "nodemon", "--watch", "src", "src/server.js"]
 # Production stage
 FROM base AS production
 RUN npm ci --production
-COPY ./src/server ./src/
+COPY ./src/server.js ./src/
 ENV NODE_ENV=production
 RUN rm package*.json
 CMD ["node", "src/server.js"]
