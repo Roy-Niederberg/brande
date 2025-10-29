@@ -10,6 +10,10 @@ http://craftkidstoys.mooo.com, http://orielbaz.mooo.com {
 		file_server
 	}
 
+	handle /webhook* {
+		reverse_proxy {labels.2}-facebook-connect-1:3210
+	}
+
 	handle {
 		reverse_proxy {labels.2}-admin-1:9876 {
 			@error status 404 5xx
