@@ -1,0 +1,9 @@
+services:
+  dispatcher:
+    build:
+      context: ..
+      target: development
+    ports:
+      - "3000:3210"
+    volumes:
+      - ../src:/app/src
