@@ -1,3 +1,7 @@
+http://brandelicious-wb.mooo.com {
+	reverse_proxy craftkidstoys-facebook-connect-1:3210
+}
+
 http://craftkidstoys.mooo.com, http://orielbaz.mooo.com {
 	handle /favicon.ico {
 		root * /srv
@@ -8,11 +12,6 @@ http://craftkidstoys.mooo.com, http://orielbaz.mooo.com {
 		uri strip_prefix /public
 		root * /srv
 		file_server
-	}
-
-	handle /webhook* {
-		uri strip_prefix /webhook
-		reverse_proxy {labels.2}-facebook-connect-1:3210
 	}
 
 	handle {
