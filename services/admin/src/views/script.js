@@ -91,6 +91,11 @@ function setupEventListeners() {
   editBtn.addEventListener('click', () => toggleInstructionsEdit());
   instructionsEl.addEventListener('blur', () => saveInstructionsOnBlur());
 
+  // Knowledge base edit button
+  const kbEditBtn = document.getElementById('knowledge-base-edit-btn');
+  kbEditBtn.addEventListener('click', () => toggleKnowledgeBaseEdit());
+  knowledgeBaseEl.addEventListener('blur', () => saveKnowledgeBaseOnBlur());
+
   // Customer chat
   const customerInput = document.getElementById('customer-input');
   const customerSend = document.getElementById('customer-send');
@@ -261,6 +266,52 @@ async function saveInstructionsOnBlur() {
     } catch (error) {
       console.error('Failed to save instructions:', error);
       showUpdateIndicator('instructions', 'Failed to save');
+    }
+  }
+}
+
+// Toggle knowledge base edit mode
+function toggleKnowledgeBaseEdit() {
+  const knowledgeBaseEl = document.getElementById('knowledgeBaseEditor');
+  const editBtn = document.getElementById('knowledge-base-edit-btn');
+
+  if (knowledgeBaseEl.readOnly) {
+    knowledgeBaseEl.readOnly = false;
+    knowledgeBaseEl.focus();
+    editBtn.textContent = 'Editing...';
+    editBtn.classList.add('editing');
+  } else {
+    knowledgeBaseEl.readOnly = true;
+    editBtn.textContent = 'Edit';
+    editBtn.classList.remove('editing');
+  }
+}
+
+// Save knowledge base when textarea loses focus
+async function saveKnowledgeBaseOnBlur() {
+  const knowledgeBaseEl = document.getElementById('knowledgeBaseEditor');
+  const editBtn = document.getElementById('knowledge-base-edit-btn');
+
+  if (!knowledgeBaseEl.readOnly) {
+    knowledgeBaseEl.readOnly = true;
+    editBtn.textContent = 'Edit';
+    editBtn.classList.remove('editing');
+
+    try {
+      const response = await fetch('/api/knowledge-base', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ knowledgeBase: knowledgeBaseEl.value })
+      });
+
+      if (response.ok) {
+        showUpdateIndicator('knowledge-base', 'Saved successfully');
+      } else {
+        showUpdateIndicator('knowledge-base', 'Failed to save');
+      }
+    } catch (error) {
+      console.error('Failed to save knowledge base:', error);
+      showUpdateIndicator('knowledge-base', 'Failed to save');
     }
   }
 }

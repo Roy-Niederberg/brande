@@ -32,11 +32,18 @@ app.r('get', '/ask', async ({ query: { query } }, rs) => {
   data.contents[0].parts[0].text = [role, instructions, knowledge_base, query, response_guidelines].join('')
   rs.send((await axios.post(`${url}?key=${llm_api_key}`, data, cfg)).data.candidates[0].content.parts[0].text.trim())
 })
-app.r('get', '/knowledge-base', (_, rs) => rs.send(knowledge_base))
-app.r('get', '/prompt-instructions', (_, rs) => rs.send(instructions))
-app.r('post', '/reload-knowledge-base', (_, rs) => (knowledge_base = read('knowledge_base'), rs.sendStatus(200)))
-app.r('post', '/reload-instructions', (_, rs) => (instructions = read('instructions'), rs.sendStatus(200)))
-app.r('post', '/instructions', ({ body }, rs) => (instructions = body, write('instructions', body), rs.sendStatus(200)))
+app.r('get', '/knowledge-base',
+  (_, rs) => rs.send(knowledge_base))
+app.r('get', '/prompt-instructions',
+  (_, rs) => rs.send(instructions))
+app.r('post', '/reload-knowledge-base',
+  (_, rs) => (knowledge_base = read('knowledge_base'), rs.sendStatus(200)))
+app.r('post', '/reload-instructions',
+  (_, rs) => (instructions = read('instructions'), rs.sendStatus(200)))
+app.r('post', '/instructions',
+  ({ body }, rs) => (instructions = body, write('instructions', body), rs.sendStatus(200)))
+app.r('post', '/knowledge-base',
+  ({ body }, rs) => (knowledge_base = body, write('knowledge_base', body), rs.sendStatus(200)))
 
 // =============== Error handling middlewarendpoints =================================================================//
 

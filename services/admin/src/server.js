@@ -88,6 +88,18 @@ app.post('/api/instructions', checkSession, async (rq, rs) => {
   }
 })
 
+app.post('/api/knowledge-base', checkSession, async (rq, rs) => {
+  try {
+    const { knowledgeBase } = rq.body
+    if (!knowledgeBase) return rs.status(400).json({ error: 'Knowledge base required' })
+    await axios.post('/knowledge-base', knowledgeBase, { headers: { 'Content-Type': 'text/plain' }, timeout: 10000 })
+    rs.json({ success: true })
+  } catch (error) {
+    console.error(`[${new Date().toISOString()}] Update knowledge base error:`, error.message)
+    rs.status(500).json({ error: 'Failed to update knowledge base' })
+  }
+})
+
 // Error handling
 app.use((_, rs) => rs.sendStatus(404))
 app.use((e, _, rs, _nxt) => { console.error(e.response?.data || e.message, `\n${e.stack}`), rs.sendStatus(500) })
