@@ -48,3 +48,15 @@ facebook_connect:
         - services/facebook_connect/**/*
       when: always
     - when: never
+
+facebook_dispatcher:
+  stage: trigger
+  trigger:
+    include: services/facebook_dispatcher/.gitlab-ci.yml
+    strategy: depend
+  rules:
+    - if: '$CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH'
+      changes:
+        - services/facebook_dispatcher/**/*
+      when: always
+    - when: never
