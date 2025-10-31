@@ -75,7 +75,7 @@ async function fetchCommentThread(commentId) {
   let currentId = commentId;
 
   while (currentId) {
-    const url = `https://graph.facebook.com/v21.0/${currentId}?fields=id,message,from,parent,created_time&access_token=${page_access_token}`;
+    const url = `https://graph.facebook.com/v21.0/${currentId}?fields=id,message,from,parent{id},created_time&access_token=${page_access_token}`;
 
     try {
       const response = await fetch(url);
