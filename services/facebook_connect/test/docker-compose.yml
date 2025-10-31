@@ -5,5 +5,11 @@ services:
       target: development
     ports:
       - "3000:3210"
+    secrets:
+      - fb_page_access_token
     volumes:
       - ../src:/app/src
+
+secrets:
+  fb_page_access_token:
+    file: ./secrets/fb_page_access_token

@@ -1,8 +1,11 @@
+const fs = require('fs');
 const express = require('express');
 const app = express();
 
-app.use(express.json());
+const read_scrt = name => fs.readFileSync(`/run/secrets/${name}`, 'utf-8').trim()
+const page_access_token = read_scrt('fb_page_access_token')
 
+app.use(express.json());
 
 // Endpoinsts
 // ============================================================================
@@ -44,7 +47,8 @@ function processWebhook(body) {
           console.log('Created Time:', value.created_time);
           console.log('========================\n');
 
-          // Handle the comment here
+          // Fetch full comment thread
+          handleComment(value.comment_id);
         } else {
           console.log('Feed event but not a comment. Item type:', value.item);
         }
@@ -53,6 +57,51 @@ function processWebhook(body) {
       }
     });
   });
+}
+
+async function handleComment(commentId) {
+  try {
+    const thread = await fetchCommentThread(commentId);
+    console.log('\n📜 Full Comment Thread:');
+    console.log(JSON.stringify(thread, null, 2));
+    console.log('---\n');
+  } catch (error) {
+    console.error('Error fetching comment thread:', error.message);
+  }
+}
+
+async function fetchCommentThread(commentId) {
+  const thread = [];
+  let currentId = commentId;
+
+  while (currentId) {
+    const url = `https://graph.facebook.com/v21.0/${currentId}?fields=id,message,from,parent,created_time&access_token=${page_access_token}`;
+
+    try {
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        console.error(`Failed to fetch ${currentId}:`, response.status, response.statusText);
+        break;
+      }
+
+      const data = await response.json();
+      thread.unshift(data); // Add to beginning of array
+
+      // Check if parent exists and is a comment (has underscore in ID)
+      // Post IDs don't have underscores, comment IDs do (e.g., "123_456")
+      if (data.parent?.id && data.parent.id.includes('_')) {
+        currentId = data.parent.id;
+      } else {
+        currentId = null; // Reached the post or no parent
+      }
+    } catch (error) {
+      console.error(`Error fetching ${currentId}:`, error.message);
+      break;
+    }
+  }
+
+  return thread;
 }
 
 app.listen(3210, ()=> console.log('Server Start Up'))

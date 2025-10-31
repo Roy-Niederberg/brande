@@ -16,6 +16,7 @@ services:
     image: registry.gitlab.com/rny3/brande/facebook_dispatcher:latest
     secrets:
       - fb_global_webhook_verify_token
+      - fb_global_app_secret
     networks:
       - craftkidstoys_network
       - orielbaz_network
@@ -29,6 +30,8 @@ networks:
 secrets:
   fb_global_webhook_verify_token:
     file: ./secrets/fb_global_webhook_verify_token.secret
+  fb_global_app_secret:
+    file: ./secrets/fb_global_app_secret.secret
 
 volumes:
   router_data:
