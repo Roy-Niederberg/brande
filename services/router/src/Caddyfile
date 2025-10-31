@@ -1,5 +1,5 @@
 http://brandelicious-wh.mooo.com {
-	reverse_proxy facebook-dispatcher-1:3210
+	reverse_proxy facebook-dispatcher:3210
 }
 
 http://craftkidstoys.mooo.com, http://orielbaz.mooo.com {
