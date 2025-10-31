@@ -8,35 +8,10 @@ const read_scrt = name => fs.readFileSync(`/run/secrets/${name}`, 'utf-8').trim(
 
 app.use(express.json({ verify: (req, _res, buf) => req.rawBody = buf.toString('utf8') }));
 
-const APP_SECRET = read_scrt('fb_app_secret')
-const VERIFY_TOKEN = read_scrt('fb_verify_token')
+const {fb_app_secret} = JSON.parse(read_scrt('fb_global'))
 
 // Endpoinsts
 // ============================================================================
-// ENDPOINT: GET /
-app.get('/', (req, res) => {
-  const mode = req.query['hub.mode'];
-  const token = req.query['hub.verify_token'];
-  const challenge = req.query['hub.challenge'];
-
-  console.log('Webhook verification request received');
-  console.log('Mode:', mode);
-  console.log('Token:', token);
-
-  if (mode && token) {
-    if (mode === 'subscribe' && token === VERIFY_TOKEN) {
-      console.log('✓ Webhook verified successfully!');
-      res.status(200).send(challenge);
-    } else {
-      console.error('✗ Webhook verification failed - token mismatch');
-      res.sendStatus(403);
-    }
-  } else {
-    console.error('✗ Webhook verification failed - missing parameters');
-    res.sendStatus(400);
-  }
-});
-
 // ENDPOINT: POST /
 app.post('/', (req, res) => {
   // Verify the request signature using raw body
@@ -106,13 +81,11 @@ function verifySignature(signature, rawBody) {
   const signatureHash = elements[1];
 
   const expectedHash = crypto
-    .createHmac('sha256', APP_SECRET)
+    .createHmac('sha256', fb_app_secret)
     .update(rawBody)
     .digest('hex');
 
   return signatureHash === expectedHash;
 }
-
-app.get('/health', (_, rs) => rs.status(200).json({ status: 'ok' }));
 
 app.listen(3210, ()=> console.log('Server Start Up'))
