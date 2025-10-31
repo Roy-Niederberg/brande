@@ -5,11 +5,5 @@ services:
       target: development
     ports:
       - "3000:3210"
-    secrets:
-      - fb_global_app_secret
     volumes:
       - ../src:/app/src
-
-secrets:
-  fb_global_app_secret:
-    file: ./secrets/fb_global_app_secret
