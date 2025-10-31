@@ -3,12 +3,7 @@ const express = require('express');
 const crypto = require('crypto');
 const app = express();
 
-const read_scrt = name => fs.readFileSync(`/run/secrets/${name}`, 'utf-8').trim()
-// Middleware to capture raw body for signature verification
-
 app.use(express.json({ verify: (req, _res, buf) => req.rawBody = buf.toString('utf8') }));
-
-const {fb_app_secret} = JSON.parse(read_scrt('fb_global'))
 
 // Endpoinsts
 // ============================================================================
