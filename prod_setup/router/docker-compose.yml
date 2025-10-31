@@ -1,0 +1,35 @@
+services:
+  router:
+    image: registry.gitlab.com/rny3/brande/router:latest
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"  # HTTP/3
+    volumes:
+      - router_data:/data
+      - router_config:/config
+    networks:
+      - craftkidstoys_network
+      - orielbaz_network
+
+  facebook-dispatcher:
+    image: registry.gitlab.com/rny3/brande/facebook_dispatcher:latest
+    secrets:
+      - fb_global_webhook_verify_token
+    networks:
+      - craftkidstoys_network
+      - orielbaz_network
+
+networks:
+  craftkidstoys_network:
+    external: true
+  orielbaz_network:
+    external: true
+
+secrets:
+  fb_global_webhook_verify_token:
+    file: ./secrets/fb_global_webhook_verify_token.secret
+
+volumes:
+  router_data:
+  router_config:

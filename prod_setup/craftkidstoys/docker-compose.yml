@@ -1,0 +1,45 @@
+services:
+  prompt-composer:
+    image: registry.gitlab.com/rny3/brande/prompt_composer:latest
+    networks:
+      - craftkidstoys_network
+    secrets:
+      - llm_api_key
+    volumes:
+      - ./shared_data/prompt/:/app/data
+
+  admin:
+    image: registry.gitlab.com/rny3/brande/admin:latest
+    networks:
+      - craftkidstoys_network
+    secrets:
+      - google_strategy
+      - session_config
+    volumes:
+      - ./shared_data/:/app/data:ro
+      - admin_sessions:/app/sessions
+
+  facebook-connect:
+    container_name: "fb-page-808626769002262"
+    image: registry.gitlab.com/rny3/brande/facebook_connect:latest
+    networks:
+      - craftkidstoys_network
+    secrets:
+      - fb_global_app_secret
+
+volumes:
+  admin_sessions:
+
+networks:
+  craftkidstoys_network:
+    name: craftkidstoys_network
+
+secrets:
+  llm_api_key:
+    file: ./secrets/gemini_api_key.secret
+  google_strategy:
+    file: ./secrets/google_strategy.secret
+  session_config:
+    file: ./secrets/session_config.secret
+  fb_global_app_secret:
+    file: ./secrets/fb_global_app_secret.secret
