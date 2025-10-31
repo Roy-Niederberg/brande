@@ -32,19 +32,20 @@ app.get('/', (rq, rs) => {
 });
 
 // Dispatch POST requests based on page ID
-app.post('/', async (rq, rs) => {
+app.post('/', (rq, rs) => {
   const pageId = rq.body?.entry?.[0]?.id;
   console.log(`Webhook POST received - Page ID: ${pageId}`);
 
-  try {
-    const response = await axios.post(`http://fb-page-${pageId}:3210`, rq.rawBody, {
-      headers: { ...rq.headers, host: undefined },
-    });
-    rs.status(response.status).send(response.data);
-  } catch (error) {
-    console.error(`Forward error http://fb-page-${pageId}:3210`, error.message);
-    rs.sendStatus(error.response?.status || 500);
-  }
+  // Respond immediately to Facebook
+  rs.status(200).send('EVENT_RECEIVED');
+
+  // Forward to facebook-connect (fire and forget)
+  const targetUrl = `http://fb-page-${pageId}:3210`;
+  axios.post(targetUrl, rq.rawBody, {
+    headers: { ...rq.headers, host: undefined },
+  }).catch(error => {
+    console.error(`Forward error to ${targetUrl}:`, error.message);
+  });
 });
 
 app.listen(3210, ()=> console.log('Server Start Up'))
