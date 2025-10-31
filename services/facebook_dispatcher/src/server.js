@@ -37,12 +37,12 @@ app.post('/', async (rq, rs) => {
   console.log(`Webhook POST received - Page ID: ${pageId}`);
 
   try {
-    const response = await axios.post(`http://${pageId}-1:3210`, rq.rawBody, {
+    const response = await axios.post(`http://${pageId}:3210`, rq.rawBody, {
       headers: { ...rq.headers, host: undefined },
     });
     rs.status(response.status).send(response.data);
   } catch (error) {
-    console.error(`Forward error to ${targetUrl}:`, error.message);
+    console.error(`Forward error http://${pageId}:3210:`, error.message);
     rs.sendStatus(error.response?.status || 500);
   }
 });
