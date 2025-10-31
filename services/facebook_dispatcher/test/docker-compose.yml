@@ -7,3 +7,10 @@ services:
       - "3000:3210"
     volumes:
       - ../src:/app/src
+    secrets:
+      - fb_global_webhook_verify_token
+
+secrets:
+  fb_global_webhook_verify_token:
+    file: ./secrets/fb_global_webhook_verify_token
+

@@ -3,7 +3,11 @@ const express = require('express');
 const crypto = require('crypto');
 const app = express();
 
+const read_scrt = name => fs.readFileSync(`/run/secrets/${name}`, 'utf-8').trim()
+const fb_app_secret = JSON.parse(read_scrt('fb_global_app_secret'))
+
 app.use(express.json({ verify: (req, _res, buf) => req.rawBody = buf.toString('utf8') }));
+
 
 // Endpoinsts
 // ============================================================================

@@ -6,13 +6,10 @@ services:
     ports:
       - "3000:3210"
     secrets:
-      - fb_app_secret
-      - fb_verify_token
+      - fb_global_app_secret
     volumes:
       - ../src:/app/src
 
 secrets:
-  fb_app_secret:
-    file: ./secrets/fb_app_secret
-  fb_verify_token:
-    file: ./secrets/fb_verify_token
+  fb_global_app_secret:
+    file: ./secrets/fb_global_app_secret
