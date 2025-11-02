@@ -11,8 +11,6 @@ app.use(express.json());
 // ============================================================================
 // ENDPOINT: POST /
 app.post('/', (req, res) => {
-  console.log(`Received webhook POST request (${new Date()})`);
-
   // Respond immediately (signature already verified by dispatcher)
   res.status(200).send('EVENT_RECEIVED');
 
@@ -32,7 +30,8 @@ function processWebhook(body) {
 
   body.entry.forEach((entry) => {
     entry.changes.forEach((change) => {
-      if (change.field === 'feed' && change.field == 'comment') {
+      console.log(change.field)
+      if (change.field === 'feed' && change.value?.item == 'comment') {
         handleComment(value.comment_id);
       }
     })
