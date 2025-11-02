@@ -32,7 +32,7 @@ function processWebhook(body) {
     entry.changes.forEach((change) => {
       console.log(change.field)
       if (change.field === 'feed' && change.value?.item == 'comment') {
-        handleComment(value.comment_id);
+        handleComment(change.value.comment_id);
       }
     })
   })
