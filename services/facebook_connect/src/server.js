@@ -26,45 +26,56 @@ function processWebhook(body) {
     return;
   }
 
-  console.log('Processing page webhook event...');
-  console.log('Number of entries:', body.entry ? body.entry.length : 0);
+  console.log('/n%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
+  console.log(body)
+  console.log('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n')
 
-  body.entry.forEach((entry, entryIndex) => {
-    console.log(`\nEntry ${entryIndex}:`, JSON.stringify(entry, null, 2));
-
+  body.entry.forEach((entry) => {
     entry.changes.forEach((change) => {
-      if (change.field === 'feed') {
-        const value = change.value;
-
-        console.log('Feed change detected! Item type:', value.item);
-
-        if (value.item === 'comment') {
-          console.log('\n=== New Comment Received ===');
-          console.log('Comment ID:', value.comment_id);
-          console.log('Post ID:', value.post_id);
-          console.log('From:', value.from);
-          console.log('Message:', value.message);
-          console.log('Created Time:', value.created_time);
-          console.log('========================\n');
-
-          // Fetch full comment thread
-          handleComment(value.comment_id);
-        } else {
-          console.log('Feed event but not a comment. Item type:', value.item);
-        }
-      } else {
-        console.log('Change field is not feed, it is:', change.field);
+      if (change.field === 'feed' && change.field == 'comment') {
+        handleComment(value.comment_id);
       }
-    });
-  });
+    })
+  })
+
+  //body.entry.forEach((entry, entryIndex) => {
+  //  console.log(`\nEntry ${entryIndex}:`, JSON.stringify(entry, null, 2));
+  //
+  //  entry.changes.forEach((change) => {
+  //    if (change.field === 'feed') {
+  //      const value = change.value;
+  //
+  //      console.log('Feed change detected! Item type:', value.item);
+  //
+  //      if (value.item === 'comment') {
+  //        console.log('\n=== New Comment Received ===');
+  //        console.log('Comment ID:', value.comment_id);
+  //        console.log('Post ID:', value.post_id);
+  //        console.log('From:', value.from);
+  //        console.log('Message:', value.message);
+  //        console.log('Created Time:', value.created_time);
+  //        console.log('========================\n');
+  //
+  //        // Fetch full comment thread
+  //        handleComment(value.comment_id);
+  //      } else {
+  //        console.log('Feed event but not a comment. Item type:', value.item);
+  //      }
+  //    } else {
+  //      console.log('Change field is not feed, it is:', change.field);
+  //    }
+  //  });
+  //});
 }
 
 async function handleComment(commentId) {
   try {
-    const thread = await fetchCommentThread(commentId);
-    console.log('\n📜 Full Comment Thread:');
-    console.log(JSON.stringify(thread, null, 2));
-    console.log('---\n');
+    await fetchCommentThread(commentId);
+    console.log('\n')
+    //const thread = await fetchCommentThread(commentId);
+    //console.log('\n📜 Full Comment Thread:');
+    //console.log(JSON.stringify(thread, null, 2));
+    //console.log('---\n');
   } catch (error) {
     console.error('Error fetching comment thread:', error.message);
   }
@@ -84,6 +95,7 @@ async function fetchCommentThread(commentId) {
         console.error(`Failed to fetch ${currentId}:`, response.status, response.statusText);
         break;
       }
+      console.log(response)
 
       const data = await response.json();
       thread.unshift(data); // Add to beginning of array
