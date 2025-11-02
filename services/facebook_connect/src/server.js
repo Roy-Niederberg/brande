@@ -94,9 +94,9 @@ async function fetchCommentThread(commentId) {
         console.error(`Failed to fetch ${currentId}:`, response.status, response.statusText);
         break;
       }
-      console.dir(response, { depth: null });
 
       const data = await response.json();
+      console.dir(data, { depth: null });
       thread.unshift(data); // Add to beginning of array
 
       // Check if parent exists and is a comment (has underscore in ID)
