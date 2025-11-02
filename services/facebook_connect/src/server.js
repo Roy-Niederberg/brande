@@ -27,7 +27,7 @@ function processWebhook(body) {
   }
 
   console.log('/n%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
-  console.log(body)
+  console.dir(body, { depth: null });
   console.log('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n')
 
   body.entry.forEach((entry) => {
@@ -95,7 +95,7 @@ async function fetchCommentThread(commentId) {
         console.error(`Failed to fetch ${currentId}:`, response.status, response.statusText);
         break;
       }
-      console.log(response)
+      console.dir(response, { depth: null });
 
       const data = await response.json();
       thread.unshift(data); // Add to beginning of array
