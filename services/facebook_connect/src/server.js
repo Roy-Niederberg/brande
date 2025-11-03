@@ -22,10 +22,11 @@ app.post('/', async (req, res) => {
   }
 
   body.entry.forEach((entry) => {
+    const pageId = entry.id
     entry.changes.forEach((change) => {
       if (change.field !== 'feed' && LOG()) return
       if (change.value?.item === 'status' && LOG()) return // 'status' means a post
-      if (change.value?.item === 'comment') process_comment(change.value)
+      if (change.value?.item === 'comment' && change.value.from?.id !== pageId) process_comment(change.value)
     })
   })
 })

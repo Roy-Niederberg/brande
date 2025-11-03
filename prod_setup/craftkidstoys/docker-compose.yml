@@ -18,7 +18,7 @@ services:
       - google_strategy
       - session_config
     volumes:
-      - ./shared_data/:/app/data:ro
+      - ./shared_data/authorized_emails.json:/app/data/authorized_emails.json:ro
       - admin_sessions:/app/sessions
 
   facebook-connect:
@@ -27,7 +27,7 @@ services:
     networks:
       - craftkidstoys_network
     environment:
-      - FACEBOOK_API=https://graph.facebook.com/v24.0
+      - FACEBOOK_API_URL=https://graph.facebook.com/v24.0
     secrets:
       - fb_page_access_token
 
