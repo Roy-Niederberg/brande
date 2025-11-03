@@ -3,13 +3,63 @@ services:
     build:
       context: ..
       target: development
+    stop_grace_period: 0s
     ports:
       - "3000:3210"
+    environment:
+      - FACEBOOK_API_URL=http://facebook-mock:3001
     secrets:
       - fb_page_access_token
     volumes:
       - ../src:/app/src
 
+  facebook-mock:
+    image: node:22-alpine
+    stop_grace_period: 0s
+    working_dir: /app
+    command: node test.js
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./:/app/
+
+  auto-test:
+    image: node:22-alpine
+    stop_grace_period: 0s
+    working_dir: /app
+    command: sh -c "npm install -g nodemon && nodemon --watch src/server.js --delay 2 --exec 'wget -qO- http://facebook-mock:3001/test_comment'"
+    volumes:
+      - ../:/app/
+      - nodemon-cache:/usr/local/lib/node_modules
+
+  prompt-composer:
+    image: registry.gitlab.com/rny3/brande/prompt_composer:latest
+    environment:
+      - LLM=http://mock-llm:3771
+    depends_on:
+      - mock-llm
+    secrets:
+      - llm_api_key
+    volumes:
+      - ../../prompt_composer/test/mock_shared_data/:/app/data
+
+  mock-llm:
+    image: node:22-alpine
+    stop_grace_period: 0s
+    command:
+      - node
+      - -e
+      - |
+        require('http').createServer((req, res) => {
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({candidates:[{content:{parts:[{text: 'This is the mock response'}]}}]}));
+        }).listen(3001);
+
+volumes:
+  nodemon-cache:
+
 secrets:
   fb_page_access_token:
-    file: ./secrets/fb_page_access_token
+    file: ./secrets/fb_page_access_token.secret
+  llm_api_key:
+    file: ./secrets/llm_api_key.secret

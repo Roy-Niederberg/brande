@@ -1,118 +1,69 @@
+//--------------------------------------------------------------------------------------------------
 const fs = require('fs');
 const express = require('express');
 const app = express();
 
 const read_scrt = name => fs.readFileSync(`/run/secrets/${name}`, 'utf-8').trim()
-const page_access_token = read_scrt('fb_page_access_token')
+const token = read_scrt('fb_page_access_token')
+const fb_url = process.env.FACEBOOK_API_URL
+fb_url .length > 0 || console.error('🚨 FACEBOOK_API_URL is empty 🚨 ')
+const fields_list = 'id,message,from,parent{id},created_time'
 
 app.use(express.json());
+const  LOG = () => { console.log("🚨 ERROR 🚨 "); return true }
 
-// Endpoinsts
-// ============================================================================
-// ENDPOINT: POST /
-app.post('/', (req, res) => {
-  // Respond immediately (signature already verified by dispatcher)
+
+app.post('/', async (req, res) => {
   res.status(200).send('EVENT_RECEIVED');
-
-  // Process webhook asynchronously
-  processWebhook(req.body);
-});
-
-function processWebhook(body) {
+  const body = req.body
   if (body.object !== 'page') {
     console.log('Webhook object is not page, it is:', body.object);
     return;
   }
 
-  console.log('/n%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
-  console.dir(body, { depth: null });
-  console.log('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n')
-
   body.entry.forEach((entry) => {
     entry.changes.forEach((change) => {
-      console.log(change.field)
-      if (change.field === 'feed' && change.value?.item == 'comment') {
-        handleComment(change.value.comment_id);
-      }
+      if (change.field !== 'feed' && LOG()) return
+      if (change.value?.item === 'status' && LOG()) return // 'status' means a post
+      if (change.value?.item === 'comment') process_comment(change.value)
     })
   })
+})
 
-  //body.entry.forEach((entry, entryIndex) => {
-  //  console.log(`\nEntry ${entryIndex}:`, JSON.stringify(entry, null, 2));
-  //
-  //  entry.changes.forEach((change) => {
-  //    if (change.field === 'feed') {
-  //      const value = change.value;
-  //
-  //      console.log('Feed change detected! Item type:', value.item);
-  //
-  //      if (value.item === 'comment') {
-  //        console.log('\n=== New Comment Received ===');
-  //        console.log('Comment ID:', value.comment_id);
-  //        console.log('Post ID:', value.post_id);
-  //        console.log('From:', value.from);
-  //        console.log('Message:', value.message);
-  //        console.log('Created Time:', value.created_time);
-  //        console.log('========================\n');
-  //
-  //        // Fetch full comment thread
-  //        handleComment(value.comment_id);
-  //      } else {
-  //        console.log('Feed event but not a comment. Item type:', value.item);
-  //      }
-  //    } else {
-  //      console.log('Change field is not feed, it is:', change.field);
-  //    }
-  //  });
-  //});
-}
-
-async function handleComment(commentId) {
-  try {
-    await fetchCommentThread(commentId);
-    console.log('\n')
-    //const thread = await fetchCommentThread(commentId);
-    //console.log('\n📜 Full Comment Thread:');
-    //console.log(JSON.stringify(thread, null, 2));
-    //console.log('---\n');
-  } catch (error) {
-    console.error('Error fetching comment thread:', error.message);
-  }
-}
-
-async function fetchCommentThread(commentId) {
-  const thread = [];
-  let currentId = commentId;
-
-  while (currentId) {
-    const url = `https://graph.facebook.com/v21.0/${currentId}?fields=id,message,from,parent{id},created_time&access_token=${page_access_token}`;
-
-    try {
-      const response = await fetch(url);
-
-      if (!response.ok) {
-        console.error(`Failed to fetch ${currentId}:`, response.status, response.statusText);
-        break;
-      }
-
-      const data = await response.json();
-      console.dir(data, { depth: null });
-      thread.unshift(data); // Add to beginning of array
-
-      // Check if parent exists and is a comment (has underscore in ID)
-      // Post IDs don't have underscores, comment IDs do (e.g., "123_456")
-      if (data.parent?.id && data.parent.id.includes('_')) {
-        currentId = data.parent.id;
-      } else {
-        currentId = null; // Reached the post or no parent
-      }
-    } catch (error) {
-      console.error(`Error fetching ${currentId}:`, error.message);
-      break;
-    }
+async function process_comment(comment) {
+  const comment_id = comment.comment_id
+  let chat_history = [format_comment(comment)]
+  while (comment.parent_id) {
+    const url = `${fb_url}/${comment.parent_id}?fields=${fields_list}&access_token=${token}`
+    const ret = await fetch(url)
+    if (!ret.ok && LOG()) break
+    comment = await ret.json();
+    chat_history.unshift(format_comment(comment))
+    comment.parent_id = comment.parent?.id
   }
 
-  return thread;
+  let query = "# CHAT METADATA:\nThe chat is from the business Facebook page and you are replaying on a comment thread on a public post.\n"
+  query = query + "# CHAT"
+  query = query + chat_history.join('\n')
+  query = query + "\n\n"
+
+  const ret = await fetch(`http://prompt-composer:4321/ask?query=${encodeURIComponent(query)}`)
+  if (!ret.ok && LOG()) return
+  const answer = await ret.text()
+
+  const reply_url = `${fb_url}/${comment_id}/comments?message=${encodeURIComponent(answer)}&access_token=${token}`
+  const reply_response = await fetch(reply_url, { method: 'POST' })
+  if (!reply_response.ok && LOG()) return
+  const reply_data = await reply_response.json()
+  console.log(`✅ Reply posted to Facebook (ID: ${reply_data.id})`)
+
+}
+function format_comment(comment) {
+  const time_stamp = typeof comment.created_time === 'number'
+    ? new Date(comment.created_time * 1000).toISOString().replace('T', ' ').replace('Z', ' UTC')
+    : new Date(comment.created_time).toISOString().replace('T', ' ').replace('Z', ' UTC')
+  return `<<<${time_stamp}>>> <<<${comment.from?.name}>>>: ${comment.message}`
 }
 
 app.listen(3210, ()=> console.log('Server Start Up'))
+//--------------------------------------------------------------------------------------------------
