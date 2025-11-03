@@ -1,6 +1,8 @@
 services:
   prompt-composer:
     image: registry.gitlab.com/rny3/brande/prompt_composer:latest
+    environment:
+      - LLM=https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent
     networks:
       - craftkidstoys_network
     secrets:
@@ -24,6 +26,8 @@ services:
     image: registry.gitlab.com/rny3/brande/facebook_connect:latest
     networks:
       - craftkidstoys_network
+    environment:
+      - FACEBOOK_API=https://graph.facebook.com/v24.0
     secrets:
       - fb_page_access_token
 
