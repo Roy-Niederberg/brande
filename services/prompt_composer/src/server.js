@@ -22,7 +22,7 @@ let knowledge_base = read('knowledge_base')
 const role = read('role')
 const response_guidelines = read('response_guidelines')
 const llm_api_key = read_scrt('llm_api_key')
-const url = process.env.LLM || 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent'
+const url = process.env.LLM
 const { data, cfg } = JSON.parse(read('llm_config','json'))
 
 // =============== Endpoints =========================================================================================//
@@ -45,7 +45,7 @@ app.r('post', '/instructions',
 app.r('post', '/knowledge-base',
   ({ body }, rs) => (knowledge_base = body, write('knowledge_base', body), rs.sendStatus(200)))
 
-// =============== Error handling middlewarendpoints =================================================================//
+// =============== Error handling middleware =========================================================================//
 
 app.use((e, _, rs, _nxt) => { console.error(e.response?.data || e.message, `\n${e.stack}`), rs.sendStatus(500) })
 app.use('*', (_, rs) => rs.sendStatus(404))
