@@ -10,7 +10,7 @@ services:
       - router_config:/config
     networks:
       - craftkidstoys_network
-      - orielbaz_network
+      - drlipokatz_network
 
   facebook-dispatcher:
     image: registry.gitlab.com/rny3/brande/facebook_dispatcher:latest
@@ -19,12 +19,12 @@ services:
       - fb_global_app_secret
     networks:
       - craftkidstoys_network
-      - orielbaz_network
+      - drlipokatz_network
 
 networks:
   craftkidstoys_network:
     external: true
-  orielbaz_network:
+  drlipokatz_network:
     external: true
 
 secrets:

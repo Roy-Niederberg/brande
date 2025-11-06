@@ -22,7 +22,7 @@ services:
       - admin_sessions:/app/sessions
 
   facebook-connect:
-    container_name: fb-page-808626769002262
+    container_name: fb-page-786999964506727
     image: registry.gitlab.com/rny3/brande/facebook_connect:latest
     networks:
       - client_network
@@ -36,7 +36,7 @@ volumes:
 
 networks:
   client_network:
-    name: craftkidstoys_network
+    name: drlipokatz_network
 
 secrets:
   llm_api_key:
@@ -47,3 +47,6 @@ secrets:
     file: ./secrets/session_config.secret
   fb_page_access_token:
     file: ./secrets/fb_page_access_token.secret
+
+
+
