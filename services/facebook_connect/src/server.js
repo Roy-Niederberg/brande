@@ -10,7 +10,7 @@ fb_url .length > 0 || console.error('🚨 FACEBOOK_API_URL is empty 🚨 ')
 const fields_list = 'id,message,from,parent{id},created_time'
 
 app.use(express.json());
-const LOG = (e) => { console.log("🚨 ERROR 🚨 : ${e}"); return true }
+const LOG = (e) => { console.log(`🚨 ERROR 🚨 : ${e}`); return true }
 
 
 app.post('/', async (req, res) => {
