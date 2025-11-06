@@ -26,9 +26,10 @@ app.post('/', async (req, res) => {
     entry.changes.forEach((change) => {
       console.log('=============================================')
       console.log(change)
+      console.log('=============================================')
       if (change.field !== 'feed' && LOG(1)) return
       if (change.value?.item === 'status' && LOG(2)) return // 'status' means a post
-      if (change.value?.item === 'comment' && change.value.from?.id !== pageId) /*process_comment(change.value)*/ return
+      if (change.value?.item === 'comment' && change.value.from?.id !== pageId) process_comment(change.value)
     })
   })
 })
@@ -37,6 +38,7 @@ async function process_comment(comment) {
   const comment_id = comment.comment_id
   let chat_history = [format_comment(comment)]
   while (comment.parent_id) {
+    console.log(comment)
     const url = `${fb_url}/${comment.parent_id}?fields=${fields_list}&access_token=${token}`
     const ret = await fetch(url)
     if (!ret.ok && LOG(`3 ${ret.status} ${ret.statusText} ${await res.text()}`)) return
