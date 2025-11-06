@@ -36,8 +36,13 @@ async function process_comment(comment) {
   let chat_history = [format_comment(comment)]
   while (comment.parent_id) {
     const url = `${fb_url}/${comment.parent_id}?fields=${fields_list}&access_token=${token}`
+    console.log(`🔍 Fetching parent comment: ${comment.parent_id}`)
     const ret = await fetch(url)
-    if (!ret.ok && LOG(`3 ${ret.status} ${ret.statusText}`)) return
+    if (!ret.ok) {
+      const errorBody = await ret.text()
+      console.log(`🚨 ERROR 🚨 : 3 ${ret.status} ${ret.statusText} - Response: ${errorBody}`)
+      return
+    }
     comment = await ret.json();
     chat_history.unshift(format_comment(comment))
     comment.parent_id = comment.parent?.id
