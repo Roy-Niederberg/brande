@@ -10,7 +10,7 @@ fb_url .length > 0 || console.error('🚨 FACEBOOK_API_URL is empty 🚨 ')
 const fields_list = 'id,message,from,parent{id},created_time'
 
 app.use(express.json());
-const  LOG = () => { console.log("🚨 ERROR 🚨 "); return true }
+const LOG = (e) => { console.log("🚨 ERROR 🚨 : ${e}"); return true }
 
 
 app.post('/', async (req, res) => {
@@ -24,8 +24,8 @@ app.post('/', async (req, res) => {
   body.entry.forEach((entry) => {
     const pageId = entry.id
     entry.changes.forEach((change) => {
-      if (change.field !== 'feed' && LOG()) return
-      if (change.value?.item === 'status' && LOG()) return // 'status' means a post
+      if (change.field !== 'feed' && LOG(1)) return
+      if (change.value?.item === 'status' && LOG(2)) return // 'status' means a post
       if (change.value?.item === 'comment' && change.value.from?.id !== pageId) process_comment(change.value)
     })
   })
@@ -37,7 +37,7 @@ async function process_comment(comment) {
   while (comment.parent_id) {
     const url = `${fb_url}/${comment.parent_id}?fields=${fields_list}&access_token=${token}`
     const ret = await fetch(url)
-    if (!ret.ok && LOG()) break
+    if (!ret.ok && LOG(3)) break
     comment = await ret.json();
     chat_history.unshift(format_comment(comment))
     comment.parent_id = comment.parent?.id
@@ -49,12 +49,12 @@ async function process_comment(comment) {
   query = query + "\n\n"
 
   const ret = await fetch(`http://prompt-composer:4321/ask?query=${encodeURIComponent(query)}`)
-  if (!ret.ok && LOG()) return
+  if (!ret.ok && LOG(4)) return
   const answer = await ret.text()
 
   const reply_url = `${fb_url}/${comment_id}/comments?message=${encodeURIComponent(answer)}&access_token=${token}`
   const reply_response = await fetch(reply_url, { method: 'POST' })
-  if (!reply_response.ok && LOG()) return
+  if (!reply_response.ok && LOG(5)) return
   const reply_data = await reply_response.json()
   console.log(`✅ Reply posted to Facebook (ID: ${reply_data.id})`)
 
