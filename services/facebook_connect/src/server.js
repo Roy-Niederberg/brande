@@ -37,24 +37,24 @@ async function process_comment(comment) {
   while (comment.parent_id) {
     const url = `${fb_url}/${comment.parent_id}?fields=${fields_list}&access_token=${token}`
     const ret = await fetch(url)
-    if (!ret.ok && LOG(3)) break
+    if (!ret.ok && LOG(`3 ${ret.status} ${ret.statusText}`)) return
     comment = await ret.json();
     chat_history.unshift(format_comment(comment))
     comment.parent_id = comment.parent?.id
   }
 
   let query = "# CHAT METADATA:\nThe chat is from the business Facebook page and you are replaying on a comment thread on a public post.\n"
-  query = query + "# CHAT"
+  query = query + "# CHAT\n"
   query = query + chat_history.join('\n')
   query = query + "\n\n"
 
   const ret = await fetch(`http://prompt-composer:4321/ask?query=${encodeURIComponent(query)}`)
-  if (!ret.ok && LOG(4)) return
+  if (!ret.ok && LOG(`4 ${ret.status} ${ret.statusText}`)) return
   const answer = await ret.text()
 
   const reply_url = `${fb_url}/${comment_id}/comments?message=${encodeURIComponent(answer)}&access_token=${token}`
   const reply_response = await fetch(reply_url, { method: 'POST' })
-  if (!reply_response.ok && LOG(5)) return
+  if (!reply_response.ok && LOG(`5 ${reply_response.status} ${reply_response.statusText}`)) return
   const reply_data = await reply_response.json()
   console.log(`✅ Reply posted to Facebook (ID: ${reply_data.id})`)
 
