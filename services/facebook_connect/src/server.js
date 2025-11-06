@@ -25,12 +25,12 @@ app.post('/', async (req, res) => {
   body.entry.forEach((entry) => {
     const pageId = entry.id
     entry.changes.forEach((change) => {
-      console.log('=============================================')
-      console.log(change)
-      console.log('=============================================')
       if (change.field !== 'feed' && LOG(1)) return
       if (change.value?.item === 'status' && LOG(2)) return // 'status' means a post
-      if (change.value?.item === 'comment' && change.value.from?.id !== pageId) process_comment(change.value)
+      if (change.value?.item === 'comment'
+        && change.value.from?.id !== pageId
+        && change.verb == 'add'
+      ) process_comment(change.value)
     })
   })
 })
@@ -46,7 +46,6 @@ async function process_comment(comment) {
     if (!ret.ok && LOG(`3 ${ret.status} ${ret.statusText} ${await ret.text()}`)) return
     comment = await ret.json();
     chat_history.unshift(format_comment(comment))
-    comment.parent_id = comment.parent?.id
   }
 
   const url = `${fb_url}/${comment.post_id}?${post_fields_list}&access_token=${token}`
@@ -56,10 +55,8 @@ async function process_comment(comment) {
   console.log('📝 Root post:', post)
   chat_history.unshift(format_comment(post))
 
-  let query = "# CHAT METADATA:\nThe chat is from the business Facebook page and you are replaying on a comment thread on a public post.\n"
-  query = query + "# CHAT\n"
-  query = query + chat_history.join('\n')
-  query = query + "\n\n"
+  let query = `# CHAT METADATA:\nThe chat is from the business Facebook page and you are replaying on a comment thread on a public post. Your previous messages on the chat will appear under the name "${post.from?.name}"\n\n`
+  query = query + "# CHAT\n" + chat_history.join('\n') + "\n\n"
 
   const llm_ret = await fetch(`http://prompt-composer:4321/ask?query=${encodeURIComponent(query)}`)
   if (!llm_ret.ok && LOG(`4 ${llm_ret.status} ${llm_ret.statusText}`)) return
