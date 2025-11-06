@@ -29,7 +29,7 @@ app.post('/', async (req, res) => {
       if (change.value?.item === 'status' && LOG(2)) return // 'status' means a post
       if (change.value?.item === 'comment'
         && change.value.from?.id !== pageId
-        && change.verb == 'add'
+        && change.value.verb === 'add'
       ) process_comment(change.value)
     })
   })
