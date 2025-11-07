@@ -53,7 +53,7 @@ services:
         require('http').createServer((req, res) => {
           res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({candidates:[{content:{parts:[{text: 'This is the mock response'}]}}]}));
-        }).listen(3001);
+        }).listen(3771);
 
 volumes:
   nodemon-cache:

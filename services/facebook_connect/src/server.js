@@ -12,6 +12,7 @@ const post_fields_list = 'fields=id,message,from,created_time'
 
 app.use(express.json());
 const LOG = (e) => { console.log(`🚨 ERROR 🚨 : ${e}`); return true }
+const format_comment = (comment) => `<<<${comment.created_time}>>> <<<${comment.from?.name}>>>: ${comment.message}`
 
 
 app.post('/', async (req, res) => {
@@ -36,11 +37,12 @@ app.post('/', async (req, res) => {
 })
 
 async function process_comment(comment) {
-  const comment_id = comment.comment_id
-  let chat_history = [format_comment(comment)]
+  const { comment_id, post_id } = comment;
+  comment.created_time = new Date(comment.created_time * 1000).toISOString();
+  const chat_history = [format_comment(comment)]
   console.log(comment)
 
-  while (comment.parent_id !== comment.post_id) {
+  while (comment.parent_id) {
     const url = `${fb_url}/${comment.parent_id}?${comment_fields_list}&access_token=${token}`
     const ret = await fetch(url)
     if (!ret.ok && LOG(`3 ${ret.status} ${ret.statusText} ${await ret.text()}`)) return
@@ -49,18 +51,15 @@ async function process_comment(comment) {
     console.log(comment)
   }
 
-  console.log(`The root post: ${comment.parent_id}`)
-  if (!comment.parent_id) return
-
-  const url = `${fb_url}/${comment.post_id}?${post_fields_list}&access_token=${token}`
+  const url = `${fb_url}/${post_id}?${post_fields_list}&access_token=${token}`
   const ret = await fetch(url)
   if (!ret.ok && LOG(`6 ${ret.status} ${ret.statusText} ${await ret.text()}`)) return
   const post = await ret.json()
-  console.log('📝 Root post:', post)
   chat_history.unshift(format_comment(post))
 
   let query = `# CHAT METADATA:\nThe chat is from the business Facebook page and you are replaying on a comment thread on a public post. Your previous messages on the chat will appear under the name "${post.from?.name}"\n\n`
   query = query + "# CHAT\n" + chat_history.join('\n') + "\n\n"
+  console.log(query)
 
   const llm_ret = await fetch(`http://prompt-composer:4321/ask?query=${encodeURIComponent(query)}`)
   if (!llm_ret.ok && LOG(`4 ${llm_ret.status} ${llm_ret.statusText}`)) return
@@ -73,12 +72,6 @@ async function process_comment(comment) {
   console.log(`✅ Reply posted to Facebook (ID: ${reply_data.id})`)
 }
 
-function format_comment(comment) {
-  const time_stamp = typeof comment.created_time === 'number'
-    ? new Date(comment.created_time * 1000).toISOString().replace('T', ' ').replace('Z', ' UTC')
-    : new Date(comment.created_time).toISOString().replace('T', ' ').replace('Z', ' UTC')
-  return `<<<${time_stamp}>>> <<<${comment.from?.name}>>>: ${comment.message}`
-}
 
 app.listen(3210, ()=> console.log('Server Start Up'))
 //--------------------------------------------------------------------------------------------------
