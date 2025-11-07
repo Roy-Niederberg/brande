@@ -38,15 +38,19 @@ app.post('/', async (req, res) => {
 async function process_comment(comment) {
   const comment_id = comment.comment_id
   let chat_history = [format_comment(comment)]
+  console.log(comment)
 
   while (comment.parent_id !== comment.post_id) {
-    console.log(comment)
     const url = `${fb_url}/${comment.parent_id}?${comment_fields_list}&access_token=${token}`
     const ret = await fetch(url)
     if (!ret.ok && LOG(`3 ${ret.status} ${ret.statusText} ${await ret.text()}`)) return
     comment = await ret.json();
     chat_history.unshift(format_comment(comment))
+    console.log(comment)
   }
+
+  console.log(`The root post: ${comment.parent_id}`)
+  if (!comment.parent_id) return
 
   const url = `${fb_url}/${comment.post_id}?${post_fields_list}&access_token=${token}`
   const ret = await fetch(url)
