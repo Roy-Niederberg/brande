@@ -37,8 +37,9 @@ app.post('/', async (req, res) => {
 })
 
 async function process_comment(comment) {
-  const { comment_id, post_id } = comment;
-  comment.created_time = new Date(comment.created_time * 1000).toISOString();
+  const { comment_id, post_id } = comment
+  comment.parent_id = comment.parent_id === comment.post_id ? undefined : comment.parent_id
+  comment.created_time = new Date(comment.created_time * 1000).toISOString()
   const chat_history = [format_comment(comment)]
   console.log(comment)
 
