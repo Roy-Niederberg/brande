@@ -66,7 +66,7 @@ async function process_comment(comment_id, post_id) {
   if (chat_history.length === 4) {
     const ret = await fetch(`${fb_url}/${comment_ids[2]}/comments?${comment_fields_list}&access_token=${token}`)
     if (!ret.ok && LOG(`7 ${ret.status} ${ret.statusText} ${await ret.text()}`)) return
-    const siblings_data = await siblings_ret.json()
+    const siblings_data = await ret.json()
     const new_siblings = siblings_data.data
     console.log('==================================================')
     console.log(new_siblings)
