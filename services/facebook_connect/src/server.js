@@ -38,6 +38,7 @@ app.post('/', async (req, res) => {
 
 async function process_comment(comment_id, post_id) {
   const chat_history = []
+  const comment_ids = []
   const orig_comment_id = comment_id
 
   // Fetch comments history
@@ -47,6 +48,7 @@ async function process_comment(comment_id, post_id) {
     if (!ret.ok && LOG(`3 ${ret.status} ${ret.statusText} ${await ret.text()}`)) return
     comment = await ret.json();
     chat_history.unshift(format_mssg(comment))
+    comment_ids.unshift(comment.id)
     comment_id = comment.parent?.id
   }
 
@@ -56,6 +58,27 @@ async function process_comment(comment_id, post_id) {
   if (!ret.ok && LOG(`6 ${ret.status} ${ret.statusText} ${await ret.text()}`)) return
   const post = await ret.json()
   chat_history.unshift(format_mssg(post))
+
+  // Facebook is flattening Level 3 comments.  This means that  `parent.id` for a comment replaying
+  // to a level 3 comment will be a level 2 comment (the parent of the actual level 3 comment which
+  // the user replay to).  So, to get the full  context,  we need all level 3  comments  ordered by
+  // created_time.
+  if (chat_history.length === 4) {
+    const ret = await fetch(`${fb_url}/${comment_ids[2]}/comments?${comment_fields_list}&access_token=${token}`)
+    if (!ret.ok && LOG(`7 ${ret.status} ${ret.statusText} ${await ret.text()}`)) return
+    const siblings_data = await siblings_ret.json()
+    const new_siblings = siblings_data.data
+    console.log('==================================================')
+    console.log(new_siblings)
+    console.log('==================================================')
+    console.log(chat_history)
+    console.log('==================================================')
+    //const existing_ids = new Set(comment_ids)
+    //.filter(s => !existing_ids.has(s.id))
+    //.sort((a, b) => new Date(a.created_time) - new Date(b.created_time))
+    //.map(format_mssg)
+    //chat_history.splice(3, 0, ...new_siblings)
+  }
 
   // Create the query and ask the prompt-composer for answer
   let query = `# CHAT METADATA:\nThe chat is from the business Facebook page and you are replaying on a comment thread on a public post. Your previous messages on the chat will appear under the name "${post.from?.name}"\n\n`
