@@ -69,7 +69,7 @@ async function process_comment(comment_id, post_id) {
     const siblings_data = await ret.json()
     const new_siblings = siblings_data.data
     console.log('==================================================')
-    console.log(comment_id[1])
+    console.log(comment_ids[1])
     console.log(new_siblings)
     console.log('==================================================')
     console.log(chat_history)
