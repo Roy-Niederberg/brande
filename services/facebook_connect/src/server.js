@@ -54,15 +54,14 @@ async function process_comment(comment_id, post_id) {
 
   // Fetch the tree of the ancestor
   const a_ret = await fetch(`${fb_url}/${comment_id}?fields=id,message,from,comments{id,message,from,comments{id,message,from,comments}}&access_token=${token}`)
-  if (!ret.ok && LOG(`8 ${ret.status} ${ret.statusText} ${await ret.text()}`)) return
+  if (!a_ret.ok && LOG(`8 ${a_ret.status} ${a_ret.statusText} ${await a_ret.text()}`)) return
   const comments_tree = await a_ret.json()
   console.log('==================================================')
   console.log(comments_tree)
   console.log('==================================================')
 
   // Fetch the Post
-  const url = `${fb_url}/${post_id}?${post_fields_list}&access_token=${token}`
-  const ret = await fetch(url)
+  const ret = await fetch(`${fb_url}/${post_id}?${post_fields_list}&access_token=${token}`)
   if (!ret.ok && LOG(`6 ${ret.status} ${ret.statusText} ${await ret.text()}`)) return
   const post = await ret.json()
   post.comments.data = [comments_tree]
