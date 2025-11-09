@@ -40,7 +40,7 @@ console.log(page_content)
 
 app.post('/', async (req, res) => {
   res.status(200).send('EVENT_RECEIVED')
-  console.log(req.body)
+  console.dir(req.body, { depth: null, colors: true });
   if (req.body.object !== 'page' && LOG(`2 ${req.body.object}`)) return
   req.body.entry.forEach((entry) => {
     entry.changes.forEach((change) => {
