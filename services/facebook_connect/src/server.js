@@ -49,11 +49,17 @@ async function process_comment(comment_id, parent_id, post_id) {
   console.log(`${comment_id} , ${parent_id} , ${post_id}`)
   console.log('==================================================')
 
-  while (parent_id) {
+  let i = 2
+  while (parent_id && i > 0) {
+    console.log(`Fetching parent ${i}`)
     const ret = await fetch(`${fb_url}/${comment_id}?fields=parent{id}&access_token=${token}`)
     if (!ret.ok && LOG(`3 ${ret.status} ${ret.statusText} ${await ret.text()}`)) return
     parent_id = (await ret.json()).parent?.id;
+    i = i - 1;
+    console.log('Got parent')
   }
+
+  console.log(`Done: parent id now is ${parent_id}`)
 
   // Fetch the tree of the ancestor
   const a_ret = await fetch(`${fb_url}/${comment_id}?fields=id,message,from,comments{id,message,from,comments{id,message,from,comments}}&access_token=${token}`)
