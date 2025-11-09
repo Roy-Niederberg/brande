@@ -37,67 +37,54 @@ app.post('/', async (req, res) => {
 })
 
 async function process_comment(comment_id, post_id) {
-  const chat_history = []
-  const comment_ids = []
-  const orig_comment_id = comment_id
+  // Facebook is flattening Level 3 comments.  This means that  `parent.id` for a comment replaying
+  // to a level 3 comment will be a level 2 comment (the parent of the actual level 3 comment which
+  // the user replay to).  So, to get the full  context,  we need all level 3  comments  ordered by
+  // created_time.
+  // TODO: Edit comment above to explain the weird way Facebook API for comment is operating.
 
-  // Fetch comments history
+  //const orig_comment_id = comment_id
+
+  // finding the top level comment (comment on the post) which is an ancestor of current comment
   while (comment_id) {
-    const url = `${fb_url}/${comment_id}?${comment_fields_list}&access_token=${token}`
-    const ret = await fetch(url)
+    const ret = await fetch(`${fb_url}/${comment_id}?fields=parent{id}&access_token=${token}`)
     if (!ret.ok && LOG(`3 ${ret.status} ${ret.statusText} ${await ret.text()}`)) return
-    comment = await ret.json();
-    chat_history.unshift(format_mssg(comment))
-    comment_ids.unshift(comment.id)
-    comment_id = comment.parent?.id
+    comment_id = (await ret.json()).parent?.id;
   }
+
+  // Fetch the tree of the ancestor
+  const a_ret = await fetch(`${fb_url}/${comment_id}?fields=id,message,from,comments{id,message,from,comments{id,message,from,comments}}&access_token=${token}`)
+  if (!ret.ok && LOG(`8 ${ret.status} ${ret.statusText} ${await ret.text()}`)) return
+  const comments_tree = await a_ret.json()
+  console.log('==================================================')
+  console.log(comments_tree)
+  console.log('==================================================')
 
   // Fetch the Post
   const url = `${fb_url}/${post_id}?${post_fields_list}&access_token=${token}`
   const ret = await fetch(url)
   if (!ret.ok && LOG(`6 ${ret.status} ${ret.statusText} ${await ret.text()}`)) return
   const post = await ret.json()
-  chat_history.unshift(format_mssg(post))
-
-  // Facebook is flattening Level 3 comments.  This means that  `parent.id` for a comment replaying
-  // to a level 3 comment will be a level 2 comment (the parent of the actual level 3 comment which
-  // the user replay to).  So, to get the full  context,  we need all level 3  comments  ordered by
-  // created_time.
-  if (chat_history.length === 4) {
-    const ret = await fetch(`${fb_url}/${comment_ids[1]}/comments?${comment_fields_list}&access_token=${token}`)
-    if (!ret.ok && LOG(`7 ${ret.status} ${ret.statusText} ${await ret.text()}`)) return
-    const siblings_data = await ret.json()
-    const new_siblings = siblings_data.data
-    console.log('==================================================')
-    console.log(comment_ids[1])
-    console.log(new_siblings)
-    console.log('==================================================')
-    console.log(chat_history)
-    console.log('==================================================')
-    console.log(comment_ids)
-    console.log('==================================================')
-    //const existing_ids = new Set(comment_ids)
-    //.filter(s => !existing_ids.has(s.id))
-    //.sort((a, b) => new Date(a.created_time) - new Date(b.created_time))
-    //.map(format_mssg)
-    //chat_history.splice(3, 0, ...new_siblings)
-  }
+  post.comments.data = [comments_tree]
+  console.log('==================================================')
+  console.log(post) // Here I need to process the 'post' for the LLM
+  console.log('==================================================\n\n\n')
 
   // Create the query and ask the prompt-composer for answer
-  let query = `# CHAT METADATA:\nThe chat is from the business Facebook page and you are replaying on a comment thread on a public post. Your previous messages on the chat will appear under the name "${post.from?.name}"\n\n`
-  query = query + "# CHAT\n" + chat_history.join('\n') + "\n\n"
-  console.log(query)
-
-  const llm_ret = await fetch(`http://prompt-composer:4321/ask?query=${encodeURIComponent(query)}`)
-  if (!llm_ret.ok && LOG(`4 ${llm_ret.status} ${llm_ret.statusText}`)) return
-  const answer = await llm_ret.text()
+  //let query = `# CHAT METADATA:\nThe chat is from the business Facebook page and you are replaying on a comment thread on a public post. Your previous messages on the chat will appear under the name "${post.from?.name}"\n\n`
+  //query = query + "# CHAT\n" + chat_history.join('\n') + "\n\n"
+  //console.log(query)
+  //
+  //const llm_ret = await fetch(`http://prompt-composer:4321/ask?query=${encodeURIComponent(query)}`)
+  //if (!llm_ret.ok && LOG(`4 ${llm_ret.status} ${llm_ret.statusText}`)) return
+  //const answer = await llm_ret.text()
 
   // Feplay on the original comment
-  const reply_url = `${fb_url}/${orig_comment_id}/comments?message=${encodeURIComponent(answer)}&access_token=${token}`
-  const reply_response = await fetch(reply_url, { method: 'POST' })
-  if (!reply_response.ok && LOG(`5 ${reply_response.status} ${reply_response.statusText}`)) return
-  const reply_data = await reply_response.json()
-  console.log(`✅ Reply posted to Facebook (ID: ${reply_data.id})`)
+  //const reply_url = `${fb_url}/${orig_comment_id}/comments?message=${encodeURIComponent(answer)}&access_token=${token}`
+  //const reply_response = await fetch(reply_url, { method: 'POST' })
+  //if (!reply_response.ok && LOG(`5 ${reply_response.status} ${reply_response.statusText}`)) return
+  //const reply_data = await reply_response.json()
+  //console.log(`✅ Reply posted to Facebook (ID: ${reply_data.id})`)
 }
 
 app.listen(3210, ()=> console.log('Server Start Up'))
