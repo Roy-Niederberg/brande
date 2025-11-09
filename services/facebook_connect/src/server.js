@@ -26,17 +26,16 @@ app.post('/', async (req, res) => {
   body.entry.forEach((entry) => {
     const pageId = entry.id
     entry.changes.forEach((change) => {
-      if (change.field !== 'feed' && LOG(1)) return
-      if (change.value?.item === 'status' && LOG(2)) return // 'status' means a post
-      if (change.value?.item === 'comment'
-        && change.value.from?.id !== pageId
-        && change.value.verb === 'add'
-      ) process_comment(change.value.comment_id, change.value.post_id)
+      const { value, field } = change
+      if (field !== 'feed' && LOG(1))         return
+      if (value?.item === 'status' && LOG(2)) return // 'status' means a post
+      if (value?.item === 'comment' && value.from?.id !== pageId && value.verb === 'add')
+        process_comment(value.comment_id, value.parent_id, value.post_id)
     })
   })
 })
 
-async function process_comment(comment_id, post_id) {
+async function process_comment(comment_id, parent_id, post_id) {
   // Facebook is flattening Level 3 comments.  This means that  `parent.id` for a comment replaying
   // to a level 3 comment will be a level 2 comment (the parent of the actual level 3 comment which
   // the user replay to).  So, to get the full  context,  we need all level 3  comments  ordered by
@@ -46,10 +45,14 @@ async function process_comment(comment_id, post_id) {
   //const orig_comment_id = comment_id
 
   // finding the top level comment (comment on the post) which is an ancestor of current comment
-  while (comment_id) {
+  console.log('==================================================')
+  console.log(`${comment_id} , ${parent_id} , ${post_id}`)
+  console.log('==================================================')
+
+  while (parent_id) {
     const ret = await fetch(`${fb_url}/${comment_id}?fields=parent{id}&access_token=${token}`)
     if (!ret.ok && LOG(`3 ${ret.status} ${ret.statusText} ${await ret.text()}`)) return
-    comment_id = (await ret.json()).parent?.id;
+    parent_id = (await ret.json()).parent?.id;
   }
 
   // Fetch the tree of the ancestor
