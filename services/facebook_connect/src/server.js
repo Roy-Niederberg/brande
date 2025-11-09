@@ -52,11 +52,11 @@ async function process_comment(comment_id, parent_id, post_id) {
   let i = 2
   while (parent_id && i > 0) {
     console.log(`Fetching parent ${i}`)
-    const ret = await fetch(`${fb_url}/${comment_id}?fields=parent{id}&access_token=${token}`)
+    const ret = await fetch(`${fb_url}/${parent_id}?fields=parent{id}&access_token=${token}`)
     if (!ret.ok && LOG(`3 ${ret.status} ${ret.statusText} ${await ret.text()}`)) return
     parent_id = (await ret.json()).parent?.id;
     i = i - 1;
-    console.log('Got parent')
+    console.log(`Got parent ${i} ${parent_id}`)
   }
 
   console.log(`Done: parent id now is ${parent_id}`)
@@ -73,6 +73,9 @@ async function process_comment(comment_id, parent_id, post_id) {
   const ret = await fetch(`${fb_url}/${post_id}?${post_fields_list}&access_token=${token}`)
   if (!ret.ok && LOG(`6 ${ret.status} ${ret.statusText} ${await ret.text()}`)) return
   const post = await ret.json()
+  post.comments = {
+    data: []
+  }
   post.comments.data = [comments_tree]
   console.log('==================================================')
   console.log(post) // Here I need to process the 'post' for the LLM
