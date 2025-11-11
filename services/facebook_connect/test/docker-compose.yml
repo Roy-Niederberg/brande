@@ -1,5 +1,5 @@
 services:
-  webhook:
+  facebook-connect:
     build:
       context: ..
       target: development
@@ -7,7 +7,7 @@ services:
     ports:
       - "3000:3210"
     environment:
-      - FACEBOOK_API_URL=http://facebook-mock:3001
+      - FACEBOOK_API_URL=http://facebook-mock:3001/
     secrets:
       - fb_page_access_token
     volumes:
@@ -27,13 +27,14 @@ services:
     image: node:22-alpine
     stop_grace_period: 0s
     working_dir: /app
-    command: sh -c "npm install -g nodemon && nodemon --watch src/server.js --delay 2 --exec 'wget -qO- http://facebook-mock:3001/test_comment'"
+    command: sh -c "npm install -g nodemon && nodemon --watch src/server.js --delay 2 --exec 'wget -qO- http://facebook-mock:3001/run_tests'"
     volumes:
       - ../:/app/
       - nodemon-cache:/usr/local/lib/node_modules
 
   prompt-composer:
     image: registry.gitlab.com/rny3/brande/prompt_composer:latest
+    stop_grace_period: 0s
     environment:
       - LLM=http://mock-llm:3771
     depends_on:

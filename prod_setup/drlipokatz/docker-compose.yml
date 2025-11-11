@@ -27,7 +27,7 @@ services:
     networks:
       - client_network
     environment:
-      - FACEBOOK_API_URL=https://graph.facebook.com/v24.0
+      - FACEBOOK_API_URL=https://graph.facebook.com/v24.0/
     secrets:
       - fb_page_access_token
 
@@ -47,6 +47,3 @@ secrets:
     file: ./secrets/session_config.secret
   fb_page_access_token:
     file: ./secrets/fb_page_access_token.secret
-
-
-

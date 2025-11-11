@@ -27,7 +27,7 @@ services:
     networks:
       - client_network
     environment:
-      - FACEBOOK_API_URL=https://graph.facebook.com/v24.0/808626769002262/feed?fields=id,message,created_time,comments.limit(100){id,message,from,created_time}&limit=100&access_token=
+      - FACEBOOK_API_URL=https://graph.facebook.com/v24.0/
     secrets:
       - fb_page_access_token
 
