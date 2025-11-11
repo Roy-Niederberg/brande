@@ -55,21 +55,25 @@ app.post('/', async (req, res) => {
 })
 
 const process_comment = async (comment_id, parent_id, post_id) => {
+  // Get the level 1 comment (the comment on the post):
+  let level1_comment = comment_id  // if the comment itself is L1
+  if (parent_id !== post_id) {     // if the parent not the post, it's not L1 and we need go up.
+    // parent of parent (of the parent_id from the webhook) in a single API call:
+    const up_url = `${fb_url}${parent_id}?fields=parent{id,parent{id}}${token}`
+    console.log('--------------------- Up Tree ---------------------------------------------------')
+    console.log(up_url)
+    const up_ret = await fetch(up_url)
+    if (!up_ret.ok && LOG(4, `${up_ret.status} ${up_ret.statusText}`)) return
+    let up_tree =  await up_ret.json()
+    while(up_tree.parent?.id) up_tree = up_tree.parent
+    console.dir(up_tree, { depth: null, colors: true });
+    console.log(up_tree.id)
+    level1_comment = up_tree.id
+  }
 
-  // Get the parent of parent (of the parent_id from the webhook) in a single API call:
-  const up_url = `${fb_url}${parent_id}?fields=parent{id,parent{id}}${token}`
-  console.log('vvvvvvvvvvvvvvvvvvvvv Up Tree vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv')
-  console.log(up_url)
-  const up_ret = await fetch(up_url)
-  if (!up_ret.ok && LOG(4, `${up_ret.status} ${up_ret.statusText}`)) return
-  let up_tree =  await up_ret.json()
-  while(up_tree.parent?.id) up_tree = up_tree.parent
-  console.dir(up_tree, { depth: null, colors: true });
-  console.log(up_tree.id)
-
-  // Get the children tree of that parent comment (level 1)
+  // Get the children tree of that level 1 comment
   const fields = 'message,id,created_time,from,comments.limit(100)'
-  const down_url = `${fb_url}${up_tree.id}?fields=${fields}{${fields}{${fields}}}${token}`
+  const down_url = `${fb_url}${level1_comment}?fields=${fields}{${fields}{${fields}}}${token}`
   const down_ret = await fetch(down_url)
   if (!down_ret.ok && LOG(5, `${down_ret.status} ${down_ret.statusText}`)) return
   const down_tree =  await down_ret.json()
