@@ -110,7 +110,7 @@ const process_comment = async (comment_id, parent_id, post_id) => {
 
   const llm_ret = await fetch('http://prompt-composer:4321/ask', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({module: 'facebook', chat_data: { post, chat_history } })
+    body: JSON.stringify({module: 'facebook_comments', chat_data: { post, chat_history } })
   })
   if (!llm_ret.ok && LOG(7, `${llm_ret.status} ${llm_ret.statusText}`)) return
   const answer = await llm_ret.text()
