@@ -27,6 +27,20 @@ services:
         res.end(JSON.stringify({candidates:[{content:{parts:[{text: 'This is the mock response'}]}}]}));
         }).listen(3001);
 
+  auto-test:
+    image: node:22-alpine
+    stop_grace_period: 0s
+    working_dir: /app
+    command: sh -c "npm install -g nodemon && nodemon --watch src/server.js --delay 1 test/test.mjs"
+    volumes:
+      - ../:/app/
+      - nodemon-cache:/usr/local/lib/node_modules
+    depends_on:
+      - prompt-composer
+
+volumes:
+  nodemon-cache:
+
 secrets:
   llm_api_key:
     file: ./secrets/llm_api_key

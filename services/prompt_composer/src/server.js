@@ -1,7 +1,11 @@
-const fs = require('fs')
-const express = require('express')
-const axios = require('axios')
+import fs from 'fs'
+import express from 'express'
+import axios from 'axios'
+import facebook_comments from '../data/facebook_query_builder.js'
+import admin_ui from '../data/admin_query_builder.js'
+const query_builders = { facebook_comments, admin_ui }
 const app = express()
+app.use(express.json())
 app.use(express.text())
 
 // =============== Util Functions ====================================================================================//
@@ -31,7 +35,13 @@ fs.mkdirSync('./data/prompt_log', { recursive: true })
 //
 app.r('get', '/ask', async ({ query: { query } }, rs) => {
   data.contents[0].parts[0].text = [role, instructions, knowledge_base, query, response_guidelines].join('').trim()
-  fs.writeFileSync(`./data/prompt_log/${Date.now()}.txt`, data.contents[0].parts[0].text)
+  write(`prompt_log/${Date.now()}`, data.contents[0].parts[0].text)
+  rs.send((await axios.post(`${url}?key=${llm_api_key}`, data, cfg)).data.candidates[0].content.parts[0].text)
+})
+app.r('post', '/ask', async ({ body }, rs) => {
+  const query = query_builders[body.module](body.chat_data)
+  data.contents[0].parts[0].text = [role, instructions, knowledge_base, query, response_guidelines].join('').trim()
+  write(`prompt_log/${Date.now()}`, data.contents[0].parts[0].text)
   rs.send((await axios.post(`${url}?key=${llm_api_key}`, data, cfg)).data.candidates[0].content.parts[0].text)
 })
 app.r('get', '/knowledge-base',
