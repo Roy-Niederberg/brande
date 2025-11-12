@@ -12,20 +12,6 @@ app.use(express.json())
 
 const read_scrt = name => fs.readFileSync(`/run/secrets/${name}`, 'utf-8').trim()
 const LOG = (num, e) => { console.log(`🚨 ERROR ${num} 🚨 : ${e}`); return true }
-const build_query = (post, chat_history) =>
-`## CHAT META DATA
-This is a comment thread on a post on the company's business Facebook page: ${post.from.name}.
-The thread is presented in chronological order and is flattened.
-Note that some comments may relate to older ones even if they are not immediately adjacent to them.
-Carefully consider the context of the current comment—the one that requires a response.
-Agent comments are marked as "[AGENT] ${post.from.name}."
-
-## FACEBOOK COMMENT THREAD HISTORY:
-Post: "${post.message}" on page "${post.from.name} (${post.updated_time})
-
-Comment thread:
-${chat_history}
-`
 
 // =============== Server Loading section ========================================================//
 // In this section the server should fail in case of error and not startup. ======================//
@@ -110,21 +96,22 @@ const process_comment = async (comment_id, parent_id, post_id) => {
     return `${month} ${day}, ${hour}:${min}`
   }
 
-  const lines = allComments.map((c) => {
+  const chat_history = allComments.map((c) => {
     const author = c.from?.name
       ? `${c.from?.name === post.from.name ? '[AGENT] ' : ''}${c.from?.name}` 
       : 'Unknown user'
     const date = formate_date(c.created_time)
     const message = c.message.replace(/\s+/g, ' ').trim()
     return `- ${author} (${date}): "${message}"`
-  })
-  lines[lines.length - 1] += ' [CURRENT COMMENT - RESPOND TO THIS]'
+  }).join('\n')
 
-  const query = build_query(post, lines.join('\n'))
   console.log('--------------------- Query -------------------------------------------------------')
-  console.log(query)
+  console.log(chat_history)
 
-  const llm_ret = await fetch(`http://prompt-composer:4321/ask?query=${encodeURIComponent(query)}`)
+  const llm_ret = await fetch('http://prompt-composer:4321/ask', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({module: 'facebook', chat_data: { post, chat_history } })
+  })
   if (!llm_ret.ok && LOG(7, `${llm_ret.status} ${llm_ret.statusText}`)) return
   const answer = await llm_ret.text()
   console.log('--------------------- Answer ------------------------------------------------------')
