@@ -125,12 +125,16 @@ const process_comment = async (comment_id, parent_id, post_id) => {
   console.log(`✅ Publicly Reply to Facebook`)
 
   // Send private reply to the commenter
-  const private_res = await fetch(`${fb_url}${comment_id}/private_replies`, {
+  const private_res = await fetch(`${fb_url}${comment_id}/private_replies${access}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message: answer, access_token: token })
+    body: JSON.stringify({ message: answer })
   })
-  if (!private_res.ok && LOG(9, `${private_res.status} ${private_res.statusText}`)) return
+  if (!private_res.ok) {
+    const error_text = await private_res.text()
+    LOG(9, `${private_res.status} ${private_res.statusText} - ${error_text}`)
+    return
+  }
   console.log(`✅ Private reply sent to Facebook user`)
 
   console.log('^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^')
