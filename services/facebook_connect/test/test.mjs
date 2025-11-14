@@ -280,16 +280,16 @@ const server = http.createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': 'application/json' })
     res.end(JSON.stringify(post_response))
 
-  // Mock Facebook API - post private reply
-  } else if (url.pathname.endsWith('/private_replies') && req.method === 'POST') {
+  // Mock Facebook API - post private reply via Messenger Send API
+  } else if (url.pathname.includes('/messages') && req.method === 'POST') {
     let body = ''
     req.on('data', chunk => body += chunk)
     req.on('end', () => {
       const data = JSON.parse(body)
-      lastPrivateReply = { message: data.message, timestamp: Date.now() }
-      console.log(`🔒 Private reply received: "${data.message?.substring(0, 100)}${data.message?.length > 100 ? '...' : ''}"`)
+      lastPrivateReply = { message: data.message?.text, timestamp: Date.now() }
+      console.log(`🔒 Private reply received: "${data.message?.text?.substring(0, 100)}${data.message?.text?.length > 100 ? '...' : ''}"`)
       res.writeHead(200, { 'Content-Type': 'application/json' })
-      res.end(JSON.stringify({ id: '122108640597055026_mock_private_reply_id' }))
+      res.end(JSON.stringify({ recipient_id: '10039794932789792', message_id: 'mock_message_id' }))
     })
 
   // Mock Facebook API - post reply to comment

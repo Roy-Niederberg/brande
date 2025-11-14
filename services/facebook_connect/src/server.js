@@ -16,9 +16,9 @@ const LOG = (num, e) => { console.log(`🚨 ERROR ${num} 🚨 : ${e}`); return t
 // =============== Server Loading section ========================================================//
 // In this section the server should fail in case of error and not startup. ======================//
 
-const token = read_scrt('fb_page_access_token')
-token.length > 0 || LOG('Page Token is empty.')
-const access = `&access_token=${token}`
+const token = read_scrt('fb_page_access_token')  // TODO: can I remove this and just use 'access'?
+token.length > 'access_token='.length && LOG('Page Token is empty.')
+const access = `access_token=${read_scrt('fb_page_access_token')}`
 
 const fb_url = process.env.FACEBOOK_API_URL
 fb_url.length > 0 || LOG('FACEBOOK_API_URL is empty')
@@ -35,18 +35,18 @@ app.post('/', async (req, res) => {
       if (field       !== 'feed'    && LOG(2, 'Not a feed event')) return
       if (value?.item === 'status'  && LOG(3, 'New post')) return // 'status' means a post
       if (value?.item === 'comment' && value.from?.id !== entry.id && value.verb === 'add') {
-        process_comment(value.comment_id, value.parent_id, value.post_id)
+        process_comment(value.comment_id, value.parent_id, value.post_id, entry.id)
       }
     })
   })
 })
 
-const process_comment = async (comment_id, parent_id, post_id) => {
+const process_comment = async (comment_id, parent_id, post_id, page_id) => {
   // Get the level 1 comment (the comment on the post):
   let level1_comment = comment_id  // if the comment itself is L1
   if (parent_id !== post_id) {     // if the parent not the post, it's not L1 and we need go up.
     // parent of parent (of the parent_id from the webhook) in a single API call:
-    const up_url = `${fb_url}${parent_id}?fields=parent{id,parent{id}}${token}`
+    const up_url = `${fb_url}${parent_id}?fields=parent{id,parent{id}}${access}`
     console.log('--------------------- Up Tree ---------------------------------------------------')
     console.log(up_url)
     const up_ret = await fetch(up_url)
@@ -60,7 +60,7 @@ const process_comment = async (comment_id, parent_id, post_id) => {
 
   // Get the children tree of that level 1 comment
   const fields = 'message,id,created_time,from,comments.limit(100)'
-  const down_url = `${fb_url}${level1_comment}?fields=${fields}{${fields}{${fields}}}${access}`
+  const down_url = `${fb_url}${level1_comment}?fields=${fields}{${fields}{${fields}}}&${access}`
   const down_ret = await fetch(down_url)
   if (!down_ret.ok && LOG(5, `${down_ret.status} ${down_ret.statusText}`)) return
   const down_tree =  await down_ret.json()
@@ -68,7 +68,7 @@ const process_comment = async (comment_id, parent_id, post_id) => {
   console.dir(down_tree, { depth: null, colors: true });
 
   // Get the post
-  const post_url = `${fb_url}${post_id}?fields=message,id,updated_time,from${access}`
+  const post_url = `${fb_url}${post_id}?fields=message,id,updated_time,from&${access}`
   const post_ret = await fetch(post_url)
   if (!post_ret.ok && LOG(6, `${post_ret.status} ${post_ret.statusText}`)) return
   const post = await post_ret.json()
@@ -109,32 +109,32 @@ const process_comment = async (comment_id, parent_id, post_id) => {
   console.log('--------------------- Query -------------------------------------------------------')
   console.log(chat_history)
 
-  const llm_ret = await fetch('http://prompt-composer:4321/ask', {
+  const llm_res = await fetch('http://prompt-composer:4321/ask', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({module: 'facebook_comments', chat_data: { post, chat_history } })
   })
-  if (!llm_ret.ok && LOG(7, `${llm_ret.status} ${llm_ret.statusText}`)) return
-  const answer = await llm_ret.text()
+  if (!llm_res.ok && LOG(7, `${llm_res.status} ${llm_res.statusText}`)) return
+  const answer = await llm_res.text()
   console.log('--------------------- Answer ------------------------------------------------------')
   console.log(answer)
 
   // Reply to Facebook on the original comment
-  const reply_url = `${fb_url}${comment_id}/comments?message=${encodeURIComponent(answer)}${access}`
-  const public_res = await fetch(reply_url, { method: 'POST' })
+  const rep_url = `${fb_url}${comment_id}/comments?message=${encodeURIComponent(answer)}&${access}`
+  const public_res = await fetch(rep_url, { method: 'POST' })
   if (!public_res.ok && LOG(8, `${public_res.status} ${public_res.statusText}`)) return
   console.log(`✅ Publicly Reply to Facebook`)
 
   // Send private reply to the commenter
-  const private_res = await fetch(`${fb_url}${comment_id}/private_replies?access_token=${token}`, {
+  const private_res = await fetch( `${fb_url}${page_id}/messages?${access}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message: answer })
+    body: JSON.stringify({
+      recipient: { comment_id: comment_id },
+      message: { text: answer }
+    })
   })
-  if (!private_res.ok) {
-    const error_text = await private_res.text()
-    LOG(9, `${private_res.status} ${private_res.statusText} - ${error_text}`)
-    return
-  }
+  if (!private_res.ok 
+    && LOG(9, `${private_res.status} ${private_res.statusText} ${await private_res.text()}`)) return
   console.log(`✅ Private reply sent to Facebook user`)
 
   console.log('^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^')
