@@ -258,6 +258,7 @@ const post_response = {
 }
 
 let lastReply = null
+let lastPrivateReply = null
 
 const server = http.createServer((req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`)
@@ -279,6 +280,18 @@ const server = http.createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': 'application/json' })
     res.end(JSON.stringify(post_response))
 
+  // Mock Facebook API - post private reply
+  } else if (url.pathname.endsWith('/private_replies') && req.method === 'POST') {
+    let body = ''
+    req.on('data', chunk => body += chunk)
+    req.on('end', () => {
+      const data = JSON.parse(body)
+      lastPrivateReply = { message: data.message, timestamp: Date.now() }
+      console.log(`🔒 Private reply received: "${data.message?.substring(0, 100)}${data.message?.length > 100 ? '...' : ''}"`)
+      res.writeHead(200, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({ id: '122108640597055026_mock_private_reply_id' }))
+    })
+
   // Mock Facebook API - post reply to comment
   } else if (url.pathname.endsWith('/comments') && req.method === 'POST') {
     const message = url.searchParams.get('message')
@@ -290,6 +303,7 @@ const server = http.createServer((req, res) => {
   // Run tests endpoint
   } else if (url.pathname === '/run_tests' && req.method === 'GET') {
     lastReply = null
+    lastPrivateReply = null
     const webhook_req = http.request('http://facebook-connect:3210/', { method: 'POST', headers: { 'Content-Type': 'application/json' } }, (webhook_res) => {
       let data = ''
       webhook_res.on('data', chunk => data += chunk)
@@ -297,10 +311,11 @@ const server = http.createServer((req, res) => {
         const webhookOk = webhook_res.statusCode === 200 && data === 'EVENT_RECEIVED'
         setTimeout(() => {
           const replyOk = lastReply && lastReply.message && lastReply.message.length > 0
-          const success = webhookOk && replyOk
-          console.log(`\n${'='.repeat(80)}\nTest ${success ? '💚 PASSED' : '🔴 FAILED'}:\n  Webhook: ${webhookOk ? '✓' : '✗'} (${webhook_res.statusCode}, ${data})\n  Reply:   ${replyOk ? '✓' : '✗'} ${replyOk ? `(${lastReply.message.length} chars)` : '(no reply)'}\n${'='.repeat(80)}\n`)
+          const privateReplyOk = lastPrivateReply && lastPrivateReply.message && lastPrivateReply.message.length > 0
+          const success = webhookOk && replyOk && privateReplyOk
+          console.log(`\n${'='.repeat(80)}\nTest ${success ? '💚 PASSED' : '🔴 FAILED'}:\n  Webhook:       ${webhookOk ? '✓' : '✗'} (${webhook_res.statusCode}, ${data})\n  Reply:         ${replyOk ? '✓' : '✗'} ${replyOk ? `(${lastReply.message.length} chars)` : '(no reply)'}\n  Private Reply: ${privateReplyOk ? '✓' : '✗'} ${privateReplyOk ? `(${lastPrivateReply.message.length} chars)` : '(no reply)'}\n${'='.repeat(80)}\n`)
           res.writeHead(200, { 'Content-Type': 'application/json' })
-          res.end(JSON.stringify({ status: success ? 'passed' : 'failed', webhook: webhookOk, reply: replyOk }))
+          res.end(JSON.stringify({ status: success ? 'passed' : 'failed', webhook: webhookOk, reply: replyOk, privateReply: privateReplyOk }))
         }, 2000)
       })
     })

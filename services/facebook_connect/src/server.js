@@ -17,7 +17,8 @@ const LOG = (num, e) => { console.log(`🚨 ERROR ${num} 🚨 : ${e}`); return t
 // In this section the server should fail in case of error and not startup. ======================//
 
 const token = `&access_token=${read_scrt('fb_page_access_token')}`
-token.length > '&access_token='.length || LOG('Page Token is empty.')
+token.length > 0 || LOG('Page Token is empty.')
+const access = `&access_token=${token}`
 
 const fb_url = process.env.FACEBOOK_API_URL
 fb_url.length > 0 || LOG('FACEBOOK_API_URL is empty')
@@ -59,7 +60,7 @@ const process_comment = async (comment_id, parent_id, post_id) => {
 
   // Get the children tree of that level 1 comment
   const fields = 'message,id,created_time,from,comments.limit(100)'
-  const down_url = `${fb_url}${level1_comment}?fields=${fields}{${fields}{${fields}}}${token}`
+  const down_url = `${fb_url}${level1_comment}?fields=${fields}{${fields}{${fields}}}${access}`
   const down_ret = await fetch(down_url)
   if (!down_ret.ok && LOG(5, `${down_ret.status} ${down_ret.statusText}`)) return
   const down_tree =  await down_ret.json()
@@ -67,7 +68,7 @@ const process_comment = async (comment_id, parent_id, post_id) => {
   console.dir(down_tree, { depth: null, colors: true });
 
   // Get the post
-  const post_url = `${fb_url}${post_id}?fields=message,id,updated_time,from${token}`
+  const post_url = `${fb_url}${post_id}?fields=message,id,updated_time,from${access}`
   const post_ret = await fetch(post_url)
   if (!post_ret.ok && LOG(6, `${post_ret.status} ${post_ret.statusText}`)) return
   const post = await post_ret.json()
@@ -118,11 +119,20 @@ const process_comment = async (comment_id, parent_id, post_id) => {
   console.log(answer)
 
   // Reply to Facebook on the original comment
-  const reply_url = `${fb_url}${comment_id}/comments?message=${encodeURIComponent(answer)}&access_token=${token}`
-  const reply_response = await fetch(reply_url, { method: 'POST' })
-  if (!reply_response.ok && LOG(8, `${reply_response.status} ${reply_response.statusText}`)) return
-  const reply_data = await reply_response.json()
-  console.log(`✅ Reply posted to Facebook (ID: ${reply_data.id})`)
+  const reply_url = `${fb_url}${comment_id}/comments?message=${encodeURIComponent(answer)}${access}`
+  const public_res = await fetch(reply_url, { method: 'POST' })
+  if (!public_res.ok && LOG(8, `${public_res.status} ${public_res.statusText}`)) return
+  console.log(`✅ Publicly Reply to Facebook`)
+
+  // Send private reply to the commenter
+  const private_res = await fetch(`${fb_url}${comment_id}/private_replies`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message: answer, access_token: token })
+  })
+  if (!private_res.ok && LOG(9, `${private_res.status} ${private_res.statusText}`)) return
+  console.log(`✅ Private reply sent to Facebook user`)
+
   console.log('^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^')
   console.log('\n')
 }
