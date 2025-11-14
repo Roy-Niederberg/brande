@@ -16,7 +16,7 @@ const LOG = (num, e) => { console.log(`🚨 ERROR ${num} 🚨 : ${e}`); return t
 // =============== Server Loading section ========================================================//
 // In this section the server should fail in case of error and not startup. ======================//
 
-const token = `&access_token=${read_scrt('fb_page_access_token')}`
+const token = read_scrt('fb_page_access_token')
 token.length > 0 || LOG('Page Token is empty.')
 const access = `&access_token=${token}`
 
