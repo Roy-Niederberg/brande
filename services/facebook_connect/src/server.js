@@ -17,11 +17,11 @@ const LOG = (num, e) => { console.log(`🚨 ERROR ${num} 🚨 : ${e}`); return t
 // In this section the server should fail in case of error and not startup. ======================//
 
 const token = read_scrt('fb_page_access_token')  // TODO: can I remove this and just use 'access'?
-token.length > 'access_token='.length && LOG('Page Token is empty.')
+token.length > 'access_token='.length || LOG(0, 'Page Token is empty.')
 const access = `access_token=${read_scrt('fb_page_access_token')}`
 
 const fb_url = process.env.FACEBOOK_API_URL
-fb_url.length > 0 || LOG('FACEBOOK_API_URL is empty')
+fb_url.length > 0 || LOG(0, 'FACEBOOK_API_URL is empty')
 
 // =============== Endpoints =====================================================================//
 // In this section the server should keep running and give the best answer it can. ===============//
@@ -46,7 +46,7 @@ const process_comment = async (comment_id, parent_id, post_id, page_id) => {
   let level1_comment = comment_id  // if the comment itself is L1
   if (parent_id !== post_id) {     // if the parent not the post, it's not L1 and we need go up.
     // parent of parent (of the parent_id from the webhook) in a single API call:
-    const up_url = `${fb_url}${parent_id}?fields=parent{id,parent{id}}${access}`
+    const up_url = `${fb_url}${parent_id}?fields=parent{id,parent{id}}&${access}`
     console.log('--------------------- Up Tree ---------------------------------------------------')
     console.log(up_url)
     const up_ret = await fetch(up_url)
