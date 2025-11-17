@@ -46,18 +46,39 @@ app.post('/', (rq, rs) => {
 
   console.log('✓ Signature verified');
 
-  const pageId = rq.body?.entry?.[0]?.id;
-  console.log(`Page ID: ${pageId}`);
-
   // Respond immediately to Facebook
   rs.status(200).send('EVENT_RECEIVED');
 
-  // Forward to facebook-connect (fire and forget)
-  const targetUrl = `http://fb-page-${pageId}:3210`;
-  axios.post(targetUrl, rq.rawBody, {
-    headers: { 'content-type': 'application/json' },
-  }).catch(error => {
-    console.error(`Forward error to ${targetUrl}:`, error.message);
+  // Validate object type
+  if (rq.body.object !== 'page') {
+    console.log(`Ignoring non-page object: ${rq.body.object}`);
+    return;
+  }
+
+  // Loop through all entries and dispatch to corresponding services
+  const entries = rq.body?.entry || [];
+  entries.forEach(entry => {
+    // Route feed events to facebook_connect (port 3210)
+    if (entry.changes) {
+      const targetUrl = `http://fb-page-${entry.id}:3210`;
+      console.log(`Dispatching feed event to ${targetUrl}`);
+      axios.post(targetUrl, { page_id: entry.id, changes: entry.changes }, {
+        headers: { 'content-type': 'application/json' },
+      }).catch(error => {
+        console.error(`Forward error to ${targetUrl}:`, error.message);
+      });
+    }
+
+    // Route messaging events to facebook_dm (port 3220)
+    if (entry.messaging) {
+      const targetUrl = `http://fb-page-${entry.id}:3220`;
+      console.log(`Dispatching messaging event to ${targetUrl}`);
+      axios.post(targetUrl, { page_id: entry.id, messaging: entry.messaging }, {
+        headers: { 'content-type': 'application/json' },
+      }).catch(error => {
+        console.error(`Forward error to ${targetUrl}:`, error.message);
+      });
+    }
   });
 });
 

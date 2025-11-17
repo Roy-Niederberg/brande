@@ -16,9 +16,8 @@ const LOG = (num, e) => { console.log(`🚨 ERROR ${num} 🚨 : ${e}`); return t
 // =============== Server Loading section ========================================================//
 // In this section the server should fail in case of error and not startup. ======================//
 
-const token = read_scrt('fb_page_access_token')  // TODO: can I remove this and just use 'access'?
-token.length > 'access_token='.length || LOG(0, 'Page Token is empty.')
 const access = `access_token=${read_scrt('fb_page_access_token')}`
+access.length > 'access_token='.length || LOG(0, 'Page Token is empty.')
 
 const fb_url = process.env.FACEBOOK_API_URL
 fb_url.length > 0 || LOG(0, 'FACEBOOK_API_URL is empty')
@@ -28,16 +27,14 @@ fb_url.length > 0 || LOG(0, 'FACEBOOK_API_URL is empty')
 
 app.post('/', async (req, res) => {
   res.status(200).send('EVENT_RECEIVED')
-  if (req.body.object !== 'page' && LOG(1, `${req.body.object}`)) return
-  req.body.entry.forEach((entry) => {
-    entry.changes.forEach((change) => {
-      const { value, field } = change
-      if (field       !== 'feed'    && LOG(2, 'Not a feed event')) return
-      if (value?.item === 'status'  && LOG(3, 'New post')) return // 'status' means a post
-      if (value?.item === 'comment' && value.from?.id !== entry.id && value.verb === 'add') {
-        process_comment(value.comment_id, value.parent_id, value.post_id, entry.id)
-      }
-    })
+  const { page_id, changes } = req.body
+  changes.forEach((change) => {
+    const { value, field } = change
+    if (field       !== 'feed'    && LOG(2, 'Not a feed event')) return
+    if (value?.item === 'status'  && LOG(3, 'New post')) return // 'status' means a post
+    if (value?.item === 'comment' && value.from?.id !== page_id && value.verb === 'add') {
+      process_comment(value.comment_id, value.parent_id, value.post_id, page_id)
+    }
   })
 })
 

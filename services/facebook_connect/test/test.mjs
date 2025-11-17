@@ -1,31 +1,28 @@
 import http from 'http'
 
+// Payload in new format (as sent by dispatcher)
 const webhook_payload = {
-  object: 'page',
-  entry: [{
-    id: '808626769002262',
-    time: 1762724342,
-    changes: [{
-      field: 'feed',
-      value: {
-        from: { id: '10039794932789792', name: 'Roy Niederberg' },
-        post: {
-          status_type: 'mobile_status_update',
-          is_published: true,
-          updated_time: '2025-11-09T21:39:00+0000',
-          permalink_url: 'https://www.facebook.com/122107745811055026/posts/pfbid02bTsw7smfLE1VvkfYbxEjNgptG6z987QPT1RKVeuxohuM7mve38vT5M8Z9UfCJKZ1l',
-          promotion_status: 'ineligible',
-          id: '808626769002262_122108640597055026'
-        },
-        message: 'CraftKids Toys what kind of toys are you selling?',
-        post_id: '808626769002262_122108640597055026',
-        comment_id: '122108640597055026_854546700290627',
-        created_time: 1762724340,
-        item: 'comment',
-        parent_id: '122108640597055026_1178731644358181',
-        verb: 'add'
-      }
-    }]
+  page_id: '808626769002262',
+  changes: [{
+    field: 'feed',
+    value: {
+      from: { id: '10039794932789792', name: 'Roy Niederberg' },
+      post: {
+        status_type: 'mobile_status_update',
+        is_published: true,
+        updated_time: '2025-11-09T21:39:00+0000',
+        permalink_url: 'https://www.facebook.com/122107745811055026/posts/pfbid02bTsw7smfLE1VvkfYbxEjNgptG6z987QPT1RKVeuxohuM7mve38vT5M8Z9UfCJKZ1l',
+        promotion_status: 'ineligible',
+        id: '808626769002262_122108640597055026'
+      },
+      message: 'CraftKids Toys what kind of toys are you selling?',
+      post_id: '808626769002262_122108640597055026',
+      comment_id: '122108640597055026_854546700290627',
+      created_time: 1762724340,
+      item: 'comment',
+      parent_id: '122108640597055026_1178731644358181',
+      verb: 'add'
+    }
   }]
 }
 
@@ -248,7 +245,6 @@ const down_tree_response = {
     }
   }
 }
-
 
 const post_response = {
   message: 'Nov 8',
