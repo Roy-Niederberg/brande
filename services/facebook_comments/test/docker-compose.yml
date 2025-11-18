@@ -1,5 +1,5 @@
 services:
-  facebook-connect:
+  facebook-comments:
     build:
       context: ..
       target: development

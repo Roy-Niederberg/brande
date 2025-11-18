@@ -37,15 +37,15 @@ admin:
       when: always
     - when: never
 
-facebook_connect:
+facebook_comments:
   stage: trigger
   trigger:
-    include: services/facebook_connect/.gitlab-ci.yml
+    include: services/facebook_comments/.gitlab-ci.yml
     strategy: depend
   rules:
     - if: '$CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH'
       changes:
-        - services/facebook_connect/**/*
+        - services/facebook_comments/**/*
       when: always
     - when: never
 

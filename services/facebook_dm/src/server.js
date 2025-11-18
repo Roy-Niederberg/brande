@@ -24,8 +24,8 @@ console.log("started....")
 
 app.post('/', async (req, res) => {
   res.status(200).send('EVENT_RECEIVED')
-  const { page_id, messaging } = req.body
-  messaging.forEach((event) => {
+  const { page_id, events } = req.body
+  events.forEach((event) => {
     if (event.message?.text && !event.message.is_echo) {
       process_message(event.sender.id, event.message.text, page_id)
     }
@@ -90,4 +90,4 @@ const process_message = async (psid, message_text, page_id) => {
   console.log('\n')
 }
 
-app.listen(3220, () => console.log('Facebook DM Service Started'))
+app.listen(3210, () => console.log('Facebook DM Service Started'))

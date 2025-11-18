@@ -27,8 +27,8 @@ fb_url.length > 0 || LOG(0, 'FACEBOOK_API_URL is empty')
 
 app.post('/', async (req, res) => {
   res.status(200).send('EVENT_RECEIVED')
-  const { page_id, changes } = req.body
-  changes.forEach((change) => {
+  const { page_id, events } = req.body
+  events.forEach((change) => {
     const { value, field } = change
     if (field       !== 'feed'    && LOG(2, 'Not a feed event')) return
     if (value?.item === 'status'  && LOG(3, 'New post')) return // 'status' means a post

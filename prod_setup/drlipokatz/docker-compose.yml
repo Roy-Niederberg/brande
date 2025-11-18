@@ -21,9 +21,9 @@ services:
       - ./shared_data/authorized_emails.json:/app/data/authorized_emails.json:ro
       - admin_sessions:/app/sessions
 
-  facebook-connect:
+  facebook-comments:
     container_name: fb-page-786999964506727
-    image: registry.gitlab.com/rny3/brande/facebook_connect:latest
+    image: registry.gitlab.com/rny3/brande/facebook_comments:latest
     networks:
       - client_network
     environment:

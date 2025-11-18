@@ -10,7 +10,7 @@ const app = express()
 app.set('trust proxy', true)
 app.use(express.json())
 
-const { emails } = JSON.parse(fs.readFileSync('./data/authorized_emails.json', 'utf-8'))
+const { emails }  = JSON.parse(fs.readFileSync(`/run/secrets/authorized_emails.json`, 'utf-8').trim())
 emails.length > 0 || console.warn("No authorized user found.")
 const google_strategy = JSON.parse(fs.readFileSync(`/run/secrets/google_strategy`, 'utf-8').trim())
 const session_config = JSON.parse(fs.readFileSync(`/run/secrets/session_config`, 'utf-8').trim())

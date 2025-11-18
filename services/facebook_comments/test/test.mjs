@@ -300,7 +300,7 @@ const server = http.createServer((req, res) => {
   } else if (url.pathname === '/run_tests' && req.method === 'GET') {
     lastReply = null
     lastPrivateReply = null
-    const webhook_req = http.request('http://facebook-connect:3210/', { method: 'POST', headers: { 'Content-Type': 'application/json' } }, (webhook_res) => {
+    const webhook_req = http.request('http://facebook-comments:3210/', { method: 'POST', headers: { 'Content-Type': 'application/json' } }, (webhook_res) => {
       let data = ''
       webhook_res.on('data', chunk => data += chunk)
       webhook_res.on('end', () => {
