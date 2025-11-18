@@ -20,7 +20,6 @@ fb_url.length > 0 || LOG(0, 'FACEBOOK_API_URL is empty')
 
 // =============== Endpoints =====================================================================//
 // In this section the server should keep running and give the best answer it can. ===============//
-console.log("started....")
 
 app.post('/', async (req, res) => {
   res.status(200).send('EVENT_RECEIVED')
