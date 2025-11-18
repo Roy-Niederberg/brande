@@ -53,7 +53,7 @@ const process_message = async (psid, message_text, page_id) => {
 
   // Format chat history
   const chat_history = messages.data?.reverse().map(m => {
-    const author = m.from?.id === page_id ? '[AGENT]' : 'User'
+    const author = m.from?.id === page_id ? '[AGENT]' : `User ${psid}`
     const time = new Date(m.created_time).toLocaleString('en-US', {
       month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
     })
@@ -65,15 +65,8 @@ const process_message = async (psid, message_text, page_id) => {
 
   // Get LLM response
   const llm_res = await fetch('http://prompt-composer:4321/ask', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      module: 'facebook_messenger',
-      chat_data: {
-        context: 'This is a one-on-one private Facebook Messenger chat',
-        chat_history
-      }
-    })
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ module: 'facebook_messages', chat_data: { chat_history } })
   })
   if (!llm_res.ok && LOG(5, `${llm_res.status} ${llm_res.statusText}`)) return
   const answer = await llm_res.text()

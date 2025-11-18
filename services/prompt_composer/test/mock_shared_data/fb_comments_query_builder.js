@@ -10,4 +10,5 @@ Agent comments are marked as "[AGENT] ${d.post.from.name}."
 Post: "${d.post.message}" on page "${d.post.from.name} (${d.post.updated_time})
 Comment thread:
 ${d.chat_history}
+
 `

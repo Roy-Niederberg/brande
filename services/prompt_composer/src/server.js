@@ -1,9 +1,10 @@
 import fs from 'fs'
 import express from 'express'
 import axios from 'axios'
-import facebook_comments from '../data/facebook_query_builder.js'
+import facebook_comments from '../data/fb_comments_query_builder.js'
+import facebook_messages from '../data/fb_messages_query_builder.js'
 import admin_ui from '../data/admin_query_builder.js'
-const query_builders = { facebook_comments, admin_ui }
+const query_builders = { facebook_comments, facebook_messages, admin_ui }
 const app = express()
 app.use(express.json())
 app.use(express.text())
