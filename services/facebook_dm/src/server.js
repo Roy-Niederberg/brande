@@ -26,12 +26,15 @@ app.post('/', async (req, res) => {
   const { page_id, events } = req.body
   events.forEach((event) => {
     if (event.message?.text && !event.message.is_echo) {
+      console.log('--------------------- The event --------------------------------------------------')
+      console.log(event.message)
       process_message(event.sender.id, event.message.text, page_id)
     }
   })
 })
 
 const process_message = async (psid, message_text, page_id) => {
+  console.log('--------------------- Message ----------------------------------------------------')
   console.log(`📩 Message from ${psid}: "${message_text}"`)
 
   // Fetch conversation ID by PSID
