@@ -1,35 +1,30 @@
 services:
+
   prompt-composer:
     image: registry.gitlab.com/rny3/brande/prompt_composer:latest
+    networks: [client_network]
+    secrets: [llm_api_key]
+    volumes: [./data/:/app/data]
     environment:
       - LLM=https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent
-    networks:
-      - client_network
-    secrets:
-      - llm_api_key
-    volumes:
-      - ./shared_data/prompt/:/app/data
 
   admin:
     image: registry.gitlab.com/rny3/brande/admin:latest
-    networks:
-      - client_network
-    secrets:
-      - google_strategy
-      - session_config
-    volumes:
-      - ./shared_data/authorized_emails.json:/app/data/authorized_emails.json:ro
-      - admin_sessions:/app/sessions
+    networks: [client_network]
+    secrets: [google_strategy, session_config, authorized_emails]
+    volumes: [admin_sessions:/app/sessions]
 
-  facebook-comments:
-    container_name: fb-page-786999964506727
+  facebook-comments-786999964506727:
     image: registry.gitlab.com/rny3/brande/facebook_comments:latest
-    networks:
-      - client_network
-    environment:
-      - FACEBOOK_API_URL=https://graph.facebook.com/v24.0/
-    secrets:
-      - fb_page_access_token
+    networks: [client_network]
+    secrets: [fb_page_access_token]
+    environment: [FACEBOOK_API_URL=https://graph.facebook.com/v24.0/]
+
+  facebook-dm-786999964506727:
+    image: registry.gitlab.com/rny3/brande/facebook_dm:latest
+    networks: [client_network]
+    secrets: [fb_page_access_token]
+    environment: [FACEBOOK_API_URL=https://graph.facebook.com/v24.0/]
 
 volumes:
   admin_sessions:
@@ -47,3 +42,5 @@ secrets:
     file: ./secrets/session_config.secret
   fb_page_access_token:
     file: ./secrets/fb_page_access_token.secret
+  authorized_emails:
+    file: ./secrets/authorized_emails.json
