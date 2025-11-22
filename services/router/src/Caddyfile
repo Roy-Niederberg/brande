@@ -2,7 +2,9 @@ http://brandelicious-wh.mooo.com {
 	reverse_proxy facebook-dispatcher:3210
 }
 
-http://craftkidstoys.mooo.com, http://drlipokatz.mooo.com {
+http://craftkidstoys.mooo.com,
+http://drlipokatz.mooo.com,
+http://brandelicious.mooo.com {
 	handle /favicon.ico {
 		root * /srv
 		file_server
