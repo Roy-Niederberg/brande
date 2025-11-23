@@ -16,6 +16,11 @@ http://brandelicious.mooo.com {
 		file_server
 	}
 
+	handle /setup/* {
+		uri strip_prefix /setup
+		reverse_proxy {labels.2}-site-1:8558
+	}
+
 	handle {
 		reverse_proxy {labels.2}-admin-1:9876 {
 			@error status 404 5xx
