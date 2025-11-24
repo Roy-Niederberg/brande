@@ -2,9 +2,7 @@ http://brandelicious-wh.mooo.com {
 	reverse_proxy facebook-dispatcher:3210
 }
 
-http://craftkidstoys.mooo.com,
-http://drlipokatz.mooo.com,
-http://brandelicious.mooo.com {
+http://drlipokatz.mooo.com {
 	handle /favicon.ico {
 		root * /srv
 		file_server
@@ -30,5 +28,53 @@ http://brandelicious.mooo.com {
 				file_server
 			}
 		}
+	}
+}
+
+http://craftkidstoys.mooo.com {
+	handle /favicon.ico {
+		root * /srv
+		file_server
+	}
+
+	handle /public/* {
+		uri strip_prefix /public
+		root * /srv
+		file_server
+	}
+
+	handle /setup/* {
+		uri strip_prefix /setup
+		reverse_proxy {labels.2}-site-1:8558
+	}
+
+	handle / {
+		root * /srv/craftkidstoys
+		try_files {path} /index.html
+		file_server
+	}
+
+	handle {
+		reverse_proxy {labels.2}-admin-1:9876 {
+			@error status 404 5xx
+			handle_response @error {
+				root * /srv
+				rewrite * /404.html
+				file_server
+			}
+		}
+	}
+}
+
+http://brandelicious.mooo.com {
+	handle /favicon.ico {
+		root * /srv
+		file_server
+	}
+
+	handle /public/* {
+		uri strip_prefix /public
+		root * /srv
+		file_server
 	}
 }

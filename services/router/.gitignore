@@ -1,2 +1,4 @@
 !public/*.html
 !public/*.ico
+!public/craftkidstoys/
+!public/craftkidstoys/*.html
