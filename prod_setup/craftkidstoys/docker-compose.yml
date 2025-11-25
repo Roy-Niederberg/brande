@@ -4,7 +4,7 @@ services:
     image: registry.gitlab.com/rny3/brande/prompt_composer:latest
     networks: [client_network]
     secrets: [llm_api_key]
-    volumes: [./data/:/app/data]
+    volumes: [./data/:/app/data, prompt_log:/app/prompt_log]
     environment:
       - LLM=https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent
 
@@ -28,6 +28,7 @@ services:
 
 volumes:
   admin_sessions:
+  prompt_log:
 
 networks:
   client_network:

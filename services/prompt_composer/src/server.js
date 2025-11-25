@@ -12,7 +12,7 @@ app.use(express.text())
 // =============== Util Functions ====================================================================================//
 
 const read = (name, ex = 'txt') => fs.readFileSync(`./data/${name}.${ex}`, 'utf-8')
-const write = (name, content, ex = 'txt') => fs.writeFileSync(`./data/${name}.${ex}`, content, 'utf-8')
+const write = (dir, name, content, ex = 'txt') => fs.writeFileSync(`./${dir}/${name}.${ex}`, content, 'utf-8')
 const read_scrt = name => fs.readFileSync(`/run/secrets/${name}`, 'utf-8').trim()
 
 // Express Error handline routs: catch exeptions in routs and and handle them in "Error handling middleware".
@@ -36,13 +36,13 @@ fs.mkdirSync('./data/prompt_log', { recursive: true })
 //
 app.r('get', '/ask', async ({ query: { query } }, rs) => {
   data.contents[0].parts[0].text = [role, instructions, knowledge_base, query, response_guidelines].join('').trim()
-  write(`prompt_log/${Date.now()}`, data.contents[0].parts[0].text)
+  write('prompt_log', Date.now(), data.contents[0].parts[0].text)
   rs.send((await axios.post(`${url}?key=${llm_api_key}`, data, cfg)).data.candidates[0].content.parts[0].text)
 })
 app.r('post', '/ask', async ({ body }, rs) => {
   const query = query_builders[body.module](body.chat_data)
   data.contents[0].parts[0].text = [role, instructions, knowledge_base, query, response_guidelines].join('').trim()
-  write(`prompt_log/${Date.now()}`, data.contents[0].parts[0].text)
+  write('prompt_log', Date.now(), data.contents[0].parts[0].text)
   rs.send((await axios.post(`${url}?key=${llm_api_key}`, data, cfg)).data.candidates[0].content.parts[0].text)
 })
 app.r('get', '/knowledge-base',
@@ -54,9 +54,9 @@ app.r('post', '/reload-knowledge-base',
 app.r('post', '/reload-instructions',
   (_, rs) => (instructions = read('instructions'), rs.sendStatus(200)))
 app.r('post', '/instructions',
-  ({ body }, rs) => (instructions = body, write('instructions', body), rs.sendStatus(200)))
+  ({ body }, rs) => (instructions = body, write('data', 'instructions', body), rs.sendStatus(200)))
 app.r('post', '/knowledge-base',
-  ({ body }, rs) => (knowledge_base = body, write('knowledge_base', body), rs.sendStatus(200)))
+  ({ body }, rs) => (knowledge_base = body, write('data', 'knowledge_base', body), rs.sendStatus(200)))
 
 // =============== Error handling middleware =========================================================================//
 
