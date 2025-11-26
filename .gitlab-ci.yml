@@ -7,7 +7,7 @@ router:
     include: services/router/.gitlab-ci.yml
     strategy: depend
   rules:
-    - if: '$CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH'
+    - if: '$CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+$/'
       changes:
         - services/router/**/*
       when: always
@@ -19,7 +19,7 @@ prompt_composer:
     include: services/prompt_composer/.gitlab-ci.yml
     strategy: depend
   rules:
-    - if: '$CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH'
+    - if: '$CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+$/'
       changes:
         - services/prompt_composer/**/*
       when: always
@@ -31,7 +31,7 @@ admin:
     include: services/admin/.gitlab-ci.yml
     strategy: depend
   rules:
-    - if: '$CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH'
+    - if: '$CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+$/'
       changes:
         - services/admin/**/*
       when: always
@@ -43,7 +43,7 @@ facebook_comments:
     include: services/facebook_comments/.gitlab-ci.yml
     strategy: depend
   rules:
-    - if: '$CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH'
+    - if: '$CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+$/'
       changes:
         - services/facebook_comments/**/*
       when: always
@@ -55,7 +55,7 @@ facebook_dispatcher:
     include: services/facebook_dispatcher/.gitlab-ci.yml
     strategy: depend
   rules:
-    - if: '$CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH'
+    - if: '$CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+$/'
       changes:
         - services/facebook_dispatcher/**/*
       when: always
@@ -67,7 +67,7 @@ facebook_dm:
     include: services/facebook_dm/.gitlab-ci.yml
     strategy: depend
   rules:
-    - if: '$CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH'
+    - if: '$CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+$/'
       changes:
         - services/facebook_dm/**/*
       when: always
@@ -79,7 +79,7 @@ site:
     include: services/site/.gitlab-ci.yml
     strategy: depend
   rules:
-    - if: '$CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH'
+    - if: '$CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+$/'
       changes:
         - services/site/**/*
       when: always
