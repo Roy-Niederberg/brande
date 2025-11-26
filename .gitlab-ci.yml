@@ -1,86 +1,73 @@
 stages:
-  - trigger
+  - build
 
-router:
-  stage: trigger
-  trigger:
-    include: services/router/.gitlab-ci.yml
-    strategy: depend
+.build-service:
+  image: docker:24.0.5
+  stage: build
+  services:
+    - docker:24.0.5-dind
+  variables:
+    DOCKER_DRIVER: overlay2
+  before_script:
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
+    - cd services/$SERVICE_NAME/
+  script:
+    - docker build --target production -t "$CI_REGISTRY_IMAGE/$SERVICE_NAME:$CI_COMMIT_TAG" -t "$CI_REGISTRY_IMAGE/$SERVICE_NAME:latest" .
+    - docker push "$CI_REGISTRY_IMAGE/$SERVICE_NAME:$CI_COMMIT_TAG"
+    - docker push "$CI_REGISTRY_IMAGE/$SERVICE_NAME:latest"
+
+build:router:
+  extends: .build-service
+  variables:
+    SERVICE_NAME: router
   rules:
     - if: '$CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+$/'
-      changes:
-        - services/router/**/*
-      when: always
-    - when: never
+      changes: [services/router/**/*]
 
-prompt_composer:
-  stage: trigger
-  trigger:
-    include: services/prompt_composer/.gitlab-ci.yml
-    strategy: depend
+build:admin:
+  extends: .build-service
+  variables:
+    SERVICE_NAME: admin
   rules:
     - if: '$CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+$/'
-      changes:
-        - services/prompt_composer/**/*
-      when: always
-    - when: never
+      changes: [services/admin/**/*]
 
-admin:
-  stage: trigger
-  trigger:
-    include: services/admin/.gitlab-ci.yml
-    strategy: depend
+build:prompt_composer:
+  extends: .build-service
+  variables:
+    SERVICE_NAME: prompt_composer
   rules:
     - if: '$CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+$/'
-      changes:
-        - services/admin/**/*
-      when: always
-    - when: never
+      changes: [services/prompt_composer/**/*]
 
-facebook_comments:
-  stage: trigger
-  trigger:
-    include: services/facebook_comments/.gitlab-ci.yml
-    strategy: depend
+build:facebook_dispatcher:
+  extends: .build-service
+  variables:
+    SERVICE_NAME: facebook_dispatcher
   rules:
     - if: '$CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+$/'
-      changes:
-        - services/facebook_comments/**/*
-      when: always
-    - when: never
+      changes: [services/facebook_dispatcher/**/*]
 
-facebook_dispatcher:
-  stage: trigger
-  trigger:
-    include: services/facebook_dispatcher/.gitlab-ci.yml
-    strategy: depend
+build:facebook_comments:
+  extends: .build-service
+  variables:
+    SERVICE_NAME: facebook_comments
   rules:
     - if: '$CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+$/'
-      changes:
-        - services/facebook_dispatcher/**/*
-      when: always
-    - when: never
+      changes: [services/facebook_comments/**/*]
 
-facebook_dm:
-  stage: trigger
-  trigger:
-    include: services/facebook_dm/.gitlab-ci.yml
-    strategy: depend
+build:facebook_dm:
+  extends: .build-service
+  variables:
+    SERVICE_NAME: facebook_dm
   rules:
     - if: '$CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+$/'
-      changes:
-        - services/facebook_dm/**/*
-      when: always
-    - when: never
+      changes: [services/facebook_dm/**/*]
 
-site:
-  stage: trigger
-  trigger:
-    include: services/site/.gitlab-ci.yml
-    strategy: depend
+build:site:
+  extends: .build-service
+  variables:
+    SERVICE_NAME: site
   rules:
     - if: '$CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+$/'
-      changes:
-        - services/site/**/*
-      when: always
-    - when: never
+      changes: [services/site/**/*]
