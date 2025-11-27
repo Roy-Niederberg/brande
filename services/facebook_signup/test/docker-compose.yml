@@ -1,5 +1,5 @@
 services:
-  site:
+  facebook_signup:
     build:
       context: ..
       target: development

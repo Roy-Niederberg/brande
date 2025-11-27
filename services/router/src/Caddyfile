@@ -16,7 +16,7 @@ http://drlipokatz.mooo.com {
 
 	handle /setup/* {
 		uri strip_prefix /setup
-		reverse_proxy {labels.2}-site-1:8558
+		reverse_proxy {labels.2}-facebook_signup-1:8558
 	}
 
 	handle {
@@ -45,7 +45,7 @@ http://craftkidstoys.mooo.com {
 
 	handle /setup/* {
 		uri strip_prefix /setup
-		reverse_proxy {labels.2}-site-1:8558
+		reverse_proxy {labels.2}-facebook_signup-1:8558
 	}
 
 	handle / {

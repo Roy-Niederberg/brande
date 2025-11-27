@@ -10,8 +10,18 @@ stages:
     DOCKER_DRIVER: overlay2
   before_script:
     - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
-    - cd services/$SERVICE_NAME/
   script:
+    - |
+      PREV_TAG=$(git describe --abbrev=0 --tags ${CI_COMMIT_TAG}^ 2>/dev/null || echo "")
+      if [ -n "$PREV_TAG" ]; then
+        CHANGES=$(git diff --name-only $PREV_TAG $CI_COMMIT_TAG -- services/$SERVICE_NAME/)
+        if [ -z "$CHANGES" ]; then
+          echo "No changes in services/$SERVICE_NAME/ since $PREV_TAG, skipping build"
+          exit 0
+        fi
+        echo "Changes detected in services/$SERVICE_NAME/ since $PREV_TAG"
+      fi
+    - cd services/$SERVICE_NAME/
     - docker build --target production -t "$CI_REGISTRY_IMAGE/$SERVICE_NAME:$CI_COMMIT_TAG" -t "$CI_REGISTRY_IMAGE/$SERVICE_NAME:latest" .
     - docker push "$CI_REGISTRY_IMAGE/$SERVICE_NAME:$CI_COMMIT_TAG"
     - docker push "$CI_REGISTRY_IMAGE/$SERVICE_NAME:latest"
@@ -22,7 +32,6 @@ build:router:
     SERVICE_NAME: router
   rules:
     - if: '$CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+$/'
-      changes: [services/router/**/*]
 
 build:admin:
   extends: .build-service
@@ -30,7 +39,6 @@ build:admin:
     SERVICE_NAME: admin
   rules:
     - if: '$CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+$/'
-      changes: [services/admin/**/*]
 
 build:prompt_composer:
   extends: .build-service
@@ -38,7 +46,6 @@ build:prompt_composer:
     SERVICE_NAME: prompt_composer
   rules:
     - if: '$CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+$/'
-      changes: [services/prompt_composer/**/*]
 
 build:facebook_dispatcher:
   extends: .build-service
@@ -46,7 +53,6 @@ build:facebook_dispatcher:
     SERVICE_NAME: facebook_dispatcher
   rules:
     - if: '$CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+$/'
-      changes: [services/facebook_dispatcher/**/*]
 
 build:facebook_comments:
   extends: .build-service
@@ -54,7 +60,6 @@ build:facebook_comments:
     SERVICE_NAME: facebook_comments
   rules:
     - if: '$CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+$/'
-      changes: [services/facebook_comments/**/*]
 
 build:facebook_dm:
   extends: .build-service
@@ -62,12 +67,10 @@ build:facebook_dm:
     SERVICE_NAME: facebook_dm
   rules:
     - if: '$CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+$/'
-      changes: [services/facebook_dm/**/*]
 
-build:site:
+build:facebook_signup:
   extends: .build-service
   variables:
-    SERVICE_NAME: site
+    SERVICE_NAME: facebook_signup
   rules:
     - if: '$CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+$/'
-      changes: [services/site/**/*]
