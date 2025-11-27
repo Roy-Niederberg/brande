@@ -29,7 +29,6 @@ const response_guidelines = read('response_guidelines')
 const llm_api_key = read_scrt('llm_api_key')
 const url = process.env.LLM
 const { data, cfg } = JSON.parse(read('llm_config','json'))
-fs.mkdirSync('./data/prompt_log', { recursive: true })
 
 // =============== Endpoints =========================================================================================//
 // In this section the server should keep running and give the best answer it can. ===================================//
