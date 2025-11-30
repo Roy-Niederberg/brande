@@ -19,6 +19,12 @@ http://drlipokatz.mooo.com {
 		reverse_proxy {labels.2}-facebook_signup-1:8558
 	}
 
+	handle / {
+		root * /srv/craftkidstoys
+		try_files {path} /index.html
+		file_server
+	}
+
 	handle {
 		reverse_proxy {labels.2}-admin-1:9876 {
 			@error status 404 5xx
