@@ -20,7 +20,7 @@ http://drlipokatz.mooo.com {
 	}
 
 	handle / {
-		root * /srv/craftkidstoys
+		root * /srv/drlipokatz
 		try_files {path} /index.html
 		file_server
 	}
