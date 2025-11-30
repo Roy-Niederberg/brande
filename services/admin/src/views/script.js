@@ -2,7 +2,10 @@
 const state = {
   currentUser: null,
   customerChat: [],
-  activeTab: 'instructions'
+  activeTab: 'instructions',
+  mobileActivePanel: 'right', // 'left' or 'right'
+  touchStartX: 0,
+  touchEndX: 0
 };
 
 // Detect text direction based on content
@@ -120,6 +123,19 @@ function setupEventListeners() {
       customerInput.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }, 300);
   });
+
+  // Mobile navigation
+  document.querySelectorAll('.mobile-nav-btn').forEach(btn => {
+    btn.addEventListener('click', () => switchMobilePanel(btn.dataset.mobilePanel));
+  });
+
+  // Mobile swipe gestures
+  const mainContainer = document.querySelector('.main-container');
+  mainContainer.addEventListener('touchstart', handleTouchStart, { passive: true });
+  mainContainer.addEventListener('touchend', handleTouchEnd, { passive: true });
+
+  // Initialize mobile panel state
+  initializeMobilePanel();
 }
 
 // Switch left panel tabs
@@ -334,3 +350,74 @@ function formatTime(date) {
   const minutes = date.getMinutes().toString().padStart(2, '0');
   return `${hours}:${minutes}`;
 }
+
+// Initialize mobile panel state
+function initializeMobilePanel() {
+  if (window.innerWidth <= 768) {
+    switchMobilePanel(state.mobileActivePanel);
+  }
+}
+
+// Switch mobile panel
+function switchMobilePanel(panel) {
+  state.mobileActivePanel = panel;
+
+  const leftPanel = document.querySelector('.left-panel');
+  const rightPanel = document.querySelector('.right-panel');
+  const mobileNavBtns = document.querySelectorAll('.mobile-nav-btn');
+
+  // Update panel visibility
+  if (panel === 'left') {
+    leftPanel.classList.add('mobile-active');
+    rightPanel.classList.remove('mobile-active');
+  } else {
+    leftPanel.classList.remove('mobile-active');
+    rightPanel.classList.add('mobile-active');
+  }
+
+  // Update button states
+  mobileNavBtns.forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.mobilePanel === panel);
+  });
+}
+
+// Handle touch start for swipe gesture
+function handleTouchStart(e) {
+  state.touchStartX = e.changedTouches[0].screenX;
+}
+
+// Handle touch end for swipe gesture
+function handleTouchEnd(e) {
+  state.touchEndX = e.changedTouches[0].screenX;
+  handleSwipe();
+}
+
+// Handle swipe gesture
+function handleSwipe() {
+  const swipeThreshold = 50; // Minimum distance for swipe
+  const diff = state.touchStartX - state.touchEndX;
+
+  // Only process swipe if we're on mobile
+  if (window.innerWidth > 768) return;
+
+  // Swipe left (showing right panel, swipe to left panel)
+  if (diff > swipeThreshold && state.mobileActivePanel === 'right') {
+    switchMobilePanel('left');
+  }
+
+  // Swipe right (showing left panel, swipe to right panel)
+  if (diff < -swipeThreshold && state.mobileActivePanel === 'left') {
+    switchMobilePanel('right');
+  }
+}
+
+// Handle window resize
+window.addEventListener('resize', () => {
+  if (window.innerWidth <= 768) {
+    initializeMobilePanel();
+  } else {
+    // Reset mobile classes on desktop
+    document.querySelector('.left-panel').classList.remove('mobile-active');
+    document.querySelector('.right-panel').classList.remove('mobile-active');
+  }
+});

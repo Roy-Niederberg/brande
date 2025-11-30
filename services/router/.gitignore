@@ -1,5 +1,5 @@
 !public/*.html
 !public/*.ico
 !public/*.svg
-!public/craftkidstoys/
-!public/craftkidstoys/*.html
+!public/**/
+!public/**/*.html
