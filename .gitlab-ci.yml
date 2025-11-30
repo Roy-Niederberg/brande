@@ -11,11 +11,12 @@ build:
   before_script:
     - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
   script:
-    - SERVICE_NAME=$(echo $CI_COMMIT_TAG | cut -d: -f1)
-    - VERSION=$(echo $CI_COMMIT_TAG | cut -d: -f2)
-    - cd services/$SERVICE_NAME/
-    - docker build --target production -t "$CI_REGISTRY_IMAGE/$SERVICE_NAME:$VERSION" -t "$CI_REGISTRY_IMAGE/$SERVICE_NAME:latest" .
-    - docker push "$CI_REGISTRY_IMAGE/$SERVICE_NAME:$VERSION"
-    - docker push "$CI_REGISTRY_IMAGE/$SERVICE_NAME:latest"
+    - |
+      SERVICE_NAME=$(echo $CI_COMMIT_TAG | cut -d: -f1)
+      VERSION=$(echo $CI_COMMIT_TAG | cut -d: -f2)
+      cd services/$SERVICE_NAME/
+      docker build --target production -t "$CI_REGISTRY_IMAGE/$SERVICE_NAME:$VERSION" -t "$CI_REGISTRY_IMAGE/$SERVICE_NAME:latest" .
+      docker push "$CI_REGISTRY_IMAGE/$SERVICE_NAME:$VERSION"
+      docker push "$CI_REGISTRY_IMAGE/$SERVICE_NAME:latest"
   rules:
     - if: '$CI_COMMIT_TAG =~ /^[a-z_]+:v[0-9]+\.[0-9]+\.[0-9]+$/'
