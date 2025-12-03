@@ -1,0 +1,102 @@
+services:
+  mock-site:
+    image: node:22-alpine
+    stop_grace_period: 0s
+    ports:
+      - "3030:3030"
+    volumes:
+      - ../../public:/app/public:ro
+    command:
+      - node
+      - -e
+      - |
+        const fs = require('fs');
+        const http = require('http');
+        const path = require('path');
+
+        const mimeTypes = {
+          '.html': 'text/html',
+          '.jpg': 'image/jpeg',
+          '.js': 'application/javascript'
+        };
+
+        http.createServer(async (req, res) => {
+          if (req.url === '/widget/chat.js' || req.url === '/widget.js') {
+            const widgetContent = fs.readFileSync('/app/public/widget.js', 'utf8');
+            res.writeHead(200, {
+              'Content-Type': 'application/javascript; charset=utf-8',
+              'Cache-Control': 'no-cache, no-store, must-revalidate'
+            });
+            res.end(widgetContent);
+          } else if (req.url === '/widget-api/ask' && req.method === 'POST') {
+            let body = '';
+            req.on('data', chunk => body += chunk);
+            req.on('end', async () => {
+              try {
+                const response = await fetch('http://prompt-composer:4321/ask', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: body
+                });
+                const text = await response.text();
+                res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
+                res.end(text);
+              } catch (e) {
+                res.writeHead(500);
+                res.end('Error');
+              }
+            });
+          } else if (req.url.startsWith('/demo-en')) {
+            const urlPath = req.url === '/demo-en' || req.url === '/demo-en/' ? '/demo-en/index.html' : req.url;
+            const filePath = '/app/public/craftkidstoys/demo' + urlPath.replace('/demo-en', '');
+            const ext = path.extname(filePath);
+            const contentType = mimeTypes[ext] || 'application/octet-stream';
+            try {
+              const content = fs.readFileSync(filePath);
+              res.writeHead(200, { 'Content-Type': contentType });
+              res.end(content);
+            } catch (e) {
+              res.writeHead(404);
+              res.end('Not Found');
+            }
+          } else {
+            res.writeHead(404);
+            res.end('Not Found');
+          }
+        }).listen(3030, () => console.log('Mock site running on port 3030'));
+
+  prompt-composer:
+    build:
+      context: ../../../prompt_composer/
+      target: development
+    stop_grace_period: 0s
+    working_dir: /app
+    environment:
+      - LLM=http://mock-llm:3011
+    depends_on:
+      - mock-llm
+    volumes:
+      - ../../../prompt_composer/test/mock_shared_data:/app/data
+      - ../../../prompt_composer/src:/app/src
+      - prompt_log:/app/prompt_log
+    secrets:
+      - llm_api_key
+
+  mock-llm:
+    image: node:22-alpine
+    stop_grace_period: 0s
+    command:
+      - node
+      - -e
+      - |
+        require('http').createServer((req, res) => {
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({candidates:[{content:{parts:[{text: 'Hello! This is a test response from the mock LLM. How can I help you?'}]}}]}));
+        }).listen(3011);
+
+volumes:
+  prompt_log:
+
+secrets:
+  llm_api_key:
+    file: ../../../admin/test/secrets/llm_api_key

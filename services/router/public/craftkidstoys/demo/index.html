@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CraftKids Toys - Sustainable Wooden Toys</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Georgia', serif; color: #3d3d3d; line-height: 1.6; }
+        header { background: linear-gradient(135deg, #8b5a3c 0%, #a67c52 100%); color: white; padding: 2rem; text-align: center; }
+        header h1 { font-size: 2.5rem; margin-bottom: 0.5rem; }
+        header p { font-size: 1.1rem; opacity: 0.9; }
+        .hero { background: linear-gradient(rgba(139, 90, 60, 0.7), rgba(139, 90, 60, 0.7)), url('bg1.jpg') center/cover; color: white; padding: 4rem 2rem; text-align: center; }
+        .hero h2 { font-size: 2rem; margin-bottom: 1rem; }
+        .hero p { font-size: 1.2rem; max-width: 700px; margin: 0 auto; }
+        .about { background: #faf8f5; padding: 3rem 2rem; text-align: center; }
+        .about h3 { color: #8b5a3c; margin-bottom: 1rem; font-size: 1.8rem; }
+        .about p { max-width: 800px; margin: 0 auto; font-size: 1.1rem; }
+        .products { padding: 3rem 2rem; max-width: 1200px; margin: 0 auto; }
+        .products h3 { text-align: center; color: #8b5a3c; margin-bottom: 2rem; font-size: 2rem; }
+        .product-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 2rem; }
+        .product { background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: transform 0.3s; }
+        .product:hover { transform: translateY(-5px); }
+        .product img { width: 100%; height: 250px; object-fit: cover; }
+        .product-info { padding: 1.5rem; }
+        .product-info h4 { color: #8b5a3c; margin-bottom: 0.5rem; font-size: 1.3rem; }
+        .product-info p { color: #666; font-size: 0.95rem; }
+        .product-info .price { color: #6b9b6e; font-weight: bold; margin-top: 0.8rem; font-size: 1.2rem; }
+        footer { background: linear-gradient(rgba(139, 90, 60, 0.9), rgba(139, 90, 60, 0.9)), url('bg2.jpg') center/cover; color: white; padding: 2rem; text-align: center; }
+        footer h4 { margin-bottom: 1rem; font-size: 1.5rem; }
+        footer p { margin: 0.3rem 0; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>CraftKids Toys</h1>
+        <p>Sustainably Sourced Wooden Toys for Eco-Conscious Families</p>
+    </header>
+
+    <section class="hero">
+        <h2>Welcome to Our Toy Wonderland</h2>
+        <p>Discover beautifully crafted wooden toys that inspire creativity, learning, and endless joy. Every piece is made from sustainably sourced wood with love and care.</p>
+    </section>
+
+    <section class="about">
+        <h3>About CraftKids Toys</h3>
+        <p>Established in 2019 in the heart of Portland, Oregon, we're dedicated to providing high-quality wooden toys for children ages 0-8. All our toys are made from sustainably sourced wood, primarily beech and maple, ensuring durability and safety. Visit us at 247 Maple Street or shop online!</p>
+    </section>
+
+    <section class="products">
+        <h3>Featured Toys</h3>
+        <div class="product-grid">
+            <div class="product">
+                <img src="1.jpg" alt="Rainbow Stacking Tower">
+                <div class="product-info">
+                    <h4>Rainbow Stacking Tower</h4>
+                    <p>Our best-seller! This colorful stacking tower helps develop fine motor skills and color recognition. Made from smooth beech wood with non-toxic water-based paints. Perfect for ages 12 months and up.</p>
+                    <p class="price">$24.99</p>
+                </div>
+            </div>
+
+            <div class="product">
+                <img src="2.jpg" alt="Natural Building Blocks">
+                <div class="product-info">
+                    <h4>Natural Building Blocks</h4>
+                    <p>Classic building blocks in various shapes and sizes. These versatile blocks encourage creativity and spatial awareness. Made from sustainably harvested maple wood. Our top-selling category! Ages 2+.</p>
+                    <p class="price">$34.99</p>
+                </div>
+            </div>
+
+            <div class="product">
+                <img src="3.jpg" alt="Animal Shape Puzzle">
+                <div class="product-info">
+                    <h4>Animal Shape Puzzle</h4>
+                    <p>Adorable wooden puzzle featuring forest animals. Helps toddlers learn problem-solving and hand-eye coordination. Chunky pieces perfect for little hands. Made from durable beech wood. Ages 18 months+.</p>
+                    <p class="price">$18.99</p>
+                </div>
+            </div>
+
+            <div class="product">
+                <img src="4.jpg" alt="Woodland Animal Set">
+                <div class="product-info">
+                    <h4>Woodland Animal Figurines</h4>
+                    <p>Hand-painted wooden animals including deer, fox, bear, and rabbit. Sparks imaginative play and storytelling. Smooth finish and natural wood grain. Safety tested and child-approved. Ages 3+.</p>
+                    <p class="price">$29.99</p>
+                </div>
+            </div>
+
+            <div class="product">
+                <img src="5.jpg" alt="Classic Pull-Along Toy">
+                <div class="product-info">
+                    <h4>Classic Pull-Along Toy</h4>
+                    <p>Timeless pull-along companion that encourages walking and gross motor development. Crafted from solid maple wood with smooth-rolling wheels. A nostalgic favorite for toddlers. Ages 12 months+.</p>
+                    <p class="price">$22.99</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <h4>Visit Us</h4>
+        <p>247 Maple Street, Portland, Oregon</p>
+        <p>Monday - Saturday: 10am - 6pm</p>
+        <p>Sunday: 11am - 5pm</p>
+        <p style="margin-top: 1rem; opacity: 0.9;">All toys come with a 1-year warranty and 30-day return policy</p>
+    </footer>
+    <script src="/widget.js"></script>
+</body>
+</html>

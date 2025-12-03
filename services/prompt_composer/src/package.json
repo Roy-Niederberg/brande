@@ -2,7 +2,8 @@
   "type": "module",
   "dependencies": {
     "express": "^4.21.2",
-    "axios": "^1.6.0"
+    "axios": "^1.6.0",
+    "express-rate-limit": "^7.1.5"
   },
   "devDependencies": {
     "nodemon": "^3.0.2"
