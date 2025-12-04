@@ -104,8 +104,10 @@ services:
       - -e
       - |
         require('http').createServer((req, res) => {
-          res.writeHead(200, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({candidates:[{content:{parts:[{text: 'Hello! This is a test response from the mock LLM. How can I help you?'}]}}]}));
+          setTimeout(() => {
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({candidates:[{content:{parts:[{text: 'Hello! This is a test response from the mock LLM. How can I help you?'}]}}]}));
+          }, 1500);
         }).listen(3011);
 
 volumes:
