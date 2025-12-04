@@ -1,6 +1,6 @@
 services:
   router:
-    image: registry.gitlab.com/rny3/brande/router:v0.0.5
+    image: registry.gitlab.com/rny3/brande/router:v0.0.6
     ports:
       - "80:80"
       - "443:443"
