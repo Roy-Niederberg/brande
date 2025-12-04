@@ -1,75 +1,74 @@
 http://craftkidstoys.mooo.com,
 http://drlipokatz.mooo.com {
+        # Just for the favicon
+        handle /favicon.ico {
+                root * /srv
+                file_server
+        }
 
-    # Just for the favicon
-	handle /favicon.ico {
-		root * /srv
-		file_server
-	}
+        # For the privacy.html, 404
+        # TODO: Do I need this?
+        handle /public/* {
+                uri strip_prefix /public
+                root * /srv
+                file_server
+        }
 
-    # For the privacy.html, 404
-    # TODO: Do I need this?
-	handle /public/* {
-		uri strip_prefix /public
-		root * /srv
-		file_server
-	}
+        # Just the widget
+        handle /widget/chat.js {
+                root * /srv
+                rewrite * /widget.js
+                file_server
+        }
 
-    # Just the widget
-	handle /widget/chat.js {
-		root * /srv
-		rewrite * /widget.js
-		file_server
-	}
+        # The widget api
+        handle /widget-api/* {
+                uri strip_prefix /widget-api
+                reverse_proxy {labels.2}-prompt-composer-1:4321
+        }
 
-    # The widget api
-	handle /widget-api/* {
-		uri strip_prefix /widget-api
-		reverse_proxy {labels.2}-prompt-composer-1:4321
-	}
+        # For the facebook signeup
+        # TODO: this is not working yet. Change the name 'signup' isn't good
+        handle /setup/* {
+                uri strip_prefix /setup
+                reverse_proxy {labels.2}-facebook_signup-1:8558
+        }
 
-    # For the facebook signeup
-    # TODO: this is not working yet. Change the name 'signup' isn't good
-	handle /setup/* {
-		uri strip_prefix /setup
-		reverse_proxy {labels.2}-facebook_signup-1:8558
-	}
+        # For the client home site
+        handle / {
+                root * /srv/{lables.2}
+                try_files {path} /index.html
+                file_server
+        }
 
-    # For the client home site
-	handle / {
-		root * /srv/{lables.2}
-		try_files {path} /index.html
-		file_server
-	}
-
-    # The admin site
-	handle {
-		reverse_proxy {labels.2}-admin-1:9876 {
-			@error status 404 5xx
-			handle_response @error {
-				root * /srv
-				rewrite * /404.html
-				file_server
-			}
-		}
-	}
+        # The admin site
+        handle {
+                reverse_proxy {labels.2}-admin-1:9876 {
+                        @error status 404 5xx
+                        handle_response @error {
+                                root * /srv
+                                rewrite * /404.html
+                                file_server
+                        }
+                }
+        }
 }
 
 # The facebook webhook, for all clients
 http://brandelicious-wh.mooo.com {
-	reverse_proxy facebook-dispatcher:3210
+        reverse_proxy facebook-dispatcher:3210
 }
 
 # This is just for the privacy for Facebook currently.
 http://brandelicious.mooo.com {
-	handle /favicon.ico {
-		root * /srv
-		file_server
-	}
+        handle /favicon.ico {
+                root * /srv
+                file_server
+        }
 
-	handle /public/* {
-		uri strip_prefix /public
-		root * /srv
-		file_server
-	}
+        handle /public/* {
+                uri strip_prefix /public
+                root * /srv
+                file_server
+        }
 }
