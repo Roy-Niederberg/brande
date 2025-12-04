@@ -31,9 +31,8 @@ passport.serializeUser((user, done) => done(null, user))
 passport.deserializeUser((user, done) => done(null, user))
 
 // Public routes
-app.get('/', (_, rs) => rs.sendFile('/app/public/landing.html'))
 app.get('/login/', passport.authenticate('google', { scope: ['profile', 'email'] }))
-app.get('/login/callback', passport.authenticate('google', { failureRedirect: '/' }), (_, rs) => rs.redirect('/chatQA'))
+app.get('/login/callback', passport.authenticate('google', { failureRedirect: '/admin/login/' }), (_, rs) => rs.redirect('/admin/chatQA'))
 
 // Protected routes
 app.get('/chatQA', isAuthorized, (_, rs) => rs.sendFile('/app/views/index.html'))

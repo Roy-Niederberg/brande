@@ -1,47 +1,7 @@
 http://craftkidstoys.mooo.com http://drlipokatz.mooo.com {
-	# Just for the favicon
-	handle /favicon.ico {
-		root * /srv
-		file_server
-	}
-
-	# For the privacy.html, 404
-	# TODO: Do I need this?
-	handle /public/* {
-		uri strip_prefix /public
-		root * /srv
-		file_server
-	}
-
-	# Just the widget
-	handle /widget/chat.js {
-		root * /srv
-		rewrite * /widget.js
-		file_server
-	}
-
-	# The widget api
-	handle /widget-api/* {
-		uri strip_prefix /widget-api
-		reverse_proxy {labels.2}-prompt-composer-1:4321
-	}
-
-	# For the facebook signeup
-	# TODO: this is not working yet. Change the name 'signup' isn't good
-	handle /setup/* {
-		uri strip_prefix /setup
-		reverse_proxy {labels.2}-facebook_signup-1:8558
-	}
-
-	# For the client home site
-	handle / {
-		root * /srv/{labels.2}
-		try_files {path} /index.html
-		file_server
-	}
-
-	# The admin site
-	handle {
+	# Admin service - single handler for all admin routes
+	handle /admin/* {
+		uri strip_prefix /admin
 		reverse_proxy {labels.2}-admin-1:9876 {
 			@error status 404 5xx
 			handle_response @error {
@@ -50,6 +10,31 @@ http://craftkidstoys.mooo.com http://drlipokatz.mooo.com {
 				file_server
 			}
 		}
+	}
+
+	# Facebook signup service
+	handle /setup/* {
+		uri strip_prefix /setup
+		reverse_proxy {labels.2}-facebook_signup-1:8558
+	}
+
+	# Widget API
+	handle /widget-api/* {
+		uri strip_prefix /widget-api
+		reverse_proxy {labels.2}-prompt-composer-1:4321
+	}
+
+	# Static files - unified handler for all client assets
+	handle {
+		root * /srv/{labels.2}
+
+		# Rewrite widget alias
+		@widget_alias path /widget/chat.js
+		rewrite @widget_alias /widget.js
+
+		# Try exact path, then path with /index.html, finally fallback to homepage
+		try_files {path} {path}/index.html /index.html
+		file_server
 	}
 }
 
@@ -60,14 +45,9 @@ http://brandelicious-wh.mooo.com {
 
 # This is just for the privacy for Facebook currently.
 http://brandelicious.mooo.com {
-	handle /favicon.ico {
+	handle {
 		root * /srv
-		file_server
-	}
-
-	handle /public/* {
-		uri strip_prefix /public
-		root * /srv
+		try_files {path} {path}/index.html
 		file_server
 	}
 }
