@@ -34,9 +34,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 // Load user information
 async function loadUserInfo() {
   try {
-    const response = await fetch('/api/user');
+    const response = await fetch('/admin/api/user');
     if (response.status === 401) { // Unauthorized
-      window.location.href = '/login';
+      window.location.href = '/admin/login/';
     }
     if (response.status === 403) { // Forbidden
       window.location.href = '/';
@@ -56,7 +56,7 @@ async function loadUserInfo() {
 // Load initial content from response-engine
 async function loadInitialContent() {
   try {
-    const response = await fetch('/api/initial-content');
+    const response = await fetch('/admin/api/initial-content');
     const data = await response.json();
 
     const instructionsEl = document.getElementById('instructionsEditor');
@@ -183,7 +183,7 @@ async function sendCustomerMessage() {
 
   console.log(JSON.stringify({ chatHistory: state.customerChat }))
   try {
-    const response = await fetch('/api/chat', {
+    const response = await fetch('/admin/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ chatHistory: state.customerChat })
@@ -268,7 +268,7 @@ async function saveInstructionsOnBlur() {
     editBtn.classList.remove('editing');
 
     try {
-      const response = await fetch('/api/instructions', {
+      const response = await fetch('/admin/api/instructions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ instructions: instructionsEl.value })
@@ -314,7 +314,7 @@ async function saveKnowledgeBaseOnBlur() {
     editBtn.classList.remove('editing');
 
     try {
-      const response = await fetch('/api/knowledge-base', {
+      const response = await fetch('/admin/api/knowledge-base', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ knowledgeBase: knowledgeBaseEl.value })
