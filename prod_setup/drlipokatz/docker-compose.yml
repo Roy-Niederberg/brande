@@ -9,7 +9,7 @@ services:
       - LLM=https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent
 
   admin:
-    image: registry.gitlab.com/rny3/brande/admin:latest
+    image: registry.gitlab.com/rny3/brande/admin:v0.0.1
     networks: [client_network]
     secrets: [google_strategy, session_config, authorized_emails]
     volumes: [admin_sessions:/app/sessions]
