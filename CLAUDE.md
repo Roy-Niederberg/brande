@@ -245,7 +245,36 @@ prod_setup/
 - Router can reach all client services for HTTP routing
 - No cross-client data leakage
 
-**Deployment order matters:**
+**Deployment Process:**
+
+1. **Make changes** to services in development
+2. **Commit changes** to git (on `dev` branch)
+3. **Create and push tags** for changed services:
+   ```bash
+   git tag <service_name>-v<version>  # e.g., router-v0.0.5, admin-v0.0.2
+   git push origin <service_name>-v<version>
+   ```
+4. **Wait for CI/CD** - GitLab CI automatically builds Docker images when tags are pushed (see `.gitlab-ci.yml`)
+   - Images are pushed to GitLab Container Registry: `registry.gitlab.com/rny3/brande/<service>:latest`
+5. **Sync prod_setup to server** using rsync:
+   ```bash
+   rsync -avz prod_setup/ user@server:/path/to/prod_setup/
+   ```
+6. **On the server**, pull new images and recreate containers:
+   ```bash
+   cd /path/to/prod_setup/<service_or_client>
+   docker compose pull
+   docker compose up -d --force-recreate
+   ```
+
+**Important Notes:**
+- Tags should be on `dev` branch (not `main`)
+- Production runs whatever is in `prod_setup/` directory
+- Docker images are tagged as `latest` by CI, so `docker compose pull` gets the newest build
+- Service-specific changes: tag and deploy only that service
+- Router changes: affects all clients, deploy from `prod_setup/router/`
+
+**Deployment order for initial setup:**
 ```bash
 # 1. Start client services first (creates networks)
 cd prod_setup/craftkidstoys && docker compose up -d
