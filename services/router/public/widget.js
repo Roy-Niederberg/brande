@@ -92,8 +92,18 @@
     @media (max-width: 768px) {
       #chat-widget {
         width: 100vw;
+        height: 100dvh;
         left: 0;
         right: 0;
+        overscroll-behavior: contain;
+        touch-action: pan-y;
+      }
+
+      body.chat-open {
+        overflow: hidden;
+        position: fixed;
+        width: 100%;
+        height: 100dvh;
       }
     }
     #chat-widget.hiding {
@@ -110,7 +120,12 @@
       padding: 0;
       box-shadow: -4px 0 20px rgba(0, 0, 0, 0.03);
       height: 100%;
-      height: 100dvh;
+    }
+
+    @media (max-width: 768px) {
+      #chat-box {
+        height: 100dvh;
+      }
     }
 
     #chat-header {
@@ -119,6 +134,13 @@
       gap: 10px;
       margin: 0;
       padding: 10px 20px 0;
+      flex-shrink: 0;
+    }
+
+    @media (max-width: 768px) {
+      #chat-header {
+        padding: max(10px, env(safe-area-inset-top)) 12px 0;
+      }
     }
 
     .chat-header-btn {
@@ -167,13 +189,21 @@
       flex-direction: column;
       gap: 12px;
       flex: 1;
-      overflow-y: scroll;
+      overflow-y: auto;
       overflow-x: hidden;
       padding: 20px;
       margin: 0;
       scroll-behavior: smooth;
       scrollbar-width: thin;
       scrollbar-color: rgba(0,0,0,0.1) transparent;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+    }
+
+    @media (max-width: 768px) {
+      #chat-messages {
+        padding: 12px;
+      }
     }
     #chat-messages::-webkit-scrollbar { width: 6px; }
     #chat-messages::-webkit-scrollbar-track { background: transparent; }
@@ -531,6 +561,7 @@
 
     minimizeBtn.onclick = () => {
       widget.classList.add('hiding');
+      document.body.classList.remove('chat-open');
       setTimeout(() => {
         widget.style.display = 'none';
         widget.classList.remove('hiding');
@@ -541,6 +572,7 @@
 
     closeBtn.onclick = () => {
       widget.classList.add('hiding');
+      document.body.classList.remove('chat-open');
       setTimeout(() => {
         messages.innerHTML = '';
         messages.appendChild(typingIndicator);
@@ -559,6 +591,9 @@
       setTimeout(() => {
         reopenBtn.style.display = 'none';
         widget.style.display = 'block';
+        if (window.innerWidth <= 768) {
+          document.body.classList.add('chat-open');
+        }
         setTimeout(() => input.focus(), 100);
       }, 300);
     };
