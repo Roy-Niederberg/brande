@@ -114,7 +114,7 @@
 
     .chat-header-btn {
       position: relative;
-      background: rgba(0,0,0,0.04);
+      background: rgba(0,0,0,0.60);
       border: none;
       width: 32px;
       height: 32px;
@@ -124,7 +124,7 @@
       align-items: center;
       justify-content: center;
       transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      color: #666;
+      color: #4fff;
       font-size: 18px;
       overflow: hidden;
     }
