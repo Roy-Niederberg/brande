@@ -530,5 +530,10 @@
         setTimeout(() => input.focus(), 100);
       }, 300);
     };
+
+    // Start minimized
+    widget.style.display = 'none';
+    reopenBtn.style.display = 'flex';
+    setTimeout(() => reopenBtn.classList.add('show'), 10);
   }, 1000);
 })();
