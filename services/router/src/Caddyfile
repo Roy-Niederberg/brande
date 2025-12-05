@@ -15,7 +15,7 @@ http://craftkidstoys.mooo.com http://drlipokatz.mooo.com {
 	# Facebook signup service
 	handle /setup/* {
 		uri strip_prefix /setup
-		reverse_proxy {labels.2}-facebook_signup-1:8558
+		reverse_proxy {labels.2}-facebook-signup-1:8558
 	}
 
 	# Widget API

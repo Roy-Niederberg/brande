@@ -26,6 +26,11 @@ services:
     secrets: [fb_page_access_token]
     environment: [FACEBOOK_API_URL=https://graph.facebook.com/v24.0/]
 
+  facebook-signup:
+    image: registry.gitlab.com/rny3/brande/facebook_signup:v0.0.1
+    networks: [client_network]
+    secrets: [fb_global_app_id, fb_global_app_secret]
+
 volumes:
   admin_sessions:
   prompt_log:
@@ -45,3 +50,7 @@ secrets:
     file: ./secrets/fb_page_access_token.secret
   authorized_emails:
     file: ./secrets/authorized_emails.json
+  fb_global_app_id:
+    file: ../router/secrets/fb_global_app_id.secret
+  fb_global_app_secret:
+    file: ../router/secrets/fb_global_app_secret.secret
