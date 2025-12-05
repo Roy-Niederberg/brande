@@ -88,6 +88,14 @@
       transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1), transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
       animation: slideInFromSide 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     }
+
+    @media (max-width: 768px) {
+      #chat-widget {
+        width: 100vw;
+        left: 0;
+        right: 0;
+      }
+    }
     #chat-widget.hiding {
       animation: slideOutToSide 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
     }
@@ -96,12 +104,13 @@
       display: flex;
       flex-direction: column;
       gap: 0;
-      background: transparent;
-      backdrop-filter: none;
-      border-radius: 0;
+      backdrop-filter: blur(2px) saturate(180%);
+      -webkit-backdrop-filter: blur(2px) saturate(180%);
+      background-color: rgba(0, 0, 0, 0.2);
       padding: 0;
-      box-shadow: none;
+      box-shadow: -4px 0 20px rgba(0, 0, 0, 0.03);
       height: 100%;
+      height: 100dvh;
     }
 
     #chat-header {
@@ -173,7 +182,8 @@
 
     .chat-msg {
       padding: 14px 18px;
-      border-radius: 18px;
+      padding-bottom: 24px;
+      border-radius: 8px;
       max-width: 80%;
       word-wrap: break-word;
       position: relative;
@@ -183,6 +193,15 @@
       opacity: 0;
       animation: slideInUp 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards;
       will-change: transform, opacity;
+    }
+
+    .chat-timestamp {
+      position: absolute;
+      bottom: 4px;
+      ${isRTL ? 'left: 12px;' : 'right: 12px;'}
+      font-size: 10px;
+      opacity: 0.5;
+      pointer-events: none;
     }
 
     .chat-msg.user {
@@ -249,7 +268,15 @@
       gap: 10px;
       position: relative;
       padding: 20px;
+      flex-shrink: 0;
       ${isRTL ? 'direction: rtl;' : ''}
+    }
+
+    @media (max-width: 768px) {
+      #chat-input-area {
+        padding: 12px;
+        padding-bottom: max(12px, env(safe-area-inset-bottom));
+      }
     }
 
     #chat-input {
@@ -258,7 +285,7 @@
       border: 2px solid rgba(0,0,0,0.08);
       border-radius: 24px;
       outline: none;
-      font-size: 15px;
+      font-size: 16px;
       background: #ffffff;
       box-shadow: 0 2px 8px rgba(0,0,0,0.04);
       pointer-events: auto;
@@ -316,10 +343,7 @@
       transition: width 0s, height 0s;
     }
     #chat-send:disabled {
-      background: linear-gradient(135deg, #cbd5e0 0%, #a0aec0 100%);
       cursor: not-allowed;
-      transform: none;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
 
     #chat-reopen {
@@ -410,6 +434,13 @@
       msg.style.animationDelay = `${messageCount * 0.05}s`;
       messageCount++;
 
+      const now = new Date();
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      const timestamp = document.createElement('span');
+      timestamp.className = 'chat-timestamp';
+      timestamp.textContent = `${hours}:${minutes}`;
+
       const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
       svg.setAttribute('class', `chat-tail ${role}`);
       svg.setAttribute('viewBox', '0 0 12 12');
@@ -430,6 +461,7 @@
 
       svg.appendChild(path);
       msg.appendChild(svg);
+      msg.appendChild(timestamp);
       messages.appendChild(msg);
 
       // Smooth scroll to new message
@@ -530,6 +562,13 @@
         setTimeout(() => input.focus(), 100);
       }, 300);
     };
+
+    // Minimize when clicking outside the widget
+    document.addEventListener('click', (e) => {
+      if (widget.style.display !== 'none' && !widget.contains(e.target) && e.target !== reopenBtn) {
+        minimizeBtn.click();
+      }
+    });
 
     // Start minimized
     widget.style.display = 'none';
