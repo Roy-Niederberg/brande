@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CraftKids Toys - AI-Powered Customer Engagement</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', sans-serif;
+      background-color: #f9fafb;
+      color: #111827;
+      line-height: 1.6;
+    }
+
+    /* Language Toggle */
+    .lang-toggle {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      z-index: 1000;
+    }
+
+    [dir="rtl"] .lang-toggle {
+      right: auto;
+      left: 16px;
+    }
+
+    .lang-btn {
+      padding: 8px 16px;
+      font-size: 16px;
+      font-weight: 500;
+      background-color: white;
+      color: #374151;
+      border: 2px solid #d1d5db;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    }
+
+    .lang-btn:hover {
+      border-color: #ea580c;
+      background-color: #fff7ed;
+    }
+
+    .lang-btn:active {
+      background-color: #ffedd5;
+    }
+
+    .lang-btn:focus {
+      outline: none;
+      box-shadow: 0 0 0 2px white, 0 0 0 4px #ea580c;
+    }
+
+    /* Hero Section */
+    .hero {
+      background: white;
+      border-bottom: 1px solid #e5e7eb;
+      padding: 96px 24px;
+    }
+
+    .hero-content {
+      max-width: 896px;
+      margin: 0 auto;
+      text-align: center;
+    }
+
+    .hero h1 {
+      font-size: 36px;
+      font-weight: 700;
+      color: #111827;
+      margin-bottom: 16px;
+      line-height: 1.2;
+    }
+
+    .hero .subtitle {
+      font-size: 20px;
+      color: #6b7280;
+      margin-bottom: 48px;
+      line-height: 1.5;
+    }
+
+    .cta-buttons {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    /* Buttons */
+    .btn {
+      padding: 12px 24px;
+      font-size: 16px;
+      font-weight: 500;
+      border-radius: 8px;
+      text-decoration: none;
+      display: inline-block;
+      transition: all 0.2s ease;
+      cursor: pointer;
+      border: none;
+    }
+
+    .btn-primary {
+      background-color: #ea580c;
+      color: white;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    }
+
+    .btn-primary:hover {
+      background-color: #c2410c;
+    }
+
+    .btn-primary:active {
+      background-color: #9a3412;
+    }
+
+    .btn-primary:focus {
+      outline: none;
+      box-shadow: 0 0 0 2px white, 0 0 0 4px #ea580c;
+    }
+
+    .btn-secondary {
+      background-color: white;
+      color: #374151;
+      border: 2px solid #d1d5db;
+    }
+
+    .btn-secondary:hover {
+      border-color: #9ca3af;
+      background-color: #f9fafb;
+    }
+
+    .btn-secondary:active {
+      background-color: #f3f4f6;
+    }
+
+    .btn-secondary:focus {
+      outline: none;
+      box-shadow: 0 0 0 2px white, 0 0 0 4px #ea580c;
+    }
+
+    /* Features Section */
+    .features {
+      padding: 64px 24px;
+      background-color: white;
+    }
+
+    .features-content {
+      max-width: 1152px;
+      margin: 0 auto;
+    }
+
+    .section-title {
+      font-size: 30px;
+      font-weight: 700;
+      color: #111827;
+      text-align: center;
+      margin-bottom: 48px;
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 24px;
+    }
+
+    .feature-card {
+      background-color: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 24px;
+      transition: box-shadow 0.2s ease;
+    }
+
+    .feature-card:hover {
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    }
+
+    .feature-icon {
+      width: 48px;
+      height: 48px;
+      background-color: #fed7aa;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 16px;
+      font-size: 24px;
+    }
+
+    .feature-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: #111827;
+      margin-bottom: 8px;
+    }
+
+    .feature-description {
+      font-size: 16px;
+      color: #6b7280;
+      line-height: 1.5;
+    }
+
+    /* Footer */
+    .footer {
+      background-color: #f9fafb;
+      padding: 32px 24px;
+      text-align: center;
+      border-top: 1px solid #e5e7eb;
+    }
+
+    .footer-text {
+      font-size: 14px;
+      color: #6b7280;
+    }
+
+    .footer-brand {
+      color: #ea580c;
+      font-weight: 600;
+    }
+
+    /* Responsive Design */
+    @media (min-width: 768px) {
+      .hero {
+        padding: 96px 24px;
+      }
+
+      .hero h1 {
+        font-size: 48px;
+      }
+
+      .hero .subtitle {
+        font-size: 24px;
+      }
+
+      .features-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 32px;
+      }
+
+      .btn {
+        padding: 12px 32px;
+      }
+
+      .lang-toggle {
+        top: 24px;
+        right: 24px;
+      }
+
+      [dir="rtl"] .lang-toggle {
+        right: auto;
+        left: 24px;
+      }
+    }
+
+    @media (min-width: 1024px) {
+      .hero {
+        padding: 128px 32px;
+      }
+
+      .hero h1 {
+        font-size: 60px;
+      }
+
+      .features-grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Language Toggle -->
+  <div class="lang-toggle">
+    <button class="lang-btn" id="langToggle" onclick="toggleLanguage()">
+      <span data-lang="he">En</span>
+      <span data-lang="en">עב</span>
+    </button>
+  </div>
+
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="hero-content">
+      <h1>
+        <span data-lang="he">CraftKids Toys + Brandelicious</span>
+        <span data-lang="en">CraftKids Toys + Brandelicious</span>
+      </h1>
+      <p class="subtitle">
+        <span data-lang="he">מערכת AI לניהול לקוחות שהופכת אינטראקציות חברתיות לצמיחה אוטומטית של המותג</span>
+        <span data-lang="en">AI-powered customer engagement that turns social interactions into automated brand growth</span>
+      </p>
+      <div class="cta-buttons">
+        <a href="/admin/login/" class="btn btn-primary">
+          <span data-lang="he">כניסה למערכת ניהול</span>
+          <span data-lang="en">Access Admin Dashboard</span>
+        </a>
+        <a href="/setup/" class="btn btn-secondary">
+          <span data-lang="he">חיבור עמוד פייסבוק</span>
+          <span data-lang="en">Connect Facebook Page</span>
+        </a>
+        <a href="/demo/" class="btn btn-secondary">
+          <span data-lang="he">דמו של ווידג'ט</span>
+          <span data-lang="en">Widget Demo</span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features Section -->
+  <section class="features">
+    <div class="features-content">
+      <h2 class="section-title">
+        <span data-lang="he">ניהול אוטומטי של רשתות חברתיות</span>
+        <span data-lang="en">Automated Social Media Management</span>
+      </h2>
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon">💬</div>
+          <h3 class="feature-title">
+            <span data-lang="he">מענה מיידי</span>
+            <span data-lang="en">Instant Responses</span>
+          </h3>
+          <p class="feature-description">
+            <span data-lang="he">המערכת עונה אוטומטית לתגובות והודעות בעמוד הפייסבוק שלך עם תשובות הולמות ומותאמות למותג</span>
+            <span data-lang="en">AI automatically replies to comments and messages on your Facebook page with contextual, brand-aligned responses.</span>
+          </p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">🎯</div>
+          <h3 class="feature-title">
+            <span data-lang="he">עקביות במיתוג</span>
+            <span data-lang="en">Brand Consistency</span>
+          </h3>
+          <p class="feature-description">
+            <span data-lang="he">מאגר ידע מותאם אישית מבטיח שכל תשובה תואמת את קול המותג ומידע על המוצרים</span>
+            <span data-lang="en">Customized knowledge base ensures every response matches your brand voice and product information.</span>
+          </p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">📊</div>
+          <h3 class="feature-title">
+            <span data-lang="he">ניהול פשוט</span>
+            <span data-lang="en">Easy Management</span>
+          </h3>
+          <p class="feature-description">
+            <span data-lang="he">לוח בקרה פשוט למעקב אחר שיחות, עדכון הוראות ושיפור תשובות AI בזמן אמת</span>
+            <span data-lang="en">Simple admin dashboard to monitor conversations, update instructions, and refine AI responses in real-time.</span>
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <p class="footer-text">
+      <span data-lang="he">מופעל על ידי <span class="footer-brand">Brandelicious</span></span>
+      <span data-lang="en">Powered by <span class="footer-brand">Brandelicious</span></span>
+    </p>
+  </footer>
+
+  <script>
+    // Language state
+    let currentLang = 'he'; // Hebrew is default
+
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', () => {
+      // Check if user has a saved preference
+      const savedLang = localStorage.getItem('craftkidstoys-lang');
+      if (savedLang) {
+        currentLang = savedLang;
+      }
+      updateLanguage();
+    });
+
+    // Toggle language function
+    function toggleLanguage() {
+      currentLang = currentLang === 'he' ? 'en' : 'he';
+      localStorage.setItem('craftkidstoys-lang', currentLang);
+      updateLanguage();
+    }
+
+    // Update all text and direction
+    function updateLanguage() {
+      const html = document.documentElement;
+
+      // Set language and direction
+      html.lang = currentLang;
+      html.dir = currentLang === 'he' ? 'rtl' : 'ltr';
+
+      // Show/hide appropriate language elements
+      document.querySelectorAll('[data-lang]').forEach(el => {
+        if (el.getAttribute('data-lang') === currentLang) {
+          el.style.display = '';
+        } else {
+          el.style.display = 'none';
+        }
+      });
+    }
+  </script>
+</body>
+</html>
