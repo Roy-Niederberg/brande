@@ -6,7 +6,7 @@ services:
     secrets: [llm_api_key]
     volumes: [./data/:/app/data, prompt_log:/app/prompt_log]
     environment:
-      - LLM=https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent
+      - LLM=https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent
 
   admin:
     image: registry.gitlab.com/rny3/brande/admin:v0.0.2
