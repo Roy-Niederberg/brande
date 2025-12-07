@@ -1,7 +1,7 @@
 services:
 
   prompt-composer:
-    image: registry.gitlab.com/rny3/brande/prompt_composer:v0.0.2
+    image: registry.gitlab.com/rny3/brande/prompt_composer:v0.0.3
     networks: [client_network]
     secrets: [llm_api_key]
     volumes: [./data/:/app/data, prompt_log:/app/prompt_log]

@@ -46,7 +46,7 @@ app.r('post', '/ask', async ({ body }, rs) => {
   data.contents[0].parts[0].text = [role, instructions, knowledge_base, query, response_guidelines].join('').trim()
   write('prompt_log', `prompt_${Date.now()}`, data.contents[0].parts[0].text)
   const answer = await axios.post(`${url}?key=${llm_api_key}`, data, cfg)
-  write('prompt_log', `answer_${Date.now()}`, answer)
+  write('prompt_log', `answer_${Date.now()}`, JSON.stringify(answer))
   rs.send(answer.data.candidates[0].content.parts[0].text)
 })
 
