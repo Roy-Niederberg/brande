@@ -1,0 +1,78 @@
+services:
+
+  caddy:
+    build: {context: ../../services/router/, target: development}
+    ports:  ["3000:80", "3443:443", "3443:443/udp"]
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - ../../services/router/public:/srv
+      - caddy_data:/data
+      - caddy_config:/config
+
+  prompt-composer:
+    build: {context: ../../services/prompt_composer/, target: development}
+    environment: [LLM=http://mock-llm:3011]
+    depends_on: [mock-llm]
+    volumes: 
+      - ../../services/prompt_composer/src:/app/src 
+      - ./data/:/app/data 
+      - prompt_log:/app/prompt_log
+    secrets: [llm_api_key]
+
+  admin:
+    build: {context: ../../services/admin/, target: development }
+    secrets: [google_strategy, session_config, authorized_emails]
+    depends_on: [prompt-composer]
+    volumes:
+      - ../../services/admin/src/:/app/src/
+      - ../../services/admin/src/views:/app/views
+      - admin_sessions:/app/sessions
+
+  # facebook-comments-808626769002262:
+  #   image: registry.gitlab.com/rny3/brande/facebook_comments:latest
+  #   networks: [client_network]
+  #   secrets: [fb_page_access_token]
+  #   environment: [FACEBOOK_API_URL=https://graph.facebook.com/v24.0/]
+  #
+  # facebook-dm-808626769002262:
+  #   image: registry.gitlab.com/rny3/brande/facebook_dm:latest
+  #   networks: [client_network]
+  #   secrets: [fb_page_access_token]
+  #   environment: [FACEBOOK_API_URL=https://graph.facebook.com/v24.0/]
+  #
+  # facebook-signup:
+  #   image: registry.gitlab.com/rny3/brande/facebook_signup:v0.0.1
+  #   networks: [client_network]
+  #   secrets: [fb_global_app_id, fb_global_app_secret]
+
+# Mock Services for Development
+  mock-llm:
+    image: node:22-alpine
+    stop_grace_period: 0s
+    command:
+      - node
+      - -e
+      - |
+        require('http').createServer((req, res) => {
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({candidates:[{content:{parts:[{text: 'This is the mock response'}]}}]}));
+        }).listen(3011);
+
+volumes:
+  admin_sessions:
+  prompt_log:
+  caddy_data:
+  caddy_config:
+
+secrets:
+
+  # for services
+  google_strategy:      {file: ./secrets/google_strategy.secret}
+  session_config:       {file: ./secrets/session_config.secret}
+  authorized_emails:    {file: ./secrets/authorized_emails.json}
+  # fb_page_access_token: {file: ./secrets/fb_page_access_token.secret}
+  llm_api_key:          {file: ./secrets/llm_api_key.secret}
+
+  # for the router
+  # fb_global_app_id:     {file: ../router/secrets/fb_global_app_id.secret}
+  # fb_global_app_secret: {file: ../router/secrets/fb_global_app_secret.secret}

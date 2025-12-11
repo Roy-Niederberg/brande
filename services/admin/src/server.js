@@ -4,7 +4,7 @@ const session = require('express-session')
 const FileStore = require('session-file-store')(session)
 const passport = require('passport')
 const GoogleStrategy = require('passport-google-oauth20').Strategy
-const axios = require('axios').create({ baseURL: 'http://prompt-composer:4321' })
+const PROMPT_COMPOSER_URL = 'http://prompt-composer:4321'
 
 const app = express()
 app.set('trust proxy', true)
@@ -46,10 +46,10 @@ app.get('/api/user', checkSession, (rq, rs) =>
 app.get('/api/initial-content', checkSession, async (_rq, rs) => {
   try {
     const [instructionsRes, knowledgeBaseRes] = await Promise.all([
-      axios.get('/prompt-instructions', { timeout: 10000 }),
-      axios.get('/knowledge-base', { timeout: 10000 })
+      fetch(`${PROMPT_COMPOSER_URL}/prompt-instructions`),
+      fetch(`${PROMPT_COMPOSER_URL}/knowledge-base`)
     ])
-    rs.json({ instructions: instructionsRes.data, knowledgeBase: knowledgeBaseRes.data })
+    rs.json({ instructions: await instructionsRes.text(), knowledgeBase: await knowledgeBaseRes.text() })
   } catch (error) {
     console.error(`[${new Date().toISOString()}] Error fetching initial content:`, error.message)
     rs.json({ instructions: '', knowledgeBase: '', error: 'Could not fetch initial content from response-engine' })
@@ -59,15 +59,14 @@ app.get('/api/initial-content', checkSession, async (_rq, rs) => {
 app.post('/api/chat', checkSession, async (rq, rs) => {
   try {
     const { chatHistory } = rq.body
-    if (!chatHistory || !Array.isArray(chatHistory)) return rs.status(400)
-    const chat_meta_data = `# CHAT METADATA:\nadmin user interface. This chat is like a direct messaging app (WhatsApp, Telegram...). The chat is private and between you and a single customer. The customer name from his login is ${rq.user?.displayName}\n\n# CHAT:\n`
+    if (!chatHistory || !Array.isArray(chatHistory)) return rs.status(400).send()
     const query = chatHistory.map(msg => `${msg.sender === 'user' ? '<<<USER>>>: ' : '<<<ASSISTANT>>>: '}${msg.text}`).join('\n')
-    const complete_query = chat_meta_data + query + '\n\n'
-
     console.log(`[${new Date().toISOString()}] Customer chat request - messages: ${chatHistory.length}`)
-    const response = await axios.get('/ask', { params: { query: complete_query }, timeout: 30000 })
-    const responseText = typeof response.data === 'object' && response.data.response ? response.data.response : (typeof response.data === 'string' ? response.data : JSON.stringify(response.data))
-
+    const response = await fetch(`${PROMPT_COMPOSER_URL}/ask`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ module: 'admin_ui', chat_data: { query } })
+    })
+    const responseText = await response.text()
     rs.json({ response: responseText, timestamp: new Date().toISOString() })
   } catch (error) {
     console.error(`[${new Date().toISOString()}] Customer chat error:`, error.message)
@@ -79,7 +78,10 @@ app.post('/api/instructions', checkSession, async (rq, rs) => {
   try {
     const { instructions } = rq.body
     if (!instructions) return rs.status(400).json({ error: 'Instructions required' })
-    await axios.post('/instructions', instructions, { headers: { 'Content-Type': 'text/plain' }, timeout: 10000 })
+    await fetch(`${PROMPT_COMPOSER_URL}/instructions`, {
+      method: 'POST', headers: { 'Content-Type': 'text/plain' },
+      body: instructions
+    })
     rs.json({ success: true })
   } catch (error) {
     console.error(`[${new Date().toISOString()}] Update instructions error:`, error.message)
@@ -91,7 +93,10 @@ app.post('/api/knowledge-base', checkSession, async (rq, rs) => {
   try {
     const { knowledgeBase } = rq.body
     if (!knowledgeBase) return rs.status(400).json({ error: 'Knowledge base required' })
-    await axios.post('/knowledge-base', knowledgeBase, { headers: { 'Content-Type': 'text/plain' }, timeout: 10000 })
+    await fetch(`${PROMPT_COMPOSER_URL}/knowledge-base`, {
+      method: 'POST', headers: { 'Content-Type': 'text/plain' },
+      body: knowledgeBase
+    })
     rs.json({ success: true })
   } catch (error) {
     console.error(`[${new Date().toISOString()}] Update knowledge base error:`, error.message)

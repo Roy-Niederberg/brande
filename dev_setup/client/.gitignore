@@ -1,0 +1,4 @@
+!Caddyfile
+!data/*.js
+!data/*.txt
+!data/*.json

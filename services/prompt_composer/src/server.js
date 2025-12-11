@@ -36,11 +36,6 @@ const { data, cfg } = JSON.parse(read('llm_config','json'))
 // =============== Endpoints =========================================================================================//
 // In this section the server should keep running and give the best answer it can. ===================================//
 
-app.r('get', '/ask', async ({ query: { query } }, rs) => {
-  data.contents[0].parts[0].text = [role, instructions, knowledge_base, query, response_guidelines].join('').trim()
-  write('prompt_log', Date.now(), data.contents[0].parts[0].text)
-  rs.send((await axios.post(`${url}?key=${llm_api_key}`, data, cfg)).data.candidates[0].content.parts[0].text)
-})
 app.r('post', '/ask', async ({ body }, rs) => {
   const query = query_builders[body.module](body.chat_data)
   data.contents[0].parts[0].text = [role, instructions, knowledge_base, query, response_guidelines].join('').trim()
