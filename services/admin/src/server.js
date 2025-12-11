@@ -65,7 +65,9 @@ app.post('/api/chat', checkSession, async (rq, rs) => {
     const complete_query = chat_meta_data + query + '\n\n'
 
     console.log(`[${new Date().toISOString()}] Customer chat request - messages: ${chatHistory.length}`)
+
     const response = await axios.get('/ask', { params: { query: complete_query }, timeout: 30000 })
+
     const responseText = typeof response.data === 'object' && response.data.response ? response.data.response : (typeof response.data === 'string' ? response.data : JSON.stringify(response.data))
 
     rs.json({ response: responseText, timestamp: new Date().toISOString() })

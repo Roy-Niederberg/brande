@@ -1,7 +1,7 @@
 import fs from 'fs'
 import express from 'express'
-import axios from 'axios'
 import rateLimit from 'express-rate-limit'
+import * as llm_manager from './llm_manager.js'
 import facebook_comments from '../data/fb_comments_query_builder.js'
 import facebook_messages from '../data/fb_messages_query_builder.js'
 import admin_ui from '../data/admin_query_builder.js'
@@ -29,25 +29,22 @@ let instructions = read('instructions')
 let knowledge_base = read('knowledge_base')
 const role = read('role')
 const response_guidelines = read('response_guidelines')
-const llm_api_key = read_scrt('llm_api_key')
-const url = process.env.LLM
-const { data, cfg } = JSON.parse(read('llm_config','json'))
 
 // =============== Endpoints =========================================================================================//
 // In this section the server should keep running and give the best answer it can. ===================================//
 
 app.r('get', '/ask', async ({ query: { query } }, rs) => {
-  data.contents[0].parts[0].text = [role, instructions, knowledge_base, query, response_guidelines].join('').trim()
-  write('prompt_log', Date.now(), data.contents[0].parts[0].text)
-  rs.send((await axios.post(`${url}?key=${llm_api_key}`, data, cfg)).data.candidates[0].content.parts[0].text)
+  const prompt = [role, instructions, knowledge_base, query, response_guidelines].join('').trim()
+  write('prompt_log', Date.now(), prompt)
+  rs.send(await llm_manager.generate(prompt))
 })
 app.r('post', '/ask', async ({ body }, rs) => {
   const query = query_builders[body.module](body.chat_data)
-  data.contents[0].parts[0].text = [role, instructions, knowledge_base, query, response_guidelines].join('').trim()
-  write('prompt_log', `prompt_${Date.now()}`, data.contents[0].parts[0].text)
-  const answer = await axios.post(`${url}?key=${llm_api_key}`, data, cfg)
-  write('prompt_log', `answer_${Date.now()}`, JSON.stringify(answer.data))
-  rs.send(answer.data.candidates[0].content.parts[0].text)
+  const prompt = [role, instructions, knowledge_base, query, response_guidelines].join('').trim()
+  write('prompt_log', `prompt_${Date.now()}`, prompt)
+  const answer = await llm_manager.generate(prompt)
+  write('prompt_log', `answer_${Date.now()}`, answer)
+  rs.send(answer)
 })
 
 app.r('get', '/knowledge-base',

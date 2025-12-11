@@ -5,12 +5,8 @@ services:
       target: development
     ports:
       - "3000:4321"
-    environment:
-      - LLM=http://mock-llm:3001  # comment this if you want to work with real LLM
-    depends_on:
-      - mock-llm
     secrets:
-      - llm_api_key
+      - gemini_api_key
     volumes:
       - ./mock_shared_data:/app/data
       - ../src:/app/src
@@ -44,5 +40,5 @@ volumes:
   nodemon-cache:
 
 secrets:
-  llm_api_key:
-    file: ./secrets/llm_api_key
+  gemini_api_key:
+    file: ./secrets/gemini_api_key
