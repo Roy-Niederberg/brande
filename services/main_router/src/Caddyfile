@@ -1,0 +1,9 @@
+# This is just for the privacy for Facebook currently.
+http://localhost,
+http://brandelicious.mooo.com {
+	handle {
+		root * /srv
+		try_files {path} {path}/index.html
+		file_server
+	}
+}

@@ -1,0 +1,17 @@
+services:
+  caddy:
+    image: caddy:2.10.2-alpine
+    container_name: router
+    ports:
+      - "3000:80"
+      - "443:443"
+      - "443:443/udp"  # HTTP/3
+    volumes:
+      - ../src/Caddyfile:/etc/caddy/Caddyfile
+      - ../public:/srv
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  caddy_data:
+  caddy_config:
