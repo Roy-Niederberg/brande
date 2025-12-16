@@ -1,0 +1,21 @@
+{
+  "request": {
+    "method": "POST",
+    "urlPattern": "/openai/v1/chat/completions.*"
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "choices": [
+        {
+          "message": {
+            "content": "Groq answer"
+          }
+        }
+      ]
+    }
+  }
+}
