@@ -1,5 +1,16 @@
 services:
 
+  wiremock:
+    image: wiremock/wiremock:latest
+    command: --https-port 443 --verbose
+    volumes:
+      - ./wiremock/mappings:/home/wiremock/mappings
+    networks:
+      default:
+        aliases:
+          - generativelanguage.googleapis.com
+          - api.groq.com
+
   caddy:
     build: {context: ../../services/router/, target: development}
     ports:  ["3000:80", "3443:443", "3443:443/udp"]
@@ -11,13 +22,12 @@ services:
 
   prompt-composer:
     build: {context: ../../services/prompt_composer/, target: development}
-    environment: [LLM=http://mock-llm:3011]
-    depends_on: [mock-llm]
-    volumes: 
-      - ../../services/prompt_composer/src:/app/src 
-      - ./data/:/app/data 
+    environment: [NODE_TLS_REJECT_UNAUTHORIZED=0]
+    volumes:
+      - ../../services/prompt_composer/src:/app/src
+      - ./data/:/app/data
       - prompt_log:/app/prompt_log
-    secrets: [llm_api_key]
+    secrets: [gemini_key_1, gemini_key_2, groq_key_1, groq_key_2]
 
   admin:
     build: {context: ../../services/admin/, target: development }
@@ -33,30 +43,17 @@ services:
   #   networks: [client_network]
   #   secrets: [fb_page_access_token]
   #   environment: [FACEBOOK_API_URL=https://graph.facebook.com/v24.0/]
-  #
+
   # facebook-dm-808626769002262:
   #   image: registry.gitlab.com/rny3/brande/facebook_dm:latest
   #   networks: [client_network]
   #   secrets: [fb_page_access_token]
   #   environment: [FACEBOOK_API_URL=https://graph.facebook.com/v24.0/]
-  #
+
   # facebook-signup:
   #   image: registry.gitlab.com/rny3/brande/facebook_signup:v0.0.1
   #   networks: [client_network]
   #   secrets: [fb_global_app_id, fb_global_app_secret]
-
-# Mock Services for Development
-  mock-llm:
-    image: node:22-alpine
-    stop_grace_period: 0s
-    command:
-      - node
-      - -e
-      - |
-        require('http').createServer((req, res) => {
-          res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({candidates:[{content:{parts:[{text: 'This is the mock response'}]}}]}));
-        }).listen(3011);
 
 volumes:
   admin_sessions:
@@ -67,11 +64,14 @@ volumes:
 secrets:
 
   # for services
-  google_strategy:      {file: ./secrets/google_strategy.secret}
-  session_config:       {file: ./secrets/session_config.secret}
-  authorized_emails:    {file: ./secrets/authorized_emails.json}
+  google_strategy:   {file: ./secrets/google_strategy.secret}
+  session_config:    {file: ./secrets/session_config.secret}
+  authorized_emails: {file: ./secrets/authorized_emails.json}
+  gemini_key_1:      {file: ./secrets/gemini_key_1.secret}
+  gemini_key_2:      {file: ./secrets/gemini_key_2.secret}
+  groq_key_1:          {file: ./secrets/groq_key_1.secret}
+  groq_key_2:          {file: ./secrets/groq_key_2.secret}
   # fb_page_access_token: {file: ./secrets/fb_page_access_token.secret}
-  llm_api_key:          {file: ./secrets/llm_api_key.secret}
 
   # for the router
   # fb_global_app_id:     {file: ../router/secrets/fb_global_app_id.secret}

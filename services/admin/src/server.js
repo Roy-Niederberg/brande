@@ -40,7 +40,7 @@ app.get('/style.css', isAuthorized, (_, rs) => rs.sendFile('/app/views/style.css
 app.get('/script.js', isAuthorized, (_, rs) => rs.sendFile('/app/views/script.js'))
 
 // API routes
-app.get('/api/user', checkSession, (rq, rs) => 
+app.get('/api/user', checkSession, (rq, rs) =>
   rs.json({ email: rq.user.email, name: rq.user.displayName, picture: rq.user.picture }))
 
 app.get('/api/initial-content', checkSession, async (_rq, rs) => {
@@ -60,11 +60,15 @@ app.post('/api/chat', checkSession, async (rq, rs) => {
   try {
     const { chatHistory } = rq.body
     if (!chatHistory || !Array.isArray(chatHistory)) return rs.status(400).send()
-    const query = chatHistory.map(msg => `${msg.sender === 'user' ? '<<<USER>>>: ' : '<<<ASSISTANT>>>: '}${msg.text}`).join('\n')
+    const chat_data = {
+      chat_history: chatHistory.map(msg =>
+        `${msg.sender === 'user' ? '<<<USER>>>: ' : '<<<ASSISTANT>>>: '}${msg.text}`).join('\n'),
+      user_display_name: rq.user.displayName,
+    }
     console.log(`[${new Date().toISOString()}] Customer chat request - messages: ${chatHistory.length}`)
     const response = await fetch(`${PROMPT_COMPOSER_URL}/ask`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ module: 'admin_ui', chat_data: { query } })
+      body: JSON.stringify({ module: 'admin_ui', chat_data })
     })
     const responseText = await response.text()
     rs.json({ response: responseText, timestamp: new Date().toISOString() })
