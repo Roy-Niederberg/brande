@@ -9,7 +9,7 @@ const read_scrt = name => fs.readFileSync(`/run/secrets/${name}`, 'utf-8').trim(
 const LOG = (num, e) => { console.log(`🚨 ERROR ${num} 🚨 : ${e}`); return true }
 
 // Serve static files (html, css, js) from the 'public' directory
-app.use(express.static('public'));
+app.use('/facebook-page-signup', express.static('public'));
 
 // =============== Server Loading section ============================================================================//
 // In this section the server should fail in case of error and not startup. ==========================================//
@@ -22,7 +22,7 @@ app_secret.length > 0 || LOG(0, 'App Secret Token is empty.')
 // =============== Endpoints =========================================================================================//
 // In this section the server should keep running and give the best answer it can. ===================================//
 //
-app.post('/api/get-permanent-tokens', async (req, res) => {
+app.post('/facebook-page-signup/api/get-permanent-tokens', async (req, res) => {
     const { shortLivedToken } = req.body;
 
     if (!shortLivedToken) {
