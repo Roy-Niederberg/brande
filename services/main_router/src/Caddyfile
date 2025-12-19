@@ -1,7 +1,7 @@
 http://localhost,
 http://qabu.mooo.com,
 http://brandelicious.mooo.com {
-	handle_path /facebook-page-signup/* {
+	handle /facebook-page-signup/* {
 		reverse_proxy facebook-signup:8558
 	}
 

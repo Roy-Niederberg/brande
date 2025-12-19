@@ -65,7 +65,7 @@
 
         async function getPermanentTokens(token) {
             try {
-                const response = await fetch('/api/get-permanent-tokens', {
+                const response = await fetch('/facebook-page-signup/api/get-permanent-tokens', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ shortLivedToken: token })
