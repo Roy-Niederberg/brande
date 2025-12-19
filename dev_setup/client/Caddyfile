@@ -12,6 +12,18 @@ http://localhost {
 		}
 	}
 
+	# Widget API
+	handle /widget-api/* {
+		uri strip_prefix /widget-api
+		reverse_proxy prompt-composer:4321
+	}
+
+	# Widget script - served from /srv root
+	handle /widget.js {
+		root * /srv
+		file_server
+	}
+
 	# Static files - unified handler for all client assets
 	handle {
 		root * /srv/
