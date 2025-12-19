@@ -1,0 +1,9 @@
+http://localhost,
+http://qabu.mooo.com,
+http://brandelicious.mooo.com {
+	handle {
+		root * /srv
+		try_files {path} {path}/index.html
+		file_server
+	}
+}

@@ -1,0 +1,14 @@
+services:
+  router:
+    image: registry.gitlab.com/rny3/brande/main_router:v0.0.1
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"  # HTTP/3
+    volumes:
+      - router_data:/data
+      - router_config:/config
+
+volumes:
+  router_data:
+  router_config:
