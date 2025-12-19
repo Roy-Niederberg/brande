@@ -3,38 +3,182 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Branbelicious</title>
-    <style>
-        *           { margin: 0; padding: 0; box-sizing: border-box; }
-        body, html  { width: 100%; height: 100%; overflow: hidden; }
-        .container  { width: 100%; height: 100vh; height: 100dvh; display: flex; }
-        .bg-section { flex: 1; background-image: url("/pexels-martinskrastins-838981.jpg");
-            background-size: cover; background-position: center; display: flex;
-            align-items: center; justify-content: center; position: relative;
-        }
-        .content { flex: 1; display: flex; align-items: center; justify-content: center; }
-
-        /* Mobile layout - stacked with transparent overlay */
-        @media (max-width: 768px) {
-            .container { flex-direction: column; position: relative; }
-            .bg-section { position: absolute; width: 100%; height: 100%; top: 0; left: 0; }
-            .content { position: absolute; width: 100%; height: 100%; top: 0; left: 0; background: transparent; }
-            .text-content p { font-size: 16px; }
-        }
-    </style>
+    <title>Qabu | Intelligent Brand Activation</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700;900&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div class="container">
-        <div class="bg-section"> </div>
-        <div class="content" id="chat-container"></div>
-    </div>
+
+    <!-- Navigation -->
+    <header>
+        <div class="container nav-container">
+            <div class="logo">QABU</div>
+            <nav>
+                <a href="#contact" class="btn">Contact Us</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="container hero-content fade-in">
+            <h1>Brands are drowning in conversations they cannot manage.</h1>
+            <p>Real-time conversation across multiple channels. The expectation for an immediate, personalized response is breaking human scale.</p>
+            <div class="hero-buttons">
+                <a href="#solution" class="btn">Meet the Brand Agent</a>
+                <a href="#impact" class="btn btn-outline">See Impact</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Problem Section -->
+    <section class="problem">
+        <div class="container">
+            <h2 class="fade-in">Why brands can no longer keep up?</h2>
+            <div class="grid-3">
+                <!-- Pain Point 1 -->
+                <article class="card fade-in">
+                    <div class="card-number">01</div>
+                    <h3>Too Many Channels,<br>No Single Voice</h3>
+                    <p>Brands operate across multiple channels, each with a different tone, team, and standard. Consistency is lost.</p>
+                </article>
+
+                <!-- Pain Point 2 -->
+                <article class="card fade-in">
+                    <div class="card-number">02</div>
+                    <h3>Scattered Knowledge,<br>Inconsistent Answers</h3>
+                    <p>Information is spread across systems, documents, and people. It is impossible to deliver accurate responses manually.</p>
+                </article>
+
+                <!-- Pain Point 3 -->
+                <article class="card fade-in">
+                    <div class="card-number">03</div>
+                    <h3>Human Dependency<br>Breaks Scale</h3>
+                    <p>The person replying doesn't always understand the brand context or priorities. Manual action cannot scale.</p>
+                </article>
+            </div>
+            
+            <div class="problem-statement fade-in">
+                "This is not a people problem.<br>
+                <strong class="highlight">It’s a structural complexity problem that human teams cannot solve at scale.</strong>"
+            </div>
+        </div>
+    </section>
+
+    <!-- Solution Section -->
+    <section id="solution">
+        <div class="container">
+            <div class="features-grid">
+                <div class="feature-text fade-in">
+                    <h2 style="text-align: left;">Where human scale breaks, opportunity begins.</h2>
+                    <p class="big-statement">Meet Qabu.</p>
+                    <p>An always-on brand agent that manages conversations, protects reputation, and drives action at scale.</p>
+                    <br>
+                    <h3>Intelligent Activation, Not Just Answers</h3>
+                    <ul>
+                        <li><strong>Direct users to store</strong> at the exact right moment</li>
+                        <li><strong>Schedule appointments</strong> as a natural part of dialogue</li>
+                        <li><strong>Share product details</strong>, pricing, and specs in context</li>
+                        <li><strong>Smart Handoff</strong> to human agents when interaction requires it</li>
+                    </ul>
+                </div>
+                <div class="feature-image fade-in">
+                    <!-- Abstract Interface Representation -->
+                    <div class="interface-mockup">
+                        <div class="mockup-header">Real-time Context Engine</div>
+                        <div class="msg-box user-msg">
+                            <small>User Intent Detected</small>
+                            <p>"Where can I buy this?"</p>
+                        </div>
+                        <div class="msg-box system-msg">
+                            <small>Qabu Action</small>
+                            <p>Locating nearest stock. Directing to purchase page...</p>
+                        </div>
+                        <p class="mockup-footer">Qabu moves people to act.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Control & Safety -->
+    <section class="control">
+        <div class="container">
+            <h2 class="fade-in">Brand Controlled Intelligence</h2>
+            <p class="fade-in subtitle">Full Control. Zero Brand Risk.</p>
+            
+            <div class="control-grid">
+                <div class="control-item fade-in">
+                    <h3>Defined Knowledge</h3>
+                    <p>All responses generated strictly from your brand-defined knowledge base.</p>
+                </div>
+                <div class="control-item fade-in">
+                    <h3>No Hallucinations</h3>
+                    <p>No deviations, no off-brand answers. AI that acts only within your rules.</p>
+                </div>
+                <div class="control-item fade-in">
+                    <h3>One Voice</h3>
+                    <p>A consistent brand voice across every channel—Social, Web, and Campaigns.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Business Impact -->
+    <section id="impact">
+        <div class="container">
+            <h2 class="fade-in">The Real Business Impact</h2>
+            <div class="grid-3">
+                <div class="card center-text fade-in">
+                    <h3 class="highlight">Speed</h3>
+                    <p>Shorter time from first interaction to action.</p>
+                </div>
+                <div class="card center-text fade-in">
+                    <h3 class="highlight">Conversion</h3>
+                    <p>Higher rates from conversation to execution.</p>
+                </div>
+                <div class="card center-text fade-in">
+                    <h3 class="highlight">Efficiency</h3>
+                    <p>Reduced load on call center service teams.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer id="contact">
+        <div class="container footer-cta fade-in">
+            <h2>Let's Qabu</h2>
+            <p>Qabu doesn't just answer questions. It moves people to act.</p>
+            
+            <div class="contact-info">
+                <div><a href="https://www.qabu.co.il">www.qabu.co.il</a></div>
+                <div><a href="tel:0542000706">054.2000.706</a></div>
+            </div>
+            <br>
+            <a href="mailto:info@qabu.co.il" class="btn">Get in Touch</a>
+        </div>
+    </footer>
+
+    <!-- Animation Script -->
     <script>
-        window.ChatWidgetConfig = {
-            targetElement: '#chat-container',
-            initialMessage: 'Welcome to Brandelicious! How can we help you today?',
-            placeholder: 'Type your message here...'
-        };
+        const observerOptions = { threshold: 0.1 };
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) entry.target.classList.add('visible');
+            });
+        }, observerOptions);
+
+        document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                document.querySelector(this.getAttribute('href')).scrollIntoView({ behavior: 'smooth' });
+            });
+        });
     </script>
-    <script src="/widget.js"></script>
 </body>
 </html>

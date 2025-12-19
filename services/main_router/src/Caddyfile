@@ -1,5 +1,5 @@
-# This is just for the privacy for Facebook currently.
 http://localhost,
+http://qabu.mooo.com,
 http://brandelicious.mooo.com {
 	handle {
 		root * /srv
