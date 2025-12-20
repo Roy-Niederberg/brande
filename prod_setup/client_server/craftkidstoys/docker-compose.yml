@@ -24,18 +24,12 @@ services:
     secrets: [fb_page_access_token]
     environment: [FACEBOOK_API_URL=https://graph.facebook.com/v24.0/]
 
-  # facebook-signup:
-  #   image: registry.gitlab.com/rny3/brande/facebook_signup:v0.0.1
-  #   networks: [client_network]
-  #   secrets: [fb_global_app_id, fb_global_app_secret]
-
 volumes:
   admin_sessions:
   prompt_log:
 
 networks:
-  client_network:
-    name: craftkidstoys_network
+  client_network: {name: craftkidstoys_network}
 
 secrets:
   google_strategy:      {file: ./secrets/google_strategy.secret}
@@ -46,6 +40,3 @@ secrets:
   groq_key_1:           {file: ./secrets/groq_key_1.secret}
   groq_key_2:           {file: ./secrets/groq_key_2.secret}
   fb_page_access_token: {file: ./secrets/fb_page_access_token.secret}
-  # fb_global_app_id:  {file: ../router/secrets/fb_global_app_id.secret}
-  # fb_global_app_secret: {file: ../router/secrets/fb_global_app_secret.secret}
-
