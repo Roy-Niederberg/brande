@@ -1,10 +1,78 @@
 (function() {
   const API = window.location.origin + '/widget-api/ask';
-  const history = [];
-  let messageCount = 0;
 
   // Detect if page is RTL
   const isRTL = document.documentElement.dir === 'rtl' || document.body.dir === 'rtl';
+
+  // State management
+  const state = {
+    history: [],
+    messageCount: 0,
+    isRTL: isRTL,
+    isMinimized: false
+  };
+
+  // Detect text direction based on content
+  function detectTextDirection(text) {
+    const hebrewPattern = /[\u0590-\u05FF]/g;
+    const hebrewChars = (text.match(hebrewPattern) || []).length;
+    const totalChars = text.replace(/\s/g, '').length;
+    return hebrewChars / totalChars > 0.3 ? 'rtl' : 'ltr';
+  }
+
+  // Auto-resize textarea
+  function autoResizeTextarea(textarea) {
+    textarea.style.height = 'auto';
+    textarea.style.height = Math.min(textarea.scrollHeight, 100) + 'px';
+  }
+
+  // Simple markdown parser
+  function parseMarkdown(text) {
+    // Process bold and italic first (before bullet lists to avoid conflicts)
+    let html = text
+      // Bold: **text** or __text__
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/__(.+?)__/g, '<strong>$1</strong>')
+      // Code: `text`
+      .replace(/`(.+?)`/g, '<code>$1</code>')
+      // Links: [text](url)
+      .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+
+    // Process bullet lists (lines starting with * or -)
+    const lines = html.split('\n');
+    let inList = false;
+    const processed = [];
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const bulletMatch = line.match(/^[\*\-]\s+(.+)$/);
+
+      if (bulletMatch) {
+        if (!inList) {
+          processed.push('<ul>');
+          inList = true;
+        }
+        processed.push(`<li>${bulletMatch[1]}</li>`);
+      } else {
+        if (inList) {
+          processed.push('</ul>');
+          inList = false;
+        }
+        processed.push(line);
+      }
+    }
+
+    if (inList) {
+      processed.push('</ul>');
+    }
+
+    return processed.join('\n')
+      // Italic: *text* or _text_ (after bullet processing to avoid conflicts)
+      .replace(/\*(.+?)\*/g, '<em>$1</em>')
+      .replace(/_(.+?)_/g, '<em>$1</em>')
+      // Line breaks (skip inside lists)
+      .replace(/\n(?![<\/]?[ul|li])/g, '<br>');
+  }
 
   const css = `
     @keyframes slideInUp {
@@ -19,7 +87,7 @@
     }
     @keyframes slideInFromSide {
       from {
-        transform: ${isRTL ? 'translateX(-100%)' : 'translateX(100%)'};
+        transform: translateX(100%);
       }
       to {
         transform: translateX(0);
@@ -27,7 +95,7 @@
     }
     @keyframes slideOutToSide {
       to {
-        transform: ${isRTL ? 'translateX(-100%)' : 'translateX(100%)'};
+        transform: translateX(100%);
       }
     }
     @keyframes fadeOut {
@@ -80,13 +148,14 @@
       position: fixed;
       top: 0;
       bottom: 0;
-      ${isRTL ? 'left: 0;' : 'right: 0;'}
+      right: 0;
       width: 400px;
       max-width: 100vw;
       z-index: 9999;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
       transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1), transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
       animation: slideInFromSide 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      direction: ltr;
     }
 
     @media (max-width: 768px) {
@@ -135,6 +204,7 @@
       margin: 0;
       padding: 10px 20px 0;
       flex-shrink: 0;
+      direction: ltr;
     }
 
     @media (max-width: 768px) {
@@ -211,56 +281,83 @@
     #chat-messages::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.2); }
 
     .chat-msg {
-      padding: 14px 18px;
-      padding-bottom: 24px;
-      border-radius: 8px;
-      max-width: 80%;
+      padding: 8px 12px;
+      padding-bottom: 20px;
+      max-width: 65%;
+      min-width: 80px;
       word-wrap: break-word;
       position: relative;
-      font-size: 15px;
+      font-size: 14px;
       line-height: 1.5;
       pointer-events: auto;
       opacity: 0;
       animation: slideInUp 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards;
       will-change: transform, opacity;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.1);
     }
 
     .chat-timestamp {
       position: absolute;
       bottom: 4px;
-      ${isRTL ? 'left: 12px;' : 'right: 12px;'}
-      font-size: 10px;
-      opacity: 0.5;
+      right: 12px;
+      font-size: 11px;
+      color: #888;
+      margin-top: 4px;
+      text-align: right;
       pointer-events: none;
     }
 
     .chat-msg.user {
-      background: #f8f9fa;
+      background: #dcf8c6;
       color: #1a1a1a;
-      align-self: ${isRTL ? 'flex-start' : 'flex-end'};
-      text-align: ${isRTL ? 'left' : 'right'};
+      align-self: flex-end;
       border: 1px solid rgba(0,0,0,0.06);
-      margin-right: 12px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.05);
+      border-radius: 8px 8px 2px 8px;
     }
 
     .chat-msg.bot {
-      background: #1a202c;
-      color: #ffffff;
-      align-self: ${isRTL ? 'flex-end' : 'flex-start'};
-      margin-left: 12px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15), 0 2px 4px rgba(0,0,0,0.1);
+      background: white;
+      color: #1a1a1a;
+      align-self: flex-start;
+      border: 1px solid rgba(0,0,0,0.06);
+      border-radius: 8px 8px 8px 2px;
     }
 
-    .chat-tail {
-      position: absolute;
-      top: 14px;
-      width: 12px;
-      height: 12px;
-      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+    .chat-msg strong {
+      font-weight: 600;
     }
-    .chat-tail.user { right: -10px; }
-    .chat-tail.bot { left: -10px; }
+
+    .chat-msg em {
+      font-style: italic;
+    }
+
+    .chat-msg code {
+      background: rgba(0,0,0,0.08);
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+      font-size: 13px;
+    }
+
+    .chat-msg a {
+      color: #0066cc;
+      text-decoration: underline;
+    }
+
+    .chat-msg a:hover {
+      color: #0052a3;
+    }
+
+    .chat-msg ul {
+      margin: 4px 0;
+      padding-left: 20px;
+      list-style-type: disc;
+    }
+
+    .chat-msg li {
+      margin: 2px 0;
+      line-height: 1.4;
+    }
 
     #typing-indicator {
       padding: 14px 20px;
@@ -268,7 +365,7 @@
       background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
       margin-left: 12px;
       width: auto;
-      align-self: ${isRTL ? 'flex-end' : 'flex-start'};
+      align-self: flex-start;
       display: none;
       box-shadow: 0 4px 12px rgba(0,0,0,0.15), 0 2px 4px rgba(0,0,0,0.1);
       animation: slideInUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -299,7 +396,7 @@
       position: relative;
       padding: 20px;
       flex-shrink: 0;
-      ${isRTL ? 'direction: rtl;' : ''}
+      direction: ltr;
     }
 
     @media (max-width: 768px) {
@@ -311,9 +408,9 @@
 
     #chat-input {
       flex: 1;
-      padding: 14px 20px;
-      border: 2px solid rgba(0,0,0,0.08);
-      border-radius: 24px;
+      padding: 10px 15px;
+      border: 1px solid #ddd;
+      border-radius: 20px;
       outline: none;
       font-size: 16px;
       background: #ffffff;
@@ -323,11 +420,14 @@
       -webkit-user-select: text;
       transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       font-family: inherit;
+      resize: none;
+      max-height: 100px;
+      overflow-y: auto;
+      line-height: 1.5;
     }
     #chat-input:focus {
-      border-color: rgba(45, 55, 72, 0.3);
-      box-shadow: 0 4px 16px rgba(0,0,0,0.08), 0 0 0 3px rgba(45, 55, 72, 0.05);
-      transform: translateY(-1px);
+      border-color: #667eea;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.08), 0 0 0 3px rgba(102,126,234,0.1);
     }
     #chat-input::placeholder {
       color: #94a3b8;
@@ -337,15 +437,18 @@
       background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
       color: white;
       border: none;
-      padding: 14px 28px;
-      border-radius: 24px;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
       cursor: pointer;
-      font-weight: 600;
-      font-size: 15px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       box-shadow: 0 4px 12px rgba(0,0,0,0.15), 0 2px 4px rgba(0,0,0,0.1);
       transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       position: relative;
       overflow: hidden;
+      flex-shrink: 0;
     }
     #chat-send::before {
       content: '';
@@ -379,7 +482,7 @@
     #chat-reopen {
       position: fixed;
       bottom: 24px;
-      ${isRTL ? 'left: 24px;' : 'right: 24px;'}
+      right: 24px;
       background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
       color: white;
       border: none;
@@ -427,8 +530,12 @@
         </div>
       </div>
       <div id="chat-input-area">
-        <input id="chat-input" type="text" placeholder="${isRTL ? 'הקלד הודעה...' : 'Type your message...'}" />
-        <button id="chat-send">${isRTL ? 'שלח' : 'Send'}</button>
+        <textarea id="chat-input" rows="1" placeholder="${isRTL ? 'הקלד הודעה...' : 'Type your message...'}"></textarea>
+        <button id="chat-send">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
+            <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+          </svg>
+        </button>
       </div>
     </div>
   `;
@@ -460,10 +567,15 @@
     const addMsg = (content, role) => {
       const msg = document.createElement('div');
       msg.className = `chat-msg ${role}`;
-      msg.textContent = content;
-      msg.style.animationDelay = `${messageCount * 0.05}s`;
-      messageCount++;
+      msg.style.animationDelay = `${state.messageCount * 0.05}s`;
+      msg.style.direction = detectTextDirection(content);
+      state.messageCount++;
 
+      // Create message text element with markdown parsing
+      const textDiv = document.createElement('div');
+      textDiv.innerHTML = parseMarkdown(content);
+
+      // Create timestamp
       const now = new Date();
       const hours = String(now.getHours()).padStart(2, '0');
       const minutes = String(now.getMinutes()).padStart(2, '0');
@@ -471,26 +583,7 @@
       timestamp.className = 'chat-timestamp';
       timestamp.textContent = `${hours}:${minutes}`;
 
-      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-      svg.setAttribute('class', `chat-tail ${role}`);
-      svg.setAttribute('viewBox', '0 0 12 12');
-      svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
-
-      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-      // Don't flip the SVG - CSS already handles RTL positioning
-      if (role === 'user') {
-        path.setAttribute('d', 'M 0 0 L 12 6 L 0 12 Z');
-        path.setAttribute('fill', '#f8f9fa');
-        path.setAttribute('stroke', 'rgba(0,0,0,0.06)');
-        path.setAttribute('stroke-width', '0.5');
-      } else {
-        path.setAttribute('d', 'M 12 0 L 0 6 L 12 12 Z');
-        path.setAttribute('fill', '#1a202c');
-        path.setAttribute('stroke', 'none');
-      }
-
-      svg.appendChild(path);
-      msg.appendChild(svg);
+      msg.appendChild(textDiv);
       msg.appendChild(timestamp);
       messages.appendChild(msg);
 
@@ -525,15 +618,19 @@
       if (!text) return;
 
       addMsg(text, 'user');
-      history.push({ role: 'user', content: text });
+      state.history.push({ role: 'user', content: text });
+
+      // Reset textarea
       input.value = '';
+      input.style.height = 'auto';
+      input.style.direction = 'ltr';
       send.disabled = true;
 
       setTimeout(async () => {
         showTyping();
 
         try {
-          const chat_history = history.map(h => `${h.role === 'user' ? '<<<USER>>>: ' : '<<<ASSISTANT>>>: '}${h.content}`).join('\n') + `\n<<<USER>>>: ${text}\n`;
+          const chat_history = state.history.map(h => `${h.role === 'user' ? '<<<USER>>>: ' : '<<<ASSISTANT>>>: '}${h.content}`).join('\n') + `\n<<<USER>>>: ${text}\n`;
           const res = await fetch(API, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -542,7 +639,7 @@
           const reply = await res.text();
           hideTyping();
           addMsg(reply, 'bot');
-          history.push({ role: 'assistant', content: reply });
+          state.history.push({ role: 'assistant', content: reply });
         } catch (e) {
           hideTyping();
           addMsg('Unable to connect to service', 'bot');
@@ -552,10 +649,24 @@
     };
 
     send.onclick = sendMsg;
-    input.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') {
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
         sendMsg();
+      }
+    });
+
+    // Set initial direction for placeholder based on page RTL
+    input.style.direction = isRTL ? 'rtl' : 'ltr';
+
+    // Auto-resize and direction detection for textarea
+    input.addEventListener('input', () => {
+      autoResizeTextarea(input);
+      if (input.value.trim()) {
+        input.style.direction = detectTextDirection(input.value);
+      } else {
+        // Reset to page direction when empty (for placeholder)
+        input.style.direction = isRTL ? 'rtl' : 'ltr';
       }
     });
 
@@ -576,8 +687,8 @@
       setTimeout(() => {
         messages.innerHTML = '';
         messages.appendChild(typingIndicator);
-        history.length = 0;
-        messageCount = 0;
+        state.history.length = 0;
+        state.messageCount = 0;
         widget.style.display = 'none';
         widget.classList.remove('hiding');
         reopenBtn.style.display = 'flex';
