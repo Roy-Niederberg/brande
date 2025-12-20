@@ -8,6 +8,7 @@ import widget      from '../data/widget_query_builder.js'
 
 const query_builders = { facebook_comments, facebook_messages, admin_ui, widget }
 const app = express()
+app.set('trust proxy', true)
 app.use(express.json())
 app.use(express.text())
 app.use(rateLimit({ windowMs: 60000, max: 20, message: 'PC: Too many requests' }))

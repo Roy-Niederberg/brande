@@ -4,7 +4,6 @@ COPY ./src/package*.json ./
 
 # Development stage
 FROM base AS development
-RUN npm install -g npm@latest
 RUN npm ci
 ENV NODE_ENV=development
 CMD ["npx", "nodemon", "--watch", "src", "src/server.js"]
@@ -14,7 +13,7 @@ FROM base AS production
 RUN npm install -g npm@latest
 RUN npm ci --production
 COPY ./src/views ./views
-COPY ./src/server.js ./src/server.js
+COPY ./src/server.js ./server.js
 ENV NODE_ENV=production
-RUN rm package*.json
-CMD ["node", "src/server.js"]
+RUN rm -f package*.json
+CMD ["node", "server.js"]

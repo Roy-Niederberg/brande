@@ -1,0 +1,31 @@
+services:
+  caddy:
+    image: caddy:2.10.2-alpine
+    container_name: router
+    ports:   ["3000:80", "443:443", "443:443/udp"]
+    volumes:
+      - ../../services/main_router/src/Caddyfile:/etc/caddy/Caddyfile
+      - ../../services/main_router/public:/srv
+      - caddy_data:/data
+      - caddy_config:/config
+
+  editor:
+    build:
+      context: ../../services/editor
+      target: development
+    container_name: editor
+    volumes:
+      - ../../services/editor/src:/app/src:ro
+      - ./data/public_draft:/app/public
+      - sessions:/app/sessions
+    secrets: [editor_credentials, session_secret]
+    environment: [NODE_ENV=development]
+
+volumes:
+  caddy_data:
+  caddy_config:
+  sessions:
+
+secrets:
+  editor_credentials: {file: ./secrets/editor_credentials.json}
+  session_secret:     {file: ./secrets/session_secret.json}

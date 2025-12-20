@@ -37,19 +37,49 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Architecture Overview
 
-**Brandelicious** (shortened to "Brande" in this repo) is a microservices-based platform for AI-powered customer conversation management. Each client gets their own subdomain with isolated services.
+**Brandelicious/Qabu** (shortened to "Brande" in this repo) is a microservices-based platform for AI-powered customer conversation management. Each client gets their own subdomain with isolated services.
+
+**Note**: Company is considering rebrand from "Brandelicious" to "Qabu" - keep both names in code for now.
+
+### Two-Server Architecture
+
+**Main Server** (qabu.mooo.com / brandelicious.mooo.com - both point to same IP)
+- Runs company website and shared services
+- Deployed via `prod_setup/main_server/docker-compose.yml`
+- Services:
+  - `services/main_router/` - Caddy serving company website
+  - `services/facebook_signup/` - Facebook page token generation tool (manual process)
+
+**Client Server** (separate VM)
+- Runs client-specific services with isolation
+- Deployed via `prod_setup/{client_name}/docker-compose.yml`
+- Services:
+  - `services/router/` - Caddy for HTTPS termination and inter-client routing
+  - `services/admin/` - Admin interface per client
+  - `services/prompt_composer/` - LLM service per client
+  - `services/facebook_*` - Facebook integration services
+  - `services/site/` - Client public website
+- Future: Plan to move Facebook webhooks to main server
 
 ### Domain Structure
-- `craftkidstoys.mooo.com` - CraftKids Toys client
-- `drlipokatz.mooo.com` - Dr Lipo Katz client
-- `brandelicious.mooo.com` - Company main page (currently serves Facebook privacy policy requirement)
+- `qabu.mooo.com` / `brandelicious.mooo.com` - Company main page (main server)
+- `craftkidstoys.mooo.com` - CraftKids Toys client (client server)
+- `drlipokatz.mooo.com` - Dr Lipo Katz client (client server)
 
 ### Services Architecture
 
-**Router Service** (`services/router/`)
-- Caddy-based reverse proxy that routes requests to services based on subdomain
+**Main Router Service** (`services/main_router/`)
+- Runs on main server
+- Caddy serving company website and shared tools
+- Handles `/facebook-page-signup/*` routing to facebook-signup service
+- Configured in `services/main_router/src/Caddyfile`
+
+**Client Router Service** (`services/router/`)
+- Runs on client server
+- Caddy-based reverse proxy for HTTPS termination and client routing
 - Routes to `{client_name}-{service_name}:9876` using path-based routing
 - Pattern: `http://*.mooo.com/{service}` → `{client_name}-{service}-1:9876`
+- Serves unified chat widget at `/widget.js`
 - Configured in `services/router/src/Caddyfile`
 
 **Admin Service** (`services/admin/`)
@@ -65,14 +95,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Main entry: `services/admin/src/server.js` (~80 lines)
 
 **Prompt Composer Service** (`services/prompt_composer/`)
-- LLM service that processes queries using Google Gemini API
+- LLM service that processes queries using Google Gemini and Groq APIs
+- **Trust proxy enabled**: `app.set('trust proxy', true)` for rate limiting behind Caddy
 - Loads configuration from text files in `/app/data/`:
   - `role.txt` - AI assistant role definition
   - `instructions.txt` - Job instructions
   - `knowledge_base.txt` - Company information
   - `response_guidelines.txt` - Response formatting rules
+- Multiple LLM providers with fallback:
+  - `llm_1`, `llm_2` - Google Gemini (gemini-flash-lite-latest)
+  - `llm_3`, `llm_4` - Groq (openai/gpt-oss-120b)
+  - Tries each LLM in sequence until one succeeds
 - Exposes endpoints:
-  - `GET /ask?query=...` - Generate response (simple query)
   - `POST /ask` - Generate response (with module-specific query builder)
   - `GET /knowledge-base` - View knowledge base
   - `GET /prompt-instructions` - View instructions
@@ -95,11 +129,37 @@ Multiple services handle different Facebook integrations:
 - Public-facing website service for each client
 - Currently serves privacy policy and other public pages
 
+**Widget Service** (`services/router/public/widget.js`)
+- Unified chat widget embedded on client websites
+- Self-contained IIFE with all CSS and HTML inline
+- Served at `/widget.js` from client router
+- **Key Features**:
+  - WhatsApp-style UI with green user bubbles (#dcf8c6) and white bot bubbles
+  - Glassmorphism background effect
+  - Message bubbles with 3 rounded corners + 1 sharp corner (no SVG tails)
+  - **Always LTR layout** - widget on right, user messages on right, bot on left
+  - **Smart text direction** - auto-detects Hebrew/RTL vs English/LTR per message (>30% Hebrew = RTL)
+  - Multi-line textarea input with auto-resize (max 100px)
+  - Send button with paper plane icon (circular, 44x44px)
+  - Minimize/Close/Reopen functionality
+  - Click-outside to minimize
+  - **Markdown support**:
+    - Bold: `**text**` or `__text__`
+    - Italic: `*text*` or `_text_`
+    - Code: `` `text` ``
+    - Links: `[text](url)`
+    - Bullet lists: `* item` or `- item`
+  - Mobile-responsive with dvh units and safe-area insets
+  - Typing indicator with bouncing dots
+- API endpoint: `POST /widget-api/ask` → routed to prompt-composer
+- Query builder: `widget_query_builder.js` formats chat history
+
 ### Data Flow
 
-1. **Admin Chat**: Admin UI → Prompt Composer → Gemini API → Response
-2. **Facebook Comments**: Facebook → Dispatcher → Comments Handler → Prompt Composer → Gemini API → Auto-reply posted to Facebook
-3. **Facebook DMs**: Facebook → Dispatcher → DM Handler → Prompt Composer → Gemini API → Auto-reply sent via Messenger
+1. **Admin Chat**: Admin UI → Prompt Composer → LLM (Gemini/Groq) → Response
+2. **Widget Chat**: Client website → `/widget-api/ask` → Prompt Composer → LLM → Response
+3. **Facebook Comments**: Facebook → Dispatcher → Comments Handler → Prompt Composer → LLM → Auto-reply posted to Facebook
+4. **Facebook DMs**: Facebook → Dispatcher → DM Handler → Prompt Composer → LLM → Auto-reply sent via Messenger
 
 ### Configuration Management
 
@@ -107,11 +167,12 @@ Multiple services handle different Facebook integrations:
 - `secrets/authorized_emails.json` - Email whitelist for UI access
 
 **Production** (`prod_setup/`)
-- Router service: `prod_setup/router/`
-- Client deployments: `prod_setup/craftkidstoys/`, `prod_setup/drlipokatz/`
-- Each client has: admin, prompt-composer, facebook services (dispatcher, comments, dm), site
+- Main server: `prod_setup/main_server/` - company website and shared tools
+- Client server deployments: `prod_setup/craftkidstoys/`, `prod_setup/drlipokatz/`
+- Each client has: router, admin, prompt-composer, facebook services, site, widget
 - Shared data volumes in `data/` for prompt configuration and query builders
 - Each service has docker-compose.yml with secrets management
+- New clients require manual setup (not automated yet)
 
 ## Development Commands
 
@@ -221,28 +282,33 @@ Admin UI is fully responsive with special mobile optimizations:
 
 ## Production Deployment
 
-Multi-client deployment structure:
+Two-server deployment structure:
 ```
 prod_setup/
-  ├── router/              # Shared router for all clients
-  │   └── docker-compose.yml
-  └── client_name/         # Per-client services (e.g., craftkidstoys, drlipokatz)
+  ├── main_server/         # Main server (qabu.mooo.com)
+  │   ├── docker-compose.yml
+  │   └── secrets/
+  └── client_name/         # Client server (e.g., craftkidstoys, drlipokatz)
       ├── docker-compose.yml
       ├── secrets/         # Client-specific secrets
-      └── shared_data/     # Mounted volumes for config
+      └── data/            # Mounted volumes for config
 ```
 
 ### Network Architecture (Client Isolation)
 
-**Each client has a private network:**
-- `craftkidstoys_network` - contains craftkidstoys services (admin, prompt-composer, facebook services, site)
-- `drlipokatz_network` - contains drlipokatz services (admin, prompt-composer, facebook services, site)
-- Router joins **all** client networks as external networks
+**Client Server - Each client has a private network:**
+- `craftkidstoys_network` - contains craftkidstoys services (router, admin, prompt-composer, facebook services, site)
+- `drlipokatz_network` - contains drlipokatz services (router, admin, prompt-composer, facebook services, site)
+- Client router joins **all** client networks as external networks
+
+**Main Server - Simple single network:**
+- Main router and facebook-signup share default network
+- No client isolation needed on main server
 
 **Benefits:**
-- Complete isolation between clients (no shared DNS namespace)
+- Complete isolation between clients on client server (no shared DNS namespace)
 - Each client's services can only communicate within their own network
-- Router can reach all client services for HTTP routing
+- Client router can reach all client services for HTTP routing
 - No cross-client data leakage
 
 **Deployment Process:**
@@ -251,18 +317,22 @@ prod_setup/
 2. **Commit changes** to git (on `dev` branch)
 3. **Create and push tags** for changed services:
    ```bash
-   git tag <service_name>-v<version>  # e.g., router-v0.0.5, admin-v0.0.2
+   git tag <service_name>-v<version>  # e.g., main_router-v0.0.5, admin-v0.0.2
    git push origin <service_name>-v<version>
    ```
 4. **Wait for CI/CD** - GitLab CI automatically builds Docker images when tags are pushed (see `.gitlab-ci.yml`)
    - Images are pushed to GitLab Container Registry: `registry.gitlab.com/rny3/brande/<service>:latest`
-5. **Sync prod_setup to server** using rsync:
+5. **Sync prod_setup to appropriate server** using rsync:
    ```bash
-   rsync -avz prod_setup/ user@server:/path/to/prod_setup/
+   # For main server
+   rsync -avz prod_setup/main_server/ user@mainserver:/path/to/prod_setup/main_server/
+
+   # For client server
+   rsync -avz prod_setup/craftkidstoys/ user@clientserver:/path/to/prod_setup/craftkidstoys/
    ```
 6. **On the server**, pull new images and recreate containers:
    ```bash
-   cd /path/to/prod_setup/<service_or_client>
+   cd /path/to/prod_setup/<deployment>
    docker compose pull
    docker compose up -d --force-recreate
    ```
@@ -272,16 +342,15 @@ prod_setup/
 - Production runs whatever is in `prod_setup/` directory
 - Docker images are tagged as `latest` by CI, so `docker compose pull` gets the newest build
 - Service-specific changes: tag and deploy only that service
-- Router changes: affects all clients, deploy from `prod_setup/router/`
+- **Two separate servers**: main server and client server require separate rsync/deployment
+- **Widget changes**: Served from client router, requires client server deployment
+- **Facebook signup**: On main server at `/facebook-page-signup/` path
 
-**Deployment order for initial setup:**
+**Deployment order for initial client setup (client server only):**
 ```bash
 # 1. Start client services first (creates networks)
 cd prod_setup/craftkidstoys && docker compose up -d
 cd prod_setup/drlipokatz && docker compose up -d
-
-# 2. Start router last (joins existing networks)
-cd prod_setup/router && docker compose up -d
 ```
 
-If router is started first, it will fail with "network not found" error.
+Note: Each client's docker-compose includes their own router, no shared router on client server.
