@@ -35,16 +35,16 @@ services:
   #   networks: [client_network]
   #   secrets: [fb_global_app_id, fb_global_app_secret]
 
-  wiremock:
-    image: wiremock/wiremock:latest
-    command: --https-port 443 --verbose
-    volumes:
-      - ./wiremock/mappings:/home/wiremock/mappings
-    networks:
-      default:
-        aliases:
-          - generativelanguage.googleapis.com
-          - api.groq.com
+  # wiremock:
+  #   image: wiremock/wiremock:latest
+  #   command: --https-port 443 --verbose
+  #   volumes:
+  #     - ./wiremock/mappings:/home/wiremock/mappings
+  #   networks:
+  #     default:
+  #       aliases:
+  #         - generativelanguage.googleapis.com
+  #         - api.groq.com
 
   caddy:
     build: {context: ../../services/router/, target: development}
@@ -54,7 +54,6 @@ services:
       - ../../services/router/public:/srv
       - caddy_data:/data
       - caddy_config:/config
-
 
 volumes:
   admin_sessions:

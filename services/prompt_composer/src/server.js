@@ -3,15 +3,16 @@ import express from 'express'
 import rateLimit from 'express-rate-limit'
 import facebook_comments from '../data/fb_comments_query_builder.js'
 import facebook_messages from '../data/fb_messages_query_builder.js'
-import admin_ui    from '../data/admin_query_builder.js'
-import widget      from '../data/widget_query_builder.js'
+import admin_ui from '../data/admin_query_builder.js'
+import widget from '../data/widget_query_builder.js'
+import gk_query from '../data/gatekeeper_query_builder.js'
 
 const query_builders = { facebook_comments, facebook_messages, admin_ui, widget }
 const app = express()
 app.set('trust proxy', true)
 app.use(express.json())
 app.use(express.text())
-app.use(rateLimit({ windowMs: 60000, max: 20, message: 'PC: Too many requests' }))
+app.use(rateLimit({ windowMs: 60000, max: 20, message: 'PC: Too many requests', validate: { trustProxy: false } }))
 
 // =============== Util Functions ====================================================================================//
 const read   = (name) => fs.readFileSync(`./data/${name}.txt`, 'utf-8')
@@ -33,17 +34,30 @@ import { GoogleGenAI } from "@google/genai";
 import { Groq } from 'groq-sdk';
 
 // GATEKEEPER MODEL
-// const gatekeeperModel = (new GoogleGenAI({apiKey: secret('gemini_api_key')})).getGenerativeModel({
-//     model: "gemini-1.5-flash",
-//     generationConfig: { temperature: 0, responseMimeType: "application/json" }
-// })
+const gatekeeper = new GoogleGenAI({apiKey: secret('gemini_key_2')})
+gatekeeper.ask = async (c, q) => await gatekeeper.models.generateContent({
+  model: "gemini-1.5-flash-8b",
+  config: {
+    systemInstruction: c,
+    responseMimeType: 'application/json',
+    responseJsonSchema: {
+      type: "OBJECT",
+      properties: {
+        action: { type: "STRING", enum: ["REPLY", "IGNORE", "ESCALATE"] },
+        text:   { type: "STRING", nullable: true }
+      },
+      required: ["action"]
+    },
+    contents: 'Hi',
+  }
+})
 
 // MAIN MODLES
 const llm_1 = new GoogleGenAI({apiKey: secret('gemini_key_1')})
 llm_1.ask = async (q) => await llm_1.models.generateContent({model: "gemini-flash-lite-latest", contents: q})
 
-const llm_2 = new GoogleGenAI({apiKey: secret('gemini_key_2')})
-llm_2.ask = async (q) => await llm_2.models.generateContent({model: "gemini-flash-lite-latest", contents: q})
+// const llm_2 = new GoogleGenAI({apiKey: secret('gemini_key_2')})
+// llm_2.ask = async (q) => await llm_2.models.generateContent({model: "gemini-flash-lite-latest", contents: q})
 
 const llm_3 = new Groq({apiKey: secret('groq_key_1')})
 llm_3.ask = async (q) => {
@@ -60,20 +74,39 @@ llm_4.ask = async (q) => {
 // =============== Endpoints =========================================================================================//
 // In this section the server should keep running and give the best answer it can. ===================================//
 app.r('post', '/ask', async ({ body }, rs) => {
+
+  // Ask the GATEKEEPER if and what we need to ask the main model.
+  console.log(body.chat_data.chat_history)
+  const gk_promt = gk_query(body.chat_data.chat_history)
+  try {
+    console.log("goalkeeper")
+    console.log(gk_promt)
+    const gk_answer = (await gatekeeper.ask(gk_promt)).text
+    rs.send(gk_answer)
+    console.dir(gk_answer, { depth: null, colors: true });
+    return
+  } catch(e) {console.error(`goalkeeper faild: `, e.message)}
+  return
+
+  console.log('should not happen')
+
+  write('prompt_log', `${body.module}_gk_prompt`, prompt)
+
   // Build the prompt
   const query = query_builders[body.module](body.chat_data)
   const prompt = [role, instructions, knowledge_base, query, response_guidelines].join('').trim()
   write('prompt_log', `${body.module}_prompt`, prompt)
 
   // Try to get answer for LLMs
-  console.log('TRYING with GROQ')
-  try {rs.send((await llm_3.ask(prompt)).text); return} catch(e) {console.error(`GROQ failed: `, e.message)}
 
   console.log('TRIYING GEMINI 1')
   try {rs.send((await llm_1.ask(prompt)).text); return} catch(e) {console.error(`GEMINI 1 failed: `, e.message)}
 
-  console.log('TRIYING with GEMINI 2')
-  try {rs.send((await llm_2.ask(prompt)).text); return} catch(e) {console.error(`GEMINI 2 failed: `, e.message)}
+  // console.log('TRIYING with GEMINI 2')
+  // try {rs.send((await llm_2.ask(prompt)).text); return} catch(e) {console.error(`GEMINI 2 failed: `, e.message)}
+
+  console.log('TRYING with GROQ 1')
+  try {rs.send((await llm_3.ask(prompt)).text); return} catch(e) {console.error(`GROQ 1 failed: `, e.message)}
 
   console.log('TRYING with GROQ 2')
   try {rs.send((await llm_4.ask(prompt)).text); return} catch(e) {console.error(`GROQ 2 failed: `, e.message)}
