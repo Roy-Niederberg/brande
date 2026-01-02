@@ -12,7 +12,7 @@ const app = express()
 app.set('trust proxy', true)
 app.use(express.json())
 app.use(express.text())
-app.use(rateLimit({ windowMs: 60000, max: 20, message: 'PC: Too many requests', validate: { trustProxy: false } }))
+app.use(rateLimit({ windowMs: 20000, max: 3, message: 'Try again later', validate: { trustProxy: false } }))
 
 // =============== Util Functions ====================================================================================//
 const read   = (name) => fs.readFileSync(`./data/${name}.txt`, 'utf-8')
@@ -36,7 +36,8 @@ import { Groq } from 'groq-sdk';
 // GATEKEEPER MODEL
 const gatekeeper = new GoogleGenAI({apiKey: secret('gemini_key_2')})
 gatekeeper.ask = async (c, q) => await gatekeeper.models.generateContent({
-  model: "gemini-1.5-flash-8b",
+  model: "gemini-flash-lite-latest",
+  contents: q,
   config: {
     systemInstruction: c,
     responseMimeType: 'application/json',
@@ -48,26 +49,25 @@ gatekeeper.ask = async (c, q) => await gatekeeper.models.generateContent({
       },
       required: ["action"]
     },
-    contents: 'Hi',
   }
 })
 
 // MAIN MODLES
-const llm_1 = new GoogleGenAI({apiKey: secret('gemini_key_1')})
-llm_1.ask = async (q) => await llm_1.models.generateContent({model: "gemini-flash-lite-latest", contents: q})
+const llm1 = new GoogleGenAI({apiKey: secret('gemini_key_1')})
+llm1.ask = async (q) => await llm1.models.generateContent({model: "gemini-flash-lite-latest", contents: q})
 
-// const llm_2 = new GoogleGenAI({apiKey: secret('gemini_key_2')})
-// llm_2.ask = async (q) => await llm_2.models.generateContent({model: "gemini-flash-lite-latest", contents: q})
+// const llm2 = new GoogleGenAI({apiKey: secret('gemini_key_2')})
+// llm2.ask = async (q) => await llm2.models.generateContent({model: "gemini-flash-lite-latest", contents: q})
 
-const llm_3 = new Groq({apiKey: secret('groq_key_1')})
-llm_3.ask = async (q) => {
-  const r = await llm_3.chat.completions.create({messages: [{role: "user", content: q}], model: "openai/gpt-oss-120b"})
+const llm3 = new Groq({apiKey: secret('groq_key_1')})
+llm3.ask = async (q) => {
+  const r = await llm3.chat.completions.create({messages: [{role: "user", content: q}], model: "openai/gpt-oss-120b"})
   return {text: r.choices[0]?.message?.content || ''}
 }
 
-const llm_4 = new Groq({apiKey: secret('groq_key_2')})
-llm_4.ask = async (q) => {
-  const r = await llm_4.chat.completions.create({messages: [{role: "user", content: q}], model: "openai/gpt-oss-120b"})
+const llm4 = new Groq({apiKey: secret('groq_key_2')})
+llm4.ask = async (q) => {
+  const r = await llm4.chat.completions.create({messages: [{role: "user", content: q}], model: "openai/gpt-oss-120b"})
   return {text: r.choices[0]?.message?.content || ''}
 }
 
@@ -76,21 +76,13 @@ llm_4.ask = async (q) => {
 app.r('post', '/ask', async ({ body }, rs) => {
 
   // Ask the GATEKEEPER if and what we need to ask the main model.
-  console.log(body.chat_data.chat_history)
   const gk_promt = gk_query(body.chat_data.chat_history)
+  const chat_history = body.chat_data.chat_history
   try {
-    console.log("goalkeeper")
-    console.log(gk_promt)
-    const gk_answer = (await gatekeeper.ask(gk_promt)).text
-    rs.send(gk_answer)
-    console.dir(gk_answer, { depth: null, colors: true });
-    return
+    const gk_answer = JSON.parse((await gatekeeper.ask(gk_promt, chat_history)).text)
+    if (gk_answer.action === 'REPLY') {rs.send("(gk) " + gk_answer.text); return}
+    if (gk_answer.action === 'IGNORE') {rs.send(''); console.log('ignored'); return}
   } catch(e) {console.error(`goalkeeper faild: `, e.message)}
-  return
-
-  console.log('should not happen')
-
-  write('prompt_log', `${body.module}_gk_prompt`, prompt)
 
   // Build the prompt
   const query = query_builders[body.module](body.chat_data)
@@ -100,16 +92,16 @@ app.r('post', '/ask', async ({ body }, rs) => {
   // Try to get answer for LLMs
 
   console.log('TRIYING GEMINI 1')
-  try {rs.send((await llm_1.ask(prompt)).text); return} catch(e) {console.error(`GEMINI 1 failed: `, e.message)}
+  try {rs.send((await llm1.ask(prompt)).text); return} catch(e) {console.error(`GEMINI 1 failed: `, e.message)}
 
   // console.log('TRIYING with GEMINI 2')
-  // try {rs.send((await llm_2.ask(prompt)).text); return} catch(e) {console.error(`GEMINI 2 failed: `, e.message)}
+  // try {rs.send((await llm2.ask(prompt)).text); return} catch(e) {console.error(`GEMINI 2 failed: `, e.message)}
 
   console.log('TRYING with GROQ 1')
-  try {rs.send((await llm_3.ask(prompt)).text); return} catch(e) {console.error(`GROQ 1 failed: `, e.message)}
+  try {rs.send((await llm3.ask(prompt)).text); return} catch(e) {console.error(`GROQ 1 failed: `, e.message)}
 
   console.log('TRYING with GROQ 2')
-  try {rs.send((await llm_4.ask(prompt)).text); return} catch(e) {console.error(`GROQ 2 failed: `, e.message)}
+  try {rs.send((await llm4.ask(prompt)).text); return} catch(e) {console.error(`GROQ 2 failed: `, e.message)}
 
   rs.send("The assistance is not available at the moment. Please try again later.")
 })

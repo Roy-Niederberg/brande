@@ -542,7 +542,7 @@
       }, 100);
     };
 
-    const defaultInitialMsg = isRTL ? 'צריכים עזרה?' : 'Need help?';
+    const defaultInitialMsg = isRTL ? 'צריכים עזרה?' : 'Do you Need help?';
     addMsg(initialMessage || defaultInitialMsg, 'bot');
 
     const showTyping = () => {
