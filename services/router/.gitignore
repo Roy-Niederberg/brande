@@ -1,0 +1,6 @@
+!public/*.html
+!public/*.ico
+!public/*.svg
+!public/**/
+!public/**/*.html
+!public/**/*.js

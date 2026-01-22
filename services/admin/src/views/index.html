@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>ChatQA - Brandelicious</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Header -->
+  <header class="app-header">
+    <div class="header-content">
+      <h1>© Powerd by Brandelicious</h1>
+      <div class="user-info">
+        <img id="userAvatar" src="" alt="User" class="user-avatar">
+        <span id="userName"></span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Mobile Navigation (visible only on mobile) -->
+  <nav class="mobile-nav">
+    <div class="mobile-nav-tabs">
+      <button class="mobile-nav-btn" data-mobile-panel="left">Instructions / KB</button>
+      <button class="mobile-nav-btn active" data-mobile-panel="right">Chat</button>
+    </div>
+  </nav>
+
+  <!-- Main Container -->
+  <div class="main-container">
+    <!-- Left Panel: Instructions & Knowledge Base -->
+    <div class="left-panel">
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="instructions">Instructions</button>
+        <button class="tab-btn" data-tab="knowledge-base">Knowledge Base</button>
+      </div>
+
+      <div class="tab-content">
+        <!-- Instructions Tab -->
+        <div id="instructions-tab" class="tab-pane active">
+          <div class="editor-header">
+            <button id="instructions-edit-btn" class="edit-btn">Edit</button>
+            <div class="update-indicator" id="instructions-indicator"></div>
+          </div>
+          <textarea
+            id="instructionsEditor"
+            class="text-editor"
+            placeholder="Loading instructions..."
+            readonly></textarea>
+        </div>
+
+        <!-- Knowledge Base Tab -->
+        <div id="knowledge-base-tab" class="tab-pane">
+          <div class="editor-header">
+            <button id="knowledge-base-edit-btn" class="edit-btn">Edit</button>
+            <div class="update-indicator" id="knowledge-base-indicator"></div>
+          </div>
+          <textarea
+            id="knowledgeBaseEditor"
+            class="text-editor"
+            placeholder="Loading knowledge base..."
+            readonly></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Panel: Chat Interface -->
+    <div class="right-panel">
+      <div class="chat-container">
+        <div class="messages-container" id="customer-messages">
+          <div class="welcome-message">
+            <p>Start a conversation with the customer assistant</p>
+          </div>
+        </div>
+        <div class="input-container">
+          <div class="loading-indicator" id="customer-loading" style="display: none;">
+            <div class="spinner"></div>
+            <span>Processing...</span>
+          </div>
+          <div class="input-wrapper">
+            <textarea
+              id="customer-input"
+              class="message-input"
+              placeholder="Type a message..."
+              rows="1"></textarea>
+            <button id="customer-send" class="send-btn">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="24" height="24">
+                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>

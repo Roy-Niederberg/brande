@@ -1,0 +1,25 @@
+services:
+  router:
+    image:   registry.gitlab.com/rny3/brande/main_router:latest
+    ports:   ["80:80", "443:443", "443:443/udp"]
+    volumes: [router_data:/data, router_config:/config]
+
+  facebook-signup:
+    image:   registry.gitlab.com/rny3/brande/facebook_signup:latest
+    secrets: [fb_global_app_id, fb_global_app_secret]
+
+  editor:
+    image:   registry.gitlab.com/rny3/brande/editor:latest
+    volumes: [./data/public_draft:/app/public, sessions:/app/sessions]
+    secrets: [editor_credentials, session_secret]
+
+volumes:
+  router_data:
+  router_config:
+  sessions:
+
+secrets:
+  fb_global_app_id:     {file: ./secrets/fb_global_app_id.secret}
+  fb_global_app_secret: {file: ./secrets/fb_global_app_secret.secret}
+  editor_credentials:   {file: ./secrets/editor_credentials.json}
+  session_secret:       {file: ./secrets/session_secret.json}

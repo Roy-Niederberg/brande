@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Qabu Site Editor</title>
+    <link rel="stylesheet" href="https://unpkg.com/grapesjs/dist/css/grapes.min.css">
+    <script src="https://unpkg.com/grapesjs"></script>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            overflow: hidden;
+        }
+        #gjs {
+            height: 100%;
+            overflow: hidden;
+        }
+        /* Style the Save Draft button */
+        #save-draft {
+            background: #3b82f6 !important;
+            color: white !important;
+            padding: 8px 16px !important;
+            border-radius: 4px !important;
+            font-weight: bold !important;
+        }
+        #save-draft:hover {
+            background: #2563eb !important;
+        }
+        #save-draft::before {
+            content: 'Save Draft';
+            margin-left: 5px;
+        }
+        .status-indicator {
+            font-size: 12px;
+            color: #888;
+        }
+    </style>
+</head>
+<body>
+    <div id="gjs"></div>
+    <script>
+        const editor = grapesjs.init({
+            container: '#gjs',
+            height: '100%',
+            width: 'auto',
+            storageManager: false,
+            deviceManager: {
+                devices: [
+                    { name: 'Desktop', width: '' },
+                    { name: 'Tablet', width: '768px', widthMedia: '992px' },
+                    { name: 'Mobile', width: '375px', widthMedia: '480px' }
+                ]
+            },
+            canvas: {
+                styles: [
+                    'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700;900&display=swap'
+                ],
+                scripts: []
+            }
+        })
+
+        // Add Save Draft button to the options panel (top right)
+        editor.Panels.addButton('options', {
+            id: 'save-draft',
+            className: 'fa fa-floppy-o',
+            command: 'save-draft',
+            attributes: { title: 'Save Draft' }
+        })
+
+        // Add status indicator
+        editor.Panels.addButton('options', {
+            id: 'status-msg',
+            className: 'status-indicator',
+            label: 'Ready',
+            attributes: {
+                title: 'Editor status',
+                style: 'pointer-events: none; padding: 5px 10px; font-size: 12px;'
+            }
+        })
+
+        fetch('load')
+            .then(r => r.json())
+            .then(data => {
+                console.log('Loaded HTML length:', data.html.length)
+                console.log('Loaded CSS length:', data.css.length)
+                editor.setComponents(data.html)
+                // Add original CSS + override for fade-in animations (make visible in editor)
+                const editorCSS = data.css + '\n\n/* Editor override - make fade-in elements visible */\n.fade-in { opacity: 1 !important; transform: translateY(0) !important; }'
+                editor.setStyle(editorCSS)
+                updateStatus('Ready to edit')
+            })
+            .catch(err => {
+                console.error('Load failed:', err)
+                updateStatus('Failed to load - ' + err.message)
+            })
+
+        editor.Commands.add('save-draft', {
+            run: (editor) => {
+                updateStatus('Saving...')
+
+                const bodyHtml = editor.getHtml()
+                const css = editor.getCss()
+
+                const fullHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Qabu | Intelligent Brand Activation</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700;900&display=swap" rel="stylesheet">
+</head>
+<body>
+${bodyHtml}
+<script>
+    const observerOptions = { threshold: 0.1 };
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) entry.target.classList.add('visible');
+        });
+    }, observerOptions);
+
+    document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+            e.preventDefault();
+            document.querySelector(this.getAttribute('href')).scrollIntoView({ behavior: 'smooth' });
+        });
+    });
+<\/script>
+</body>
+</html>`
+
+                fetch('save', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ html: fullHtml, css })
+                })
+                .then(r => r.json())
+                .then(data => {
+                    updateStatus('Draft saved successfully! Contact developer to deploy.')
+                    setTimeout(() => updateStatus('Ready to edit'), 3000)
+                })
+                .catch(err => {
+                    console.error('Save failed:', err)
+                    updateStatus('Save failed - ' + err.message)
+                })
+            }
+        })
+
+        function updateStatus(message) {
+            const statusBtn = editor.Panels.getButton('options', 'status-msg')
+            if (statusBtn) {
+                statusBtn.set('label', message)
+            }
+        }
+    </script>
+</body>
+</html>

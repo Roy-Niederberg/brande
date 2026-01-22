@@ -1,9 +1,15 @@
+# Testing the router is a little bit different from testing other services.
+# On other services, all is manages in one docker-compose.yml, but
+# on the router, since it's a single instalce per server it has separate
+# docker-compose.yml. You should docker compose up -d this file and then
+# go to the client (./craftkidstoys/) and run the docker compose up -d 
+# there also.
 services:
   caddy:
     image: caddy:2.10.2-alpine
     container_name: router
     ports:
-      - "80:80"
+      - "3000:80"
       - "443:443"
       - "443:443/udp"  # HTTP/3
     volumes:

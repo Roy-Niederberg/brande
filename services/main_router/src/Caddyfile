@@ -1,0 +1,18 @@
+http://localhost,
+http://qabu.mooo.com,
+http://brandelicious.mooo.com {
+	handle /facebook-page-signup/* {
+		reverse_proxy facebook-signup:8558
+	}
+
+	handle /edit/* {
+		uri strip_prefix /edit
+		reverse_proxy editor:8080
+	}
+
+	handle {
+		root * /srv
+		try_files {path} {path}/index.html
+		file_server
+	}
+}

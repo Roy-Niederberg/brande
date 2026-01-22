@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Widget Demo - Both Modes</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            padding: 32px;
+            background: #f5f5f5;
+        }
+        .demo-section {
+            background: white;
+            padding: 24px;
+            margin-bottom: 32px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        h1 { margin-top: 0; }
+        h2 { margin-top: 0; color: #333; }
+        .embedded-container {
+            height: 600px;
+            width: 100%;
+            max-width: 400px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        pre {
+            background: #f8f8f8;
+            padding: 16px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Chat Widget Demo</h1>
+
+    <div class="demo-section">
+        <h2>1. Embedded Mode</h2>
+        <p>Widget embedded in a container with custom configuration:</p>
+        <div id="chat-container" class="embedded-container"></div>
+
+        <h3>Usage:</h3>
+        <pre>&lt;div id="chat-container" style="height: 600px; width: 400px;"&gt;&lt;/div&gt;
+
+&lt;script&gt;
+  window.ChatWidgetConfig = {
+    targetElement: '#chat-container',
+    apiUrl: '/custom-api/ask',
+    initialMessage: 'Hello! How can I help you today?',
+    placeholder: 'Ask me anything...'
+  };
+&lt;/script&gt;
+&lt;script src="widget.js"&gt;&lt;/script&gt;</pre>
+    </div>
+
+    <div class="demo-section">
+        <h2>2. Default Mode (Slide-in)</h2>
+        <p>Click the chat button in the bottom-right corner to open the default sliding widget.</p>
+        <p>This mode doesn't require a target element and will slide in from the side.</p>
+
+        <h3>Usage:</h3>
+        <pre>&lt;!-- No configuration needed for default mode --&gt;
+&lt;script src="widget.js"&gt;&lt;/script&gt;
+
+&lt;!-- Or with custom config --&gt;
+&lt;script&gt;
+  window.ChatWidgetConfig = {
+    apiUrl: '/api/chat',
+    initialMessage: 'Hi there! 👋',
+    placeholder: 'Type here...'
+  };
+&lt;/script&gt;
+&lt;script src="widget.js"&gt;&lt;/script&gt;</pre>
+    </div>
+
+    <div class="demo-section">
+        <h2>Configuration Options</h2>
+        <pre>{
+  targetElement: '#container',     // String selector or DOM element
+                                    // If provided: embedded mode
+                                    // If null/undefined: default slide-in mode
+
+  apiUrl: '/custom/api/endpoint',  // Custom API endpoint
+                                    // Default: window.location.origin + '/widget-api/ask'
+
+  initialMessage: 'Welcome!',      // Custom initial bot message
+                                    // Default: 'Need help?' (or RTL equivalent)
+
+  placeholder: 'Type here...'      // Custom input placeholder
+                                    // Default: 'Type your message...' (or RTL equivalent)
+}</pre>
+    </div>
+
+    <!-- Configure embedded widget -->
+    <script>
+        window.ChatWidgetConfig = {
+            targetElement: '#chat-container',
+            initialMessage: 'Hello! How can I help you today?',
+            placeholder: 'Ask me anything...'
+        };
+    </script>
+
+    <!-- Load widget -->
+    <script src="widget.js"></script>
+</body>
+</html>
