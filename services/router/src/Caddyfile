@@ -1,16 +1,55 @@
-http://*.mooo.com {
-        @apps path_regexp app ^/(\w+)
+http://craftkidstoys.mooo.com http://drlipokatz.mooo.com {
+	# Admin service - single handler for all admin routes
+	handle /admin/* {
+		uri strip_prefix /admin
+		reverse_proxy {labels.2}-admin-1:9876 {
+			@error status 404 5xx
+			handle_response @error {
+				root * /srv
+				rewrite * /404.html
+				file_server
+			}
+		}
+	}
 
-        handle @apps {
-                uri strip_prefix /{re.app.1}
-                reverse_proxy {labels.2}-{re.app.1}-1:9876
-        }
+	# Facebook signup service
+	handle /setup/* {
+		uri strip_prefix /setup
+		reverse_proxy {labels.2}-facebook-signup-1:8558
+	}
 
-        handle {
-                respond "Welcome to {host}" 200
-        }
+	# Widget API
+	handle /widget-api/* {
+		uri strip_prefix /widget-api
+		reverse_proxy {labels.2}-prompt-composer-1:4321
+	}
 
-        handle_errors 502 {
-                respond "Not found" 404
-        }
+	# Widget script - served from /srv root
+	handle /widget.js {
+		root * /srv
+		file_server
+	}
+
+	# Static files - unified handler for all client assets
+	handle {
+		root * /srv/{labels.2}
+
+		# Try exact path, then path with /index.html, finally fallback to homepage
+		try_files {path} {path}/index.html /index.html
+		file_server
+	}
+}
+
+# The facebook webhook, for all clients
+http://brandelicious-wh.mooo.com {
+	reverse_proxy facebook-dispatcher:3210
+}
+
+# This is just for the privacy for Facebook currently.
+http://brandelicious.mooo.com {
+	handle {
+		root * /srv
+		try_files {path} {path}/index.html
+		file_server
+	}
 }

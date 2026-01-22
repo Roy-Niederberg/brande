@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Get Permanent Page Token</title>
+    <style>
+        body { font-family: sans-serif; padding: 40px; max-width: 800px; margin: 0 auto; }
+        .btn { background-color: #1877F2; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; }
+        .btn:hover { background-color: #166fe5; }
+        #output { margin-top: 20px; background: #f4f4f4; padding: 15px; border-radius: 5px; white-space: pre-wrap; display: none; }
+        .page-item { background: white; border: 1px solid #ddd; padding: 10px; margin-bottom: 10px; }
+        .token-box { word-break: break-all; font-family: monospace; background: #eee; padding: 5px; font-size: 12px; margin-top: 5px; }
+    </style>
+</head>
+<body>
+
+    <h1>Connect Client Page</h1>
+    <p>Click below to grant permissions. We will generate a permanent token for your pages.</p>
+
+    <!-- 1. The Facebook Login Button -->
+    <button class="btn" onclick="loginWithFacebook()">Connect with Facebook</button>
+
+    <div id="status" style="margin-top: 10px; color: #666;"></div>
+    <div id="output"></div>
+
+    <!-- 2. Load Facebook SDK -->
+    <script>
+        window.fbAsyncInit = function() {
+            FB.init({
+                appId      : '1488473639240339',
+                cookie     : true,
+                xfbml      : true,
+                version    : 'v24.0'
+            });
+        };
+    </script>
+    <script async defer crossorigin="anonymous" src="https://connect.facebook.net/en_US/sdk.js"></script>
+
+    <!-- 3. Application Logic -->
+    <script>
+        function loginWithFacebook() {
+            if (typeof FB === 'undefined') {
+                document.getElementById('status').innerText = "Error: Facebook SDK not loaded. Please refresh and try again.";
+                return;
+            }
+
+            document.getElementById('status').innerText = "Waiting for Facebook login...";
+
+            // Request permissions needed to manage pages
+            FB.login(function(response) {
+                if (response.authResponse) {
+                    const shortLivedToken = response.authResponse.accessToken;
+                    document.getElementById('status').innerText = "Login successful! Exchanging tokens...";
+
+                    // Send to Backend
+                    getPermanentTokens(shortLivedToken);
+                } else {
+                    document.getElementById('status').innerText = "User cancelled login or did not fully authorize.";
+                }
+            }, {
+                scope: 'pages_show_list,pages_read_engagement,pages_manage_engagement,pages_manage_metadata,pages_messaging'
+            });
+        }
+
+        async function getPermanentTokens(token) {
+            try {
+                const response = await fetch('/facebook-page-signup/api/get-permanent-tokens', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ shortLivedToken: token })
+                });
+
+                const data = await response.json();
+
+                if (data.error) {
+                    document.getElementById('status').innerText = "Error: " + data.error;
+                    return;
+                }
+
+                // Render Results
+                const outputDiv = document.getElementById('output');
+                outputDiv.style.display = 'block';
+                outputDiv.innerHTML = "<h3>Success! Permanent Tokens Generated:</h3>";
+
+                data.pages.forEach(page => {
+                    outputDiv.innerHTML += `
+                        <div class="page-item">
+                            <strong>${page.name}</strong> (ID: ${page.id})
+                            <div class="token-box">${page.permanent_token}</div>
+                        </div>
+                    `;
+                });
+                document.getElementById('status').innerText = "Done.";
+
+            } catch (err) {
+                console.error(err);
+                document.getElementById('status').innerText = "Server Error. Check console.";
+            }
+        }
+    </script>
+</body>
+</html>

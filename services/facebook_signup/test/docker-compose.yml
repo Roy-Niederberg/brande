@@ -1,0 +1,20 @@
+services:
+  facebook_signup:
+    build:
+      context: ..
+      target: development
+    stop_grace_period: 0s
+    ports:
+      - "8558:8558"
+    volumes:
+      - ../src/:/app/src/
+      - ../src/public:/app/public
+    secrets:
+      - fb_global_app_id
+      - fb_global_app_secret
+
+secrets:
+  fb_global_app_id:
+    file: ./secrets/fb_global_app_id.secret
+  fb_global_app_secret:
+    file: ./secrets/fb_global_app_secret.secret

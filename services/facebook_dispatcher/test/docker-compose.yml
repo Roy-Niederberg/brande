@@ -1,0 +1,19 @@
+services:
+  dispatcher:
+    build:
+      context: ..
+      target: development
+    ports:
+      - "3000:3210"
+    volumes:
+      - ../src:/app/src
+    secrets:
+      - fb_global_webhook_verify_token
+      - fb_global_app_secret
+
+secrets:
+  fb_global_webhook_verify_token:
+    file: ./secrets/fb_global_webhook_verify_token
+  fb_global_app_secret:
+    file: ./secrets/fb_global_app_secret
+

@@ -1,0 +1,78 @@
+services:
+
+  prompt-composer:
+    build: {context: ../../services/prompt_composer/, target: development}
+    environment: [NODE_TLS_REJECT_UNAUTHORIZED=0]
+    secrets: [gemini_key_1, gemini_key_2, groq_key_1, groq_key_2]
+    volumes:
+      - ../../services/prompt_composer/src:/app/src
+      - ./data/:/app/data
+      - prompt_log:/app/prompt_log
+
+  admin:
+    build: {context: ../../services/admin/, target: development }
+    secrets: [google_strategy, session_config, authorized_emails]
+    depends_on: [prompt-composer]
+    volumes:
+      - ../../services/admin/src/:/app/src/
+      - ../../services/admin/src/views:/app/views
+      - admin_sessions:/app/sessions
+
+  # facebook-comments-808626769002262:
+  #   image: registry.gitlab.com/rny3/brande/facebook_comments:latest
+  #   networks: [client_network]
+  #   secrets: [fb_page_access_token]
+  #   environment: [FACEBOOK_API_URL=https://graph.facebook.com/v24.0/]
+
+  # facebook-dm-808626769002262:
+  #   image: registry.gitlab.com/rny3/brande/facebook_dm:latest
+  #   networks: [client_network]
+  #   secrets: [fb_page_access_token]
+  #   environment: [FACEBOOK_API_URL=https://graph.facebook.com/v24.0/]
+
+  # facebook-signup:
+  #   image: registry.gitlab.com/rny3/brande/facebook_signup:v0.0.1
+  #   networks: [client_network]
+  #   secrets: [fb_global_app_id, fb_global_app_secret]
+
+  wiremock:
+    image: wiremock/wiremock:latest
+    command: --https-port 443 --verbose
+    volumes:
+      - ./wiremock/mappings:/home/wiremock/mappings
+    networks:
+      default:
+        aliases:
+          - generativelanguage.googleapis.com
+          - api.groq.com
+
+  caddy:
+    build: {context: ../../services/router/, target: development}
+    ports:  ["3000:80", "3443:443", "3443:443/udp"]
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - ../../services/router/public:/srv
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  admin_sessions:
+  prompt_log:
+  caddy_data:
+  caddy_config:
+
+secrets:
+
+  # for services
+  google_strategy:   {file: ./secrets/google_strategy.secret}
+  session_config:    {file: ./secrets/session_config.secret}
+  authorized_emails: {file: ./secrets/authorized_emails.json}
+  gemini_key_1:      {file: ./secrets/gemini_key_1.secret}
+  gemini_key_2:      {file: ./secrets/gemini_key_2.secret}
+  groq_key_1:        {file: ./secrets/groq_key_1.secret}
+  groq_key_2:        {file: ./secrets/groq_key_2.secret}
+  # fb_page_access_token: {file: ./secrets/fb_page_access_token.secret}
+
+  # for the router
+  # fb_global_app_id:     {file: ../router/secrets/fb_global_app_id.secret}
+  # fb_global_app_secret: {file: ../router/secrets/fb_global_app_secret.secret}
