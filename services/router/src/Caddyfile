@@ -5,17 +5,3 @@ http://craftkidstoys.mooo.com {
 http://drlipokatz.mooo.com {
 	reverse_proxy drlipokatz-site-1:80
 }
-
-# The facebook webhook, for all clients
-http://brandelicious-wh.mooo.com {
-	reverse_proxy facebook-dispatcher:3210
-}
-
-# This is just for the privacy for Facebook currently.
-http://brandelicious.mooo.com {
-	handle {
-		root * /srv
-		try_files {path} {path}/index.html
-		file_server
-	}
-}
