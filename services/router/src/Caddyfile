@@ -1,43 +1,9 @@
-http://craftkidstoys.mooo.com http://drlipokatz.mooo.com {
-	# Admin service - single handler for all admin routes
-	handle /admin/* {
-		uri strip_prefix /admin
-		reverse_proxy {labels.2}-admin-1:9876 {
-			@error status 404 5xx
-			handle_response @error {
-				root * /srv
-				rewrite * /404.html
-				file_server
-			}
-		}
-	}
+http://craftkidstoys.mooo.com {
+	reverse_proxy craftkidstoys-site-1:80
+}
 
-	# Facebook signup service
-	handle /setup/* {
-		uri strip_prefix /setup
-		reverse_proxy {labels.2}-facebook-signup-1:8558
-	}
-
-	# Widget API
-	handle /widget-api/* {
-		uri strip_prefix /widget-api
-		reverse_proxy {labels.2}-prompt-composer-1:4321
-	}
-
-	# Widget script - served from /srv root
-	handle /widget.js {
-		root * /srv
-		file_server
-	}
-
-	# Static files - unified handler for all client assets
-	handle {
-		root * /srv/{labels.2}
-
-		# Try exact path, then path with /index.html, finally fallback to homepage
-		try_files {path} {path}/index.html /index.html
-		file_server
-	}
+http://drlipokatz.mooo.com {
+	reverse_proxy drlipokatz-site-1:80
 }
 
 # The facebook webhook, for all clients
