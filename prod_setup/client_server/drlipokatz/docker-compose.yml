@@ -1,5 +1,10 @@
 services:
 
+  site:
+    image: registry.gitlab.com/rny3/brande/site:latest
+    networks: [client_network]
+    volumes: [./public:/srv]
+
   prompt-composer:
     image: registry.gitlab.com/rny3/brande/prompt_composer:v0.0.7
     networks: [client_network]
