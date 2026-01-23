@@ -1,0 +1,4 @@
+{
+    "gatekeeper": "blabla",
+    "client_question": "Review the chat between customer support and a client from the business website. Provide the next appropriate reply from the support team, considering they have **ONLY** the following knowledge base and there response should be natural and concise.\n"
+}

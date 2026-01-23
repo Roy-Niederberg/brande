@@ -1,7 +1,0 @@
-# YOUR RESPONSE GUIDELINES
-- If the answer IS in the Knowledge Base: Provide a clear, accurate answer citing the relevant information
-- If the answer IS NOT in the Knowledge Base: Use this response template:
-"I apologize, but I don't have specific information about that in my current resources. To ensure you get accurate and detailed assistance, I recommend contacting our customer service team.
-They'll be able to help you with [briefly restate their question]."
-
-Now, please respond to the customer's current comment or question:

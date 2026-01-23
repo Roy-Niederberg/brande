@@ -1,0 +1,56 @@
+* General Store Information & Services
+  * Hours & Location: Open Mon–Sat 9am–6pm, Sun 10am–4pm. Located at 42 Greenleaf Lane.
+  * Parking: Dedicated lot behind the building with 2 reserved spots for expectant mothers.
+  * Contact: Call 555-0199 or email hello@timbertots.store. Feedback and suggestions are welcome via email.
+  * In-Store Experience: We have a small "Discovery Zone" play area for kids. We do not host birthday parties due to space constraints.
+  * Catalogs: We do not print paper catalogs (to save trees); our full collection is viewable online.
+  * Newsletter: Subscribe via the sign-up box in the website footer for updates.
+
+* Online Account & Technical Support
+  * Browsers: Site is optimized for the latest versions of Chrome, Safari, Firefox, and Edge.
+  * Accounts: Optional guest checkout available. Registered users earn loyalty points.
+  * Login Issues: Use the "Forgot Password" link on the login page to reset via email.
+  * Data Management: Update addresses in "My Account." We do not have a public API for inventory queries.
+  * Errors: If the website glitches, please email a screenshot to our support team.
+
+* Payments, Pricing & B2B
+  * Methods: Visa, Mastercard, Amex, PayPal, Apple Pay, Google Pay.
+  * Security: 256-bit SSL encryption; no credit card data is stored on our servers.
+  * Pricing: We do not offer price matching as we prioritize fair trade wages for artisans.
+  * Discounts: Enter codes at checkout (one per order). Bulk discount of 10% available for schools/organizations on orders over $500 (email to apply).
+  * Sales: Seasonal sales occur twice a year (Summer/Winter).
+  * Cancellations: Orders may be auto-cancelled due to inventory errors or fraud detection (you will be notified via email).
+
+* Shipping, Delivery & Store Pickup
+  * Carriers: UPS Carbon Neutral Ground and USPS.
+  * Cost: Flat $6.95 domestic. Free shipping on orders over $75.
+  * International: Yes, we ship to Canada and the UK ($25 flat rate, 10-14 day delivery).
+  * Timelines: Domestic delivery takes 3-5 business days. Delays are rare; contact us if tracking doesn't update for 48 hours.
+  * Tracking: A tracking link is emailed immediately upon dispatch.
+  * PO Boxes: Yes, we ship to PO Boxes via USPS.
+  * Modifications: Shipping addresses or items can be changed only within 1 hour of placement by calling the store.
+  * Pickup: "Click & Collect" orders are ready in 2 hours. Bring ID and order number.
+
+* Returns, Exchanges & Warranties
+  * Policy: 60-day return window for unused items in original packaging.
+  * Process: Initiate via the "Returns Portal" link in the footer to get a label or instructions.
+  * Cost: Free returns in-store. Mail-in returns incur a $6 label fee deducted from the refund.
+  * Refunds: Issued to original payment method (takes 5-10 business days).
+  * Exchanges: We do not offer direct exchanges; please return for a refund and place a new order.
+  * Exceptions: Personalized items and Gift Cards are non-returnable.
+  * Repairs: We do not offer repair services, but we sell spare parts (wheels/pegs) for common items.
+
+* Product Details & Safety
+  * Materials: 100% FSC-certified beech or rubberwood; non-toxic water-based paints.
+  * Safety: ASTM F963 and EN71 certified. All items are rigorously safety tested.
+  * Age Ratings: Clearly listed on every product page (e.g., 6m+, 18m+, 3y+).
+  * Inventory: Popular items restocked monthly. Sign up for "Back in Stock" alerts on product pages.
+  * Pre-orders: Available only for special Holiday Collections.
+  * Demos: Video demos are available on product pages. We do not offer live video calls.
+  * Sizing: Detailed dimensions are listed on every page (we do not sell plush toys, so no plush sizing guides needed).
+
+* Gifting & Loyalty
+  * Gift Wrap: Recycled kraft paper wrapping available for $4.00/item.
+  * Loyalty Program: "TimberTokens" — Free to join. Earn 1 point per $1 spent. 100 points = $10 reward. Single tier only.
+  * Reserving: Items can only be reserved by purchasing them for Store Pickup.
+
