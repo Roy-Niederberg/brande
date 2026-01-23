@@ -31,6 +31,7 @@ passport.serializeUser((user, done) => done(null, user))
 passport.deserializeUser((user, done) => done(null, user))
 
 // Public routes
+app.get('/', (rq, rs) => rq.isAuthenticated() && emails.includes(rq.user.email) ? rs.redirect('/admin/chatQA') : rs.redirect('/admin/login/'))
 app.get('/login/', passport.authenticate('google', { scope: ['profile', 'email'] }))
 app.get('/login/callback', passport.authenticate('google', { failureRedirect: '/admin/login/' }), (_, rs) => rs.redirect('/admin/chatQA'))
 
@@ -56,25 +57,33 @@ app.get('/api/initial-content', checkSession, async (_rq, rs) => {
   }
 })
 
-app.post('/api/chat', checkSession, async (rq, rs) => {
+app.post('/ask', checkSession, async (rq, rs) => {
   try {
-    const { chatHistory } = rq.body
-    if (!chatHistory || !Array.isArray(chatHistory)) return rs.status(400).send()
-    const chat_data = {
-      chat_history: chatHistory.map(msg =>
-        `${msg.sender === 'user' ? '<<<USER>>>: ' : '<<<ASSISTANT>>>: '}${msg.text}`).join('\n'),
-      user_display_name: rq.user.displayName,
+    console.log(`[${new Date().toISOString()}] Widget chat request from admin`)
+
+    // Extract knowledge base override if provided
+    const { knowledgeBaseOverride, ...restBody } = rq.body
+
+    // Add KB override to chat_data if provided
+    const requestBody = { ...restBody }
+    if (knowledgeBaseOverride) {
+      requestBody.chat_data = {
+        ...requestBody.chat_data,
+        knowledge_base_override: knowledgeBaseOverride
+      }
+      console.log(`[${new Date().toISOString()}] Using knowledge base override (${knowledgeBaseOverride.length} chars)`)
     }
-    console.log(`[${new Date().toISOString()}] Customer chat request - messages: ${chatHistory.length}`)
+
     const response = await fetch(`${PROMPT_COMPOSER_URL}/ask`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ module: 'admin_ui', chat_data })
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(requestBody)
     })
     const responseText = await response.text()
-    rs.json({ response: responseText, timestamp: new Date().toISOString() })
+    rs.send(responseText)
   } catch (error) {
-    console.error(`[${new Date().toISOString()}] Customer chat error:`, error.message)
-    rs.json({ response: 'ERROR: response server not available', isError: true, timestamp: new Date().toISOString() })
+    console.error(`[${new Date().toISOString()}] Widget API error:`, error.message)
+    rs.status(500).send('ERROR: response server not available')
   }
 })
 

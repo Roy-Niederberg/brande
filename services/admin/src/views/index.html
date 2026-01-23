@@ -1,99 +1,294 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="he" dir="ltr">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>ChatQA - Brandelicious</title>
-  <link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Qabu Admin</title>
+    <style>
+        /* Wide layout - side by side */
+        *           { margin: 0; padding: 0; box-sizing: border-box; }
+        body, html  { width: 100%; height: 100%; overflow: hidden; }
+        .container  { width: 100%; height: 100vh; height: 100dvh; display: flex; }
+        .bg-section { flex: 1; background-image: url("/background.jpg");
+            background-size: cover; background-position: center; display: flex;
+            align-items: center; justify-content: center; position: relative;
+        }
+
+        .content { flex: 1; display: flex; align-items: center; justify-content: center; }
+        .prompt { position: absolute; padding: 2%; width: 98%; height: 98%; border-radius: 10px;
+            background-color: #fffe; overflow-y: auto; overflow-x: hidden;
+        }
+        .prompt.editing { overflow: hidden; padding: 0; }
+
+        /* Buttons */
+        .top-buttons { position: absolute; top: 12px; right: 12px; display: flex; gap: 8px; z-index: 10; }
+
+        #edit-btn, #publish-btn {
+            width: 32px; height: 32px; border-radius: 50%; border: none;
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2); transition: all 0.3s ease; color: white;
+        }
+        #edit-btn:hover, #publish-btn:hover { transform: scale(1.1); box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+
+        #edit-btn { background: #667eea; }
+        #edit-btn.editing { background: #28a745; }
+
+        #publish-btn { background: #ff9800; position: relative; }
+        #publish-btn:disabled { background: #ccc; cursor: not-allowed; opacity: 0.6; }
+        #publish-btn:not(:disabled):hover { background: #f57c00; }
+
+        /* Draft indicator - orange dot */
+        #publish-btn::after {
+            content: '';
+            position: absolute;
+            top: -2px;
+            right: -2px;
+            width: 10px;
+            height: 10px;
+            background: #f44336;
+            border-radius: 50%;
+            border: 2px solid white;
+            display: none;
+        }
+        #publish-btn.has-changes::after { display: block; }
+
+        /* Editor Textarea */
+        #kb-editor { display: none; width: 100%; height: 100%; padding: 16px;
+            border: none; border-radius: 10px; font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 14px; line-height: 1.5; resize: none; outline: none;
+            background: #fafafa; color: #333; box-sizing: border-box;
+        }
+        #kb-editor:focus { background: #fff; }
+
+        /* Dense Markdown Styling */
+        #kb-content { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif
+            font-size: 12px; line-height: 1.3; color: #1a1a1a; }
+        #kb-content h1 { font-size: 18px; font-weight: 700; margin: 8px 0 4px; border-bottom: 2px solid #e1e4e8; padding-bottom: 3px; }
+        #kb-content h2 { font-size: 16px; font-weight: 600; margin: 7px 0 3px; border-bottom: 1px solid #e1e4e8; padding-bottom: 2px; }
+        #kb-content h3 { font-size: 14px; font-weight: 600; margin: 6px 0 3px; }
+        #kb-content h4 { font-size: 13px; font-weight: 600; margin: 5px 0 2px; }
+        #kb-content p { margin: 3px 0; }
+        #kb-content ul, #kb-content ol { margin: 3px 0; padding-left: 18px; }
+        #kb-content li { margin: 1px 0; }
+        #kb-content code { background: #f6f8fa; padding: 1px 4px; border-radius: 3px;
+            font-family: 'Consolas', 'Monaco', monospace; font-size: 11px; color: #e83e8c; }
+        #kb-content pre { background: #f6f8fa; padding: 8px; border-radius: 4px;
+            margin: 4px 0; overflow-x: auto; border: 1px solid #e1e4e8; }
+        #kb-content pre code { background: transparent; padding: 0; color: #24292e;
+            display: block; font-size: 11px; line-height: 1.3; }
+        #kb-content blockquote { border-left: 3px solid #dfe2e5; padding-left: 8px;
+            margin: 4px 0; color: #6a737d; font-style: italic; }
+        #kb-content a { color: #0366d6; text-decoration: none; }
+        #kb-content a:hover { text-decoration: underline; }
+        #kb-content table { border-collapse: collapse; margin: 4px 0; font-size: 11px; }
+        #kb-content th, #kb-content td { border: 1px solid #dfe2e5; padding: 3px 6px; }
+        #kb-content th { background: #f6f8fa; font-weight: 600; }
+        #kb-content hr { border: none; border-top: 1px solid #e1e4e8; margin: 8px 0; }
+        #kb-content strong { font-weight: 600; }
+        #kb-content em { font-style: italic; }
+
+        /* narrow layout - stacked with transparent overlay */
+        @media (max-width: 768px) {
+            .container  { flex-direction: column; position: relative; }
+            .bg-section { position: absolute; width: 100%; height: 100%; top: 0; left: 0; }
+            .content    { position: absolute; width: 100%; height: 100%; top: 0; left: 0; background: transparent; }
+            .prompt     { width: 100%; height: 100%; }
+            .text-content p { font-size: 16px; }
+        }
+    </style>
 </head>
 <body>
-  <!-- Header -->
-  <header class="app-header">
-    <div class="header-content">
-      <h1>© Powerd by Brandelicious</h1>
-      <div class="user-info">
-        <img id="userAvatar" src="" alt="User" class="user-avatar">
-        <span id="userName"></span>
-      </div>
-    </div>
-  </header>
-
-  <!-- Mobile Navigation (visible only on mobile) -->
-  <nav class="mobile-nav">
-    <div class="mobile-nav-tabs">
-      <button class="mobile-nav-btn" data-mobile-panel="left">Instructions / KB</button>
-      <button class="mobile-nav-btn active" data-mobile-panel="right">Chat</button>
-    </div>
-  </nav>
-
-  <!-- Main Container -->
-  <div class="main-container">
-    <!-- Left Panel: Instructions & Knowledge Base -->
-    <div class="left-panel">
-      <div class="tabs">
-        <button class="tab-btn active" data-tab="instructions">Instructions</button>
-        <button class="tab-btn" data-tab="knowledge-base">Knowledge Base</button>
-      </div>
-
-      <div class="tab-content">
-        <!-- Instructions Tab -->
-        <div id="instructions-tab" class="tab-pane active">
-          <div class="editor-header">
-            <button id="instructions-edit-btn" class="edit-btn">Edit</button>
-            <div class="update-indicator" id="instructions-indicator"></div>
-          </div>
-          <textarea
-            id="instructionsEditor"
-            class="text-editor"
-            placeholder="Loading instructions..."
-            readonly></textarea>
+    <div class="container">
+        <div class="bg-section">
+             <div class="prompt" id="prompt-edit-container">
+                <div class="top-buttons">
+                    <button id="publish-btn" title="Publish Changes">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/>
+                            <polyline points="7 11 12 16 17 11"/>
+                            <line x1="12" y1="16" x2="12" y2="3"/>
+                        </svg>
+                    </button>
+                    <button id="edit-btn" title="Edit Knowledge Base">
+                        <svg id="pencil-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M17 3l4 4L7 21H3v-4L17 3z"/>
+                        </svg>
+                        <svg id="disk-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none;">
+                            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                            <polyline points="17 21 17 13 7 13 7 21"/>
+                            <polyline points="7 3 7 8 15 8"/>
+                        </svg>
+                    </button>
+                </div>
+                <div id="kb-content">Loading...</div>
+                <textarea id="kb-editor" placeholder="Edit knowledge base markdown..."></textarea>
+             </div>
         </div>
-
-        <!-- Knowledge Base Tab -->
-        <div id="knowledge-base-tab" class="tab-pane">
-          <div class="editor-header">
-            <button id="knowledge-base-edit-btn" class="edit-btn">Edit</button>
-            <div class="update-indicator" id="knowledge-base-indicator"></div>
-          </div>
-          <textarea
-            id="knowledgeBaseEditor"
-            class="text-editor"
-            placeholder="Loading knowledge base..."
-            readonly></textarea>
+        <div class="content" id="chat-container">
         </div>
-      </div>
     </div>
+    <script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js"></script>
+    <script>
+        let publishedKnowledgeBase = ''
+        let draftKnowledgeBase = ''
+        let isEditing = false
 
-    <!-- Right Panel: Chat Interface -->
-    <div class="right-panel">
-      <div class="chat-container">
-        <div class="messages-container" id="customer-messages">
-          <div class="welcome-message">
-            <p>Start a conversation with the customer assistant</p>
-          </div>
-        </div>
-        <div class="input-container">
-          <div class="loading-indicator" id="customer-loading" style="display: none;">
-            <div class="spinner"></div>
-            <span>Processing...</span>
-          </div>
-          <div class="input-wrapper">
-            <textarea
-              id="customer-input"
-              class="message-input"
-              placeholder="Type a message..."
-              rows="1"></textarea>
-            <button id="customer-send" class="send-btn">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="24" height="24">
-                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
-              </svg>
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
+        const DRAFT_STORAGE_KEY = 'kb_draft'
 
-  <script src="script.js"></script>
+        // Configure widget to send draft KB with each request
+        window.ChatWidgetConfig = {
+            targetElement: '#chat-container',
+            apiEndpoint: '/admin/ask',
+            beforeSend: (body) => {
+                // Include draft knowledge base in request
+                body.knowledgeBaseOverride = draftKnowledgeBase
+                return body
+            }
+        }
+
+        async function loadKnowledgeBase() {
+            try {
+                const response = await fetch('/admin/api/initial-content')
+                const data = await response.json()
+                const kbContent = document.getElementById('kb-content')
+
+                if (data.knowledgeBase) {
+                    publishedKnowledgeBase = data.knowledgeBase
+
+                    // Check for draft in localStorage
+                    const savedDraft = localStorage.getItem(DRAFT_STORAGE_KEY)
+                    if (savedDraft) {
+                        try {
+                            const draftData = JSON.parse(savedDraft)
+                            draftKnowledgeBase = draftData.content
+                            console.log('Loaded draft from localStorage')
+                        } catch (e) {
+                            console.warn('Failed to parse draft from localStorage')
+                            draftKnowledgeBase = publishedKnowledgeBase
+                        }
+                    } else {
+                        draftKnowledgeBase = publishedKnowledgeBase
+                    }
+
+                    // Display draft version
+                    const html = marked.parse(draftKnowledgeBase)
+                    kbContent.innerHTML = html
+                    updatePublishButton()
+                } else {
+                    kbContent.innerHTML = '<p style="color: #999;">No knowledge base content available</p>'
+                }
+            } catch (error) {
+                console.error('Failed to load knowledge base:', error)
+                document.getElementById('kb-content').innerHTML =
+                    '<p style="color: #e74c3c;">Error loading knowledge base</p>'
+            }
+        }
+
+        function saveDraft(content) {
+            // Save to draft (localStorage only)
+            draftKnowledgeBase = content
+            localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify({
+                content: content,
+                timestamp: new Date().toISOString()
+            }))
+
+            // Update view
+            const html = marked.parse(draftKnowledgeBase)
+            document.getElementById('kb-content').innerHTML = html
+            updatePublishButton()
+            console.log('Draft saved to localStorage')
+        }
+
+        async function publishKnowledgeBase() {
+            // Confirmation dialog
+            if (!confirm('Are you sure you want to publish these changes?\n\nThis will make the changes visible to all users chatting with the bot.')) {
+                return false
+            }
+
+            try {
+                const response = await fetch('/admin/api/knowledge-base', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ knowledgeBase: draftKnowledgeBase })
+                })
+
+                if (response.ok) {
+                    // Update published version
+                    publishedKnowledgeBase = draftKnowledgeBase
+                    // Clear draft from localStorage
+                    localStorage.removeItem(DRAFT_STORAGE_KEY)
+                    updatePublishButton()
+                    alert('Knowledge base published successfully!')
+                    return true
+                } else {
+                    alert('Failed to publish knowledge base')
+                    return false
+                }
+            } catch (error) {
+                console.error('Failed to publish knowledge base:', error)
+                alert('Error publishing knowledge base')
+                return false
+            }
+        }
+
+        function updatePublishButton() {
+            const publishBtn = document.getElementById('publish-btn')
+            const hasChanges = draftKnowledgeBase !== publishedKnowledgeBase
+
+            if (hasChanges) {
+                publishBtn.classList.add('has-changes')
+                publishBtn.disabled = false
+                publishBtn.title = 'Publish Changes (Draft differs from published)'
+            } else {
+                publishBtn.classList.remove('has-changes')
+                publishBtn.disabled = true
+                publishBtn.title = 'No changes to publish'
+            }
+        }
+
+        function toggleEditMode() {
+            isEditing = !isEditing
+            const btn = document.getElementById('edit-btn')
+            const promptContainer = document.getElementById('prompt-edit-container')
+            const kbContent = document.getElementById('kb-content')
+            const kbEditor = document.getElementById('kb-editor')
+            const pencilIcon = document.getElementById('pencil-icon')
+            const diskIcon = document.getElementById('disk-icon')
+
+            if (isEditing) {
+                // Switch to edit mode
+                btn.classList.add('editing')
+                promptContainer.classList.add('editing')
+                pencilIcon.style.display = 'none'
+                diskIcon.style.display = 'block'
+                kbContent.style.display = 'none'
+                kbEditor.style.display = 'block'
+                kbEditor.value = draftKnowledgeBase
+                kbEditor.focus()
+            } else {
+                // Check if content changed
+                const hasChanges = kbEditor.value !== draftKnowledgeBase
+
+                if (hasChanges) {
+                    // Save draft and switch to view mode
+                    saveDraft(kbEditor.value)
+                }
+
+                // Always switch back to view mode
+                btn.classList.remove('editing')
+                promptContainer.classList.remove('editing')
+                pencilIcon.style.display = 'block'
+                diskIcon.style.display = 'none'
+                kbContent.style.display = 'block'
+                kbEditor.style.display = 'none'
+            }
+        }
+
+        // Initialize
+        document.getElementById('edit-btn').addEventListener('click', toggleEditMode)
+        document.getElementById('publish-btn').addEventListener('click', publishKnowledgeBase)
+        loadKnowledgeBase()
+    </script>
+    <script src="/widget.js"></script>
 </body>
 </html>
