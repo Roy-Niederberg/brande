@@ -6,6 +6,7 @@
 # and not docker stuff
 !docker-compose.yml
 !Dockerfile
+!README.md
 
 # and not the design guidelines
 !CLAUDE.md
