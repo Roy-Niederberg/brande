@@ -1,7 +1,9 @@
 :80 {
 	handle /admin/* {
 		uri strip_prefix /admin
-		reverse_proxy admin:9876
+		reverse_proxy admin:9876 {
+			header_up X-Forwarded-Proto {header.X-Forwarded-Proto}
+		}
 	}
 
 	handle /widget-api/* {
