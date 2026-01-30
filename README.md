@@ -1,10 +1,12 @@
 # The Qabu Project
 -------
-- [ ] Get git to nice state again
+- [x] [TODO] Get git to nice state again
+- [x] remove the Claude staff from git.
+- [] Make craftkidstoys and dr Lipo work like on the dev setup on production.
+- [] Create site for Qabu. poc.
 - [ ] Organize my desk
-- [ ] remove the Claude staff from git.
 - [ ] Make sure I have all the secrets backed up
-- [ ] Go over CLAUDE.md and read it.
+- [ ] Go over CLAUDE.md and read it. (in ~/tmp/qabu_CLAUDE.md)
 
 - [ ] *Continuous improvement:*
     - [ ] *network of agents:*
@@ -18,16 +20,16 @@
         - [ ] Create Qabu for Vered and Irena and a third demo one.
     - [ ] Create a starter message for each client (The message the will start the chat. Can be timed)
     - [ ] API For Qabu to 'control' the site (see the Qabu for Qabu for detail on MVP)
-    - [ ] 
+    - [ ] Change the site to be node.js, instead of just Caddy (Do I still need the caddy??)
 
 - [ ] *Build Qabu for Qabu:*
     - [ ] Qabu logo
     - [ ] Video Demo
-    - [ ] Buy the domain (`qabu.co.il` or `qabu.net`?)
+    - [x] Buy the domain (`qabu.co.il` or `qabu.net`?) (I bought qabu.net)
     - [ ] Qabu js interface: Movie clip, form to input phone number, form to pay.
     - [ ] links to demos
-    - [ ]  
-
+    - [ ] improve the 404 on `./services/router/src/Caddyfile` 
+    - [ ] Security hardening  - Only allow Cloudflare IP addresses at your origin.
 
 - [ ]    Facebook:
     - [ ]  Webhook to main (use the secret for URL?)
