@@ -8,10 +8,27 @@
     : document.body // Default to body if not specified
   targetElement.dir ='ltr'
   const API = config.apiEndpoint || '/widget-api/ask'
+  const STORAGE_KEY = 'chat_history'
   const history = []
-  let messageCount = 0
 
   const css = `
+    @font-face {
+      font-family: 'Playpen Sans Hebrew';
+      src: url('/fonts/PlaypenSansHebrew-latin.woff2') format('woff2');
+      font-weight: 400;
+      font-style: normal;
+      font-display: swap;
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+    @font-face {
+      font-family: 'Playpen Sans Hebrew';
+      src: url('/fonts/PlaypenSansHebrew-hebrew.woff2') format('woff2');
+      font-weight: 400;
+      font-style: normal;
+      font-display: swap;
+      unicode-range: U+0307-0308, U+0590-05FF, U+200C-2010, U+20AA, U+25CC, U+FB1D-FB4F;
+    }
+
     @keyframes slideInUp {
       from {
         opacity: 0;
@@ -39,7 +56,7 @@
       height: 100%;
       animation: none;
       z-index: 1;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+      font-family: 'Playpen Sans Hebrew', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
     }
 
     #chat-box {
@@ -117,7 +134,7 @@
 
     .chat-msg {
       padding: 18px 22px;
-      padding-bottom: 24px;
+      padding-bottom: 30px;
       border-radius: 8px;
       max-width: 80%;
       word-wrap: break-word;
@@ -131,6 +148,12 @@
       white-space: pre-wrap; /* Preserve newlines */
     }
 
+    .chat-msg ul {
+      margin: 4px 0;
+      padding-left: 0;
+      list-style-position: inside;
+    }
+
     .chat-timestamp {
       position: absolute;
       bottom: 6px;
@@ -141,21 +164,22 @@
     }
 
     .chat-msg.user {
-      background: #A6D0DD;
-      color: #0F2C59;
+      background: #0F2C59;
+      color: #ffffff;
       align-self: flex-end;
       text-align: start;
-      border: 1px solid rgba(0,0,0,0.06);
+      border: none;
       margin-right: 12px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.05);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15), 0 2px 4px rgba(0,0,0,0.1);
     }
 
     .chat-msg.bot {
-      background: #0F2C59;
-      color: #ffffff;
+      background: #A6D0DD;
+      color: #0F2C59;
       align-self: flex-start;
+      border: 1px solid rgba(0,0,0,0.06);
       margin-left: 12px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15), 0 2px 4px rgba(0,0,0,0.1);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.05);
     }
 
     .chat-tail {
@@ -171,12 +195,13 @@
     #typing-indicator {
       padding: 14px 20px;
       border-radius: 18px;
-      background: #0F2C59;
+      background: #A6D0DD;
       margin-left: 12px;
       width: auto;
       align-self: flex-start;
       display: none;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15), 0 2px 4px rgba(0,0,0,0.1);
+      border: 1px solid rgba(0,0,0,0.06);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.05);
       animation: slideInUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
@@ -192,7 +217,7 @@
       width: 8px;
       height: 8px;
       border-radius: 50%;
-      background: white;
+      background: #0F2C59;
       animation: bounce 1.4s infinite ease-in-out;
     }
     .typing-dot:nth-child(1) { animation-delay: -0.32s; }
@@ -317,199 +342,276 @@
     </div>
   `
 
-  setTimeout(() => {
-    const style = document.createElement('style')
+  const style = document.createElement('style')
+  try {
+    style.textContent = css
+    document.head.appendChild(style)
+  } catch (e) {
+    console.error('Error injecting CSS:', e)
+    console.log('CSS Content:', css)
+  }
+
+  const widget = document.createElement('div')
+  widget.id = 'chat-widget'
+  widget.innerHTML = html
+
+  targetElement.appendChild(widget)
+
+  const input = document.getElementById('chat-input')
+  const send = document.getElementById('chat-send')
+  const messages = document.getElementById('chat-messages')
+  const closeBtn = document.getElementById('chat-close')
+  const typingIndicator = document.getElementById('typing-indicator')
+  const chatBox = document.getElementById('chat-box')
+
+  const parseMarkdown = (text) => {
+    let html = text
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') // Basic sanitization
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/__(.*?)__/g, '<strong>$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+      .replace(/(?<!\w)_(.*?)_(?!\w)/g, '<em>$1</em>')
+      .replace(/`([^`]+)`/g, '<code>$1</code>')
+      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
+      .replace(/^\s*[\*\-]\s+(.*)$/gm, '<li>$1</li>')
+      .replace(/((?:<li>.*<\/li>\s*)+)/g, (m) => '<ul>' + m.replace(/\n/g, '') + '</ul>')
+    return html.replace(/\n/g, '<br>')
+  }
+
+  const getTextDirection = (text) => {
+    // Remove numbers and common punctuation/symbols to detect natural language direction
+    const cleanText = text.replace(/[0-9\.,!\?\-\+\(\)\[\]\{\}"'#@%&*\^$£€~`|\\\/<>:;]/g, '')
+    if (!cleanText.trim()) return 'ltr' // Default to LTR if only numbers/symbols
+
+    const hebrewCount = (cleanText.match(/[\u0590-\u05FF]/g) || []).length
+    const totalCount = cleanText.length
+
+    // If significant portion (>30%) of remaining text is Hebrew, assume RTL
+    return (hebrewCount / totalCount) > 0.3 ? 'rtl' : 'ltr'
+  }
+
+  const addMsg = (content, role) => {
+    const msg = document.createElement('div')
+    msg.className = `chat-msg ${role}`
+    msg.innerHTML = parseMarkdown(content)
+    msg.dir = getTextDirection(content) // Set text direction
+    const visibleCount = messages.querySelectorAll('.chat-msg').length
+    msg.style.animationDelay = `${Math.min(visibleCount, 5) * 0.05}s`
+
+    const now = new Date()
+    const hours = String(now.getHours()).padStart(2, '0')
+    const minutes = String(now.getMinutes()).padStart(2, '0')
+    const timestamp = document.createElement('span')
+    timestamp.className = 'chat-timestamp'
+    timestamp.textContent = `${hours}:${minutes}`
+
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+    svg.setAttribute('class', `chat-tail ${role}`)
+    svg.setAttribute('viewBox', '0 0 12 12')
+    svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg')
+
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path')
+    if (role === 'user') {
+      path.setAttribute('d', 'M 0 0 L 12 6 L 0 12 Z')
+      path.setAttribute('fill', '#0F2C59')
+      path.setAttribute('stroke', 'none')
+    } else {
+      path.setAttribute('d', 'M 12 0 L 0 6 L 12 12 Z')
+      path.setAttribute('fill', '#A6D0DD')
+      path.setAttribute('stroke', 'rgba(0,0,0,0.06)')
+      path.setAttribute('stroke-width', '0.5')
+    }
+
+    svg.appendChild(path)
+    msg.appendChild(svg)
+    msg.appendChild(timestamp)
+    messages.appendChild(msg)
+
+    // Smooth scroll to new message
+    setTimeout(() => {
+      messages.scrollTo({
+        top: messages.scrollHeight,
+        behavior: 'smooth'
+      })
+    }, 100)
+  }
+
+  const showTyping = () => {
+    messages.appendChild(typingIndicator)
+    typingIndicator.style.display = 'flex'
+    setTimeout(() => {
+      messages.scrollTo({
+        top: messages.scrollHeight,
+        behavior: 'smooth'
+      })
+    }, 100)
+  }
+
+  const hideTyping = () => {
+    typingIndicator.style.display = 'none'
+  }
+
+  const saveHistory = () => {
+    try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify(history)) } catch {}
+  }
+
+  const restoreHistory = () => {
     try {
-      style.textContent = css
-      document.head.appendChild(style)
-    } catch (e) {
-      console.error('Error injecting CSS:', e)
-      console.log('CSS Content:', css)
-    }
-
-    const widget = document.createElement('div')
-    widget.id = 'chat-widget'
-    widget.innerHTML = html
-
-    targetElement.appendChild(widget)
-
-    const input = document.getElementById('chat-input')
-    const send = document.getElementById('chat-send')
-    const messages = document.getElementById('chat-messages')
-    const closeBtn = document.getElementById('chat-close')
-    const typingIndicator = document.getElementById('typing-indicator')
-
-    const parseMarkdown = (text) => {
-      let html = text
-        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') // Basic sanitization
-        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-        .replace(/__(.*?)__/g, '<strong>$1</strong>')
-        .replace(/\*(.*?)\*/g, '<em>$1</em>')
-        .replace(/_(.*?)_/g, '<em>$1</em>')
-        .replace(/`([^`]+)`/g, '<code>$1</code>')
-        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
-        .replace(/^\s*[\*\-]\s+(.*)$/gm, '<li>$1</li>')
-        .replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>')
-      return html.replace(/\n/g, '<br>')
-    }
-
-    const getTextDirection = (text) => {
-      // Remove numbers and common punctuation/symbols to detect natural language direction
-      const cleanText = text.replace(/[0-9\.,!\?\-\+\(\)\[\]\{\}"'#@%&*\^$£€~`|\\\/<>:;]/g, '')
-      if (!cleanText.trim()) return 'ltr' // Default to LTR if only numbers/symbols
-
-      const hebrewCount = (cleanText.match(/[\u0590-\u05FF]/g) || []).length
-      const totalCount = cleanText.length
-
-      // If significant portion (>30%) of remaining text is Hebrew, assume RTL
-      return (hebrewCount / totalCount) > 0.3 ? 'rtl' : 'ltr'
-    }
-
-    const addMsg = (content, role) => {
-      const msg = document.createElement('div')
-      msg.className = `chat-msg ${role}`
-      msg.innerHTML = parseMarkdown(content)
-      msg.dir = getTextDirection(content) // Set text direction
-      msg.style.animationDelay = `${messageCount * 0.05}s`
-      messageCount++
-
-      const now = new Date()
-      const hours = String(now.getHours()).padStart(2, '0')
-      const minutes = String(now.getMinutes()).padStart(2, '0')
-      const timestamp = document.createElement('span')
-      timestamp.className = 'chat-timestamp'
-      timestamp.textContent = `${hours}:${minutes}`
-
-      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
-      svg.setAttribute('class', `chat-tail ${role}`)
-      svg.setAttribute('viewBox', '0 0 12 12')
-      svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg')
-
-      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path')
-      if (role === 'user') {
-        path.setAttribute('d', 'M 0 0 L 12 6 L 0 12 Z')
-        path.setAttribute('fill', '#A6D0DD')
-        path.setAttribute('stroke', 'rgba(0,0,0,0.06)')
-        path.setAttribute('stroke-width', '0.5')
-      } else {
-        path.setAttribute('d', 'M 12 0 L 0 6 L 12 12 Z')
-        path.setAttribute('fill', '#0F2C59')
-        path.setAttribute('stroke', 'none')
+      const saved = sessionStorage.getItem(STORAGE_KEY)
+      if (!saved) return false
+      const entries = JSON.parse(saved)
+      if (!entries.length) return false
+      for (const entry of entries) {
+        addMsg(entry.content, entry.role === 'user' ? 'user' : 'bot')
+        history.push(entry)
       }
+      return true
+    } catch { return false }
+  }
 
-      svg.appendChild(path)
-      msg.appendChild(svg)
-      msg.appendChild(timestamp)
-      messages.appendChild(msg)
+  let greetingAbort = null
 
-      // Smooth scroll to new message
-      setTimeout(() => {
-        messages.scrollTo({
-          top: messages.scrollHeight,
-          behavior: 'smooth'
-        })
-      }, 100)
-    }
-
-    const showTyping = () => {
-      messages.appendChild(typingIndicator)
-      typingIndicator.style.display = 'flex'
-      setTimeout(() => {
-        messages.scrollTo({
-          top: messages.scrollHeight,
-          behavior: 'smooth'
-        })
-      }, 100)
-    }
-
-    const hideTyping = () => {
-      typingIndicator.style.display = 'none'
-    }
-
-    // Auto-resize textarea
-    const adjustHeight = () => {
-      input.style.height = 'auto'
-      const maxHeight = document.getElementById('chat-box').clientHeight * 0.7
-      // scrollHeight includes padding but not border. box-sizing is border-box.
-      // We need to add total border width (2px top + 2px bottom = 4px)
-      const borderHeight = 4
-      const newHeight = Math.min(input.scrollHeight + borderHeight, maxHeight)
-      input.style.height = newHeight + 'px'
-      input.style.overflowY = input.scrollHeight + borderHeight > maxHeight ? 'auto' : 'hidden'
-    }
-
-    input.addEventListener('input', () => {
-      adjustHeight()
-      input.dir = getTextDirection(input.value)
-    })
-    // Initial adjustment
-    adjustHeight()
-
-    const sendMsg = async () => {
-      const text = input.value.trim()
-      if (!text) return
-
-      addMsg(text, 'user')
-      history.push({ role: 'user', content: text })
-      input.value = ''
-      input.dir = 'ltr'
-      adjustHeight() // Reset height correctly
-      send.disabled = true
-      input.disabled = true
-
-      setTimeout(async () => {
+  const playGreeting = async () => {
+    const abort = { stopped: false }
+    greetingAbort = abort
+    try {
+      let requestBody = { module: 'widget', chat_data: {} }
+      const res = await fetch(API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody)
+      })
+      if (!res.ok || abort.stopped) return
+      const data = await res.json()
+      if (!data.messages || !data.messages.length || abort.stopped) return
+      for (const msg of data.messages) {
+        if (abort.stopped) break
+        await new Promise(r => setTimeout(r, msg.delay || 1000))
+        if (abort.stopped) break
         showTyping()
-
-        try {
-          const chat_history = history.map(h => `${h.role === 'user' ? '<<<USER>>>: ' : '<<<ASSISTANT>>>: '}${h.content}`).join('\n')
-          let requestBody = { module: 'widget', chat_data: { chat_history } }
-
-          // Allow config to modify request body before sending
-          if (config.beforeSend && typeof config.beforeSend === 'function') {
-            requestBody = config.beforeSend(requestBody) || requestBody
-          }
-
-          const res = await fetch(API, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(requestBody)
-          })
-          const reply = await res.text()
-          hideTyping()
-          addMsg(reply, 'bot')
-          history.push({ role: 'assistant', content: reply })
-        } catch (e) {
-          hideTyping()
-          addMsg('Unable to connect to service', 'bot')
-        }
-        send.disabled = false
-        input.disabled = false
-        input.focus()
-      }, 600)
-    }
-
-    send.onclick = sendMsg
-
-    // Handle Enter vs Shift+Enter
-    input.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        if (!e.shiftKey) {
-          e.preventDefault()
-          if (!input.disabled) sendMsg()
-        }
-        // Shift+Enter allows default behavior (new line)
+        await new Promise(r => setTimeout(r, 200 + (msg.text.length * 20)))
+        if (abort.stopped) { hideTyping(); break }
+        hideTyping()
+        addMsg(msg.text, 'bot')
+        history.push({ role: 'assistant', content: msg.text })
+        saveHistory()
       }
-    })
+    } catch { /* greeting failed — widget still works */ }
+    if (!abort.stopped) greetingAbort = null
+  }
 
-    closeBtn.onclick = () => {
-      // Clear the chat
-      messages.innerHTML = ''
-      messages.appendChild(typingIndicator)
-      history.length = 0
-      messageCount = 0
+  // Auto-resize textarea
+  const adjustHeight = () => {
+    input.style.height = 'auto'
+    const maxHeight = chatBox.clientHeight * 0.7
+    // scrollHeight includes padding but not border. box-sizing is border-box.
+    // We need to add total border width (2px top + 2px bottom = 4px)
+    const borderHeight = 4
+    const newHeight = Math.min(input.scrollHeight + borderHeight, maxHeight)
+    input.style.height = newHeight + 'px'
+    input.style.overflowY = input.scrollHeight + borderHeight > maxHeight ? 'auto' : 'hidden'
+  }
+
+  input.addEventListener('input', () => {
+    adjustHeight()
+    input.dir = getTextDirection(input.value)
+  })
+  // Initial adjustment
+  adjustHeight()
+
+  let sendAbort = null
+
+  const sendMsg = async () => {
+    const text = input.value.trim()
+    if (!text) return
+
+    // Stop greeting if still playing
+    if (greetingAbort) {
+      greetingAbort.stopped = true
+      greetingAbort = null
+      hideTyping()
     }
 
-    // Initial visibility
-    widget.style.display = 'block'
-  }, 0)
+    addMsg(text, 'user')
+    history.push({ role: 'user', content: text })
+    saveHistory()
+    input.value = ''
+    input.dir = 'ltr'
+    adjustHeight() // Reset height correctly
+    send.disabled = true
+    input.disabled = true
+
+    const abort = { stopped: false }
+    sendAbort = abort
+    showTyping()
+
+    try {
+      const chat_history = history.map(h => `${h.role === 'user' ? '<<<USER>>>: ' : '<<<ASSISTANT>>>: '}${h.content}`).join('\n')
+      let requestBody = { module: 'widget', chat_data: { chat_history } }
+
+      // Allow config to modify request body before sending
+      if (config.beforeSend && typeof config.beforeSend === 'function') {
+        requestBody = config.beforeSend(requestBody) || requestBody
+      }
+
+      const res = await fetch(API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody)
+      })
+      if (abort.stopped) return
+      const reply = await res.text()
+      hideTyping()
+      addMsg(reply, 'bot')
+      history.push({ role: 'assistant', content: reply })
+      saveHistory()
+    } catch (e) {
+      if (abort.stopped) return
+      hideTyping()
+      addMsg('Unable to connect to service', 'bot')
+    }
+    send.disabled = false
+    input.disabled = false
+    input.focus()
+    sendAbort = null
+  }
+
+  send.onclick = sendMsg
+
+  // Handle Enter vs Shift+Enter
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      if (!e.shiftKey) {
+        e.preventDefault()
+        if (!input.disabled) sendMsg()
+      }
+      // Shift+Enter allows default behavior (new line)
+    }
+  })
+
+  closeBtn.onclick = () => {
+    // Abort greeting if playing
+    if (greetingAbort) {
+      greetingAbort.stopped = true
+      greetingAbort = null
+    }
+    // Abort pending LLM response
+    if (sendAbort) {
+      sendAbort.stopped = true
+      sendAbort = null
+    }
+    // Clear the chat
+    hideTyping()
+    messages.innerHTML = ''
+    messages.appendChild(typingIndicator)
+    history.length = 0
+    send.disabled = false
+    input.disabled = false
+    sessionStorage.removeItem(STORAGE_KEY)
+    playGreeting()
+  }
+
+  // Initial visibility
+  widget.style.display = 'block'
+  if (!restoreHistory()) playGreeting()
 })()

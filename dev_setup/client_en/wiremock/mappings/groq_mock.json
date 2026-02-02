@@ -4,19 +4,6 @@
     "urlPattern": "/openai/v1/chat/completions.*"
   },
   "response": {
-    "status": 200,
-    "fixedDelayMilliseconds": 3000,
-    "headers": {
-      "Content-Type": "application/json"
-    },
-    "jsonBody": {
-      "choices": [
-        {
-          "message": {
-            "content": "Groq answer"
-          }
-        }
-      ]
-    }
+    "proxyBaseUrl": "http://llm-proxy:80"
   }
 }

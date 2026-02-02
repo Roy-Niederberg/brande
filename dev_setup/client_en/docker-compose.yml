@@ -41,10 +41,25 @@ services:
   #   image: registry.gitlab.com/rny3/brande/facebook_signup:v0.0.1
   #   networks: [client_network]
   #   secrets: [fb_global_app_id, fb_global_app_secret]
-
+  #
+  # ollama:
+  #   image: ollama/ollama:latest
+  #   environment: [OLLAMA_CONTEXT_LENGTH=16384]
+  #   volumes:
+  #     - ollama_models:/root/.ollama
+  #
+  # llm-proxy:
+  #   image: node:alpine
+  #   command: node /app/llm-proxy.js
+  #   environment: [MODEL=qwen2.5:1.5b]
+  #   depends_on: [ollama]
+  #   volumes:
+  #     - ./wiremock/llm-proxy.js:/app/llm-proxy.js:ro
+  #
   # wiremock:
   #   image: wiremock/wiremock:latest
   #   command: --https-port 443 --verbose
+  #   depends_on: [ollama]
   #   volumes:
   #     - ./wiremock/mappings:/home/wiremock/mappings
   #   networks:
@@ -58,6 +73,7 @@ volumes:
   prompt_log:
   caddy_data:
   caddy_config:
+  ollama_models:
 
 secrets:
 

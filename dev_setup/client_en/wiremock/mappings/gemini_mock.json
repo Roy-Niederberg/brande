@@ -1,7 +1,7 @@
 {
   "request": {
     "method": "POST",
-    "urlPattern": "/v1beta/models/.*:generateContent.*"
+    "urlPattern": "/v1beta/openai/chat/completions.*"
   },
   "response": {
     "status": 200,
@@ -10,34 +10,17 @@
       "Content-Type": "application/json"
     },
     "jsonBody": {
-      "candidates": [
-        {
-          "content": {
-            "parts": [
-              {
-                "text": "{\"action\": \"REPLY\", \"text\": \"Hello from mock\"}"
-              }
-            ],
-            "role": "model"
-          },
-          "finishReason": "STOP",
-          "index": 0,
-          "safetyRatings": [
-            {
-              "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-              "probability": "NEGLIGIBLE"
-            }
-          ]
-        }
-      ],
-      "promptFeedback": {
-        "safetyRatings": [
-          {
-            "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-            "probability": "NEGLIGIBLE"
-          }
-        ]
-      }
+      "id": "mock",
+      "object": "chat.completion",
+      "model": "mock",
+      "choices": [{
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"action\": \"ESCALATE\"}"
+        },
+        "finish_reason": "stop"
+      }]
     }
   }
 }

@@ -1,5 +1,17 @@
 # The Qabu Project
 -------
+- [ ] Check the last changes:
+    - [ ] Add the llm-proxy to client_he
+    - [ ] Adding the greeting (see is I can shorten the prompt_composer code, and add task to improve the widget.
+    - [x] Go over the memory for the chat - so the chat survive refresh
+    - [ ] Also make the 'clear function save the old chat for reference'
+    - [x] The local LLM - not tested yet
+    - [x] Move to the api wrapper by google that match openAI api (it will also help with the local llm mock)
+    - [ ] some thoughts -
+        * The widget is the state. I should think of it as the real AI/person/assistant and the prompt_composer is just a resource.
+          So It will also ask the prompt_composer for stuff to keep the user engaged, play the greeting and so on. The widget is the initiator.
+        * I need to match the gemini api and the grok, and then use gemini for high context and groq for fast response.
+
 - [x] [TODO] Get git to nice state again
 - [x] remove the Claude staff from git.
 - [] Make craftkidstoys and dr Lipo work like on the dev setup on production.
