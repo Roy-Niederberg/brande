@@ -50,6 +50,64 @@
       }
     }
 
+    /* Trash button run away - gradual deceleration, tiny overshoot, subtle correction */
+    @keyframes trashRunAway {
+      0% { transform: translateX(0); }
+      10% { transform: translateX(calc(var(--trash-travel) * 0.25)); }
+      22% { transform: translateX(calc(var(--trash-travel) * 0.52)); }
+      35% { transform: translateX(calc(var(--trash-travel) * 0.73)); }
+      48% { transform: translateX(calc(var(--trash-travel) * 0.86)); }
+      60% { transform: translateX(calc(var(--trash-travel) * 0.94)); }
+      72% { transform: translateX(calc(var(--trash-travel) * 0.98)); }
+      82% { transform: translateX(calc(var(--trash-travel) * 1.012)); }
+      90% { transform: translateX(calc(var(--trash-travel) * 1.006)); }
+      95% { transform: translateX(calc(var(--trash-travel) * 1.002)); }
+      100% { transform: translateX(var(--trash-travel)); }
+    }
+
+    @keyframes trashRunBack {
+      0% { transform: translateX(var(--trash-travel)); }
+      10% { transform: translateX(calc(var(--trash-travel) * 0.75)); }
+      22% { transform: translateX(calc(var(--trash-travel) * 0.48)); }
+      35% { transform: translateX(calc(var(--trash-travel) * 0.27)); }
+      48% { transform: translateX(calc(var(--trash-travel) * 0.14)); }
+      60% { transform: translateX(calc(var(--trash-travel) * 0.06)); }
+      72% { transform: translateX(calc(var(--trash-travel) * 0.02)); }
+      82% { transform: translateX(calc(var(--trash-travel) * -0.012)); }
+      90% { transform: translateX(calc(var(--trash-travel) * -0.006)); }
+      95% { transform: translateX(calc(var(--trash-travel) * -0.002)); }
+      100% { transform: translateX(0); }
+    }
+
+    /* Lid flies off - pops up, tumbles, gradual settle */
+    @keyframes lidFlyOff {
+      0% { transform: translate(0, 0) rotate(0deg); }
+      10% { transform: translate(-4px, -8px) rotate(-20deg); }
+      22% { transform: translate(-6px, -11px) rotate(-35deg); }
+      35% { transform: translate(-3px, -9px) rotate(-28deg); }
+      48% { transform: translate(0px, -6px) rotate(-18deg); }
+      60% { transform: translate(1px, -4px) rotate(-10deg); }
+      72% { transform: translate(0.8px, -2px) rotate(-5deg); }
+      82% { transform: translate(0.4px, -1px) rotate(-2deg); }
+      90% { transform: translate(0.2px, -0.4px) rotate(-0.8deg); }
+      95% { transform: translate(0.1px, -0.15px) rotate(-0.3deg); }
+      100% { transform: translate(0, 0) rotate(0deg); }
+    }
+
+    @keyframes lidFlyOffBack {
+      0% { transform: translate(0, 0) rotate(0deg); }
+      10% { transform: translate(4px, -8px) rotate(20deg); }
+      22% { transform: translate(6px, -11px) rotate(35deg); }
+      35% { transform: translate(3px, -9px) rotate(28deg); }
+      48% { transform: translate(0px, -6px) rotate(18deg); }
+      60% { transform: translate(-1px, -4px) rotate(10deg); }
+      72% { transform: translate(-0.8px, -2px) rotate(5deg); }
+      82% { transform: translate(-0.4px, -1px) rotate(2deg); }
+      90% { transform: translate(-0.2px, -0.4px) rotate(0.8deg); }
+      95% { transform: translate(-0.1px, -0.15px) rotate(0.3deg); }
+      100% { transform: translate(0, 0) rotate(0deg); }
+    }
+
     #chat-widget {
       position: relative;
       width: 100%;
@@ -109,6 +167,48 @@
     }
     .chat-header-btn:active {
       transform: scale(0.9);
+    }
+
+    /* Trash button position states */
+    .chat-header-btn.on-right {
+      transform: translateX(var(--trash-travel));
+    }
+
+    .chat-header-btn.on-right:hover {
+      transform: translateX(var(--trash-travel)) scale(1.15) rotate(5deg);
+    }
+
+    .chat-header-btn.on-right:active {
+      transform: translateX(var(--trash-travel)) scale(0.9);
+    }
+
+    /* Animation trigger classes */
+    .chat-header-btn.running-right {
+      animation: trashRunAway 1.1s linear forwards;
+    }
+
+    .chat-header-btn.running-left {
+      animation: trashRunBack 1.1s linear forwards;
+    }
+
+    .chat-header-btn.running-right .trash-lid,
+    .chat-header-btn.running-left .trash-lid {
+      animation: lidFlyOff 1.15s linear forwards;
+    }
+
+    .chat-header-btn.running-left .trash-lid {
+      animation-name: lidFlyOffBack;
+    }
+
+    /* Prevent hover/active effects during animation and allow overflow for lid */
+    .chat-header-btn.running-right,
+    .chat-header-btn.running-left,
+    .chat-header-btn.running-right:hover,
+    .chat-header-btn.running-left:hover,
+    .chat-header-btn.running-right:active,
+    .chat-header-btn.running-left:active {
+      background: rgba(50, 118, 170, 0.85);
+      overflow: visible;
     }
 
     #chat-messages {
@@ -314,11 +414,18 @@
     <div id="chat-box">
       <div id="chat-header">
         <button class="chat-header-btn" id="chat-close" title="Clear History">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="3 6 5 6 21 6"></polyline>
-            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-            <line x1="10" y1="11" x2="10" y2="17"></line>
-            <line x1="14" y1="11" x2="14" y2="17"></line>
+          <svg class="trash-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <!-- Lid (separate for animation) -->
+            <g class="trash-lid">
+              <polyline points="3 6 5 6 21 6"></polyline>
+              <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            </g>
+            <!-- Body -->
+            <g class="trash-body">
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path>
+              <line x1="10" y1="11" x2="10" y2="17"></line>
+              <line x1="14" y1="11" x2="14" y2="17"></line>
+            </g>
           </svg>
         </button>
       </div>
@@ -363,6 +470,112 @@
   const closeBtn = document.getElementById('chat-close')
   const typingIndicator = document.getElementById('typing-indicator')
   const chatBox = document.getElementById('chat-box')
+  const chatHeader = document.getElementById('chat-header')
+
+  // Trash button escape behavior
+  let trashOverlapTimer = null
+  let trashScrollDebounce = null
+  let trashIsOnRight = false
+  let trashIsAnimating = false
+
+  // Calculate and set the travel distance CSS variable
+  const updateTrashTravelDistance = () => {
+    const headerWidth = chatHeader.clientWidth
+    const btnWidth = closeBtn.offsetWidth
+    const padding = 40 // 20px padding on each side
+    const travel = headerWidth - btnWidth - padding
+    closeBtn.style.setProperty('--trash-travel', travel + 'px')
+  }
+
+  const isTrashOverlapping = () => {
+    const btnRect = closeBtn.getBoundingClientRect()
+    const msgs = messages.querySelectorAll('.chat-msg')
+
+    for (const msg of msgs) {
+      const msgRect = msg.getBoundingClientRect()
+      if (!(msgRect.right < btnRect.left ||
+            msgRect.left > btnRect.right ||
+            msgRect.bottom < btnRect.top ||
+            msgRect.top > btnRect.bottom)) {
+        return true
+      }
+    }
+    return false
+  }
+
+  const startTrashEscapeTimer = () => {
+    if (trashIsAnimating || trashOverlapTimer) return
+
+    if (isTrashOverlapping()) {
+      trashOverlapTimer = setTimeout(() => {
+        trashOverlapTimer = null
+        if (isTrashOverlapping()) {
+          const direction = trashIsOnRight ? 'left' : 'right'
+          runTrashAway(direction)
+        }
+      }, 2000)
+    }
+  }
+
+  const cancelTrashEscapeTimer = () => {
+    if (trashOverlapTimer) {
+      clearTimeout(trashOverlapTimer)
+      trashOverlapTimer = null
+    }
+  }
+
+  const onScrollStop = () => {
+    startTrashEscapeTimer()
+  }
+
+  const onScroll = () => {
+    cancelTrashEscapeTimer()
+    clearTimeout(trashScrollDebounce)
+    trashScrollDebounce = setTimeout(onScrollStop, 150)
+  }
+
+  const runTrashAway = (direction) => {
+    if (trashIsAnimating) return
+    trashIsAnimating = true
+
+    // Update travel distance before animation
+    updateTrashTravelDistance()
+
+    const animClass = direction === 'right' ? 'running-right' : 'running-left'
+
+    // If running back, we need to remove on-right first but keep the transform via animation
+    if (direction === 'left') {
+      closeBtn.classList.remove('on-right')
+    }
+
+    closeBtn.classList.add(animClass)
+
+    closeBtn.addEventListener('animationend', () => {
+      // First apply the final position class, then remove animation
+      if (direction === 'right') {
+        closeBtn.classList.add('on-right')
+      }
+      closeBtn.classList.remove(animClass)
+      trashIsOnRight = direction === 'right'
+      trashIsAnimating = false
+      cancelTrashEscapeTimer()
+    }, { once: true })
+  }
+
+  // Check overlap when messages change (new message added)
+  const trashObserver = new MutationObserver(() => {
+    // Reset timer and check again after DOM settles
+    cancelTrashEscapeTimer()
+    setTimeout(startTrashEscapeTimer, 100)
+  })
+  trashObserver.observe(messages, { childList: true, subtree: true })
+
+  // Check overlap when user scrolls and stops
+  messages.addEventListener('scroll', onScroll)
+
+  // Update travel distance on resize
+  window.addEventListener('resize', updateTrashTravelDistance)
+  updateTrashTravelDistance()
 
   const parseMarkdown = (text) => {
     let html = text
