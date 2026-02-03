@@ -8,10 +8,6 @@
 !Dockerfile
 !README.md
 
-# and not the design guidelines
-!CLAUDE.md
-!.claude/**/*
-
 # don't ignore .gitignore and gitlab-ci
 !.gitignore
 !.gitlab-ci.yml

@@ -2,7 +2,7 @@ import fs from 'fs'
 import express from 'express'
 import rateLimit from 'express-rate-limit'
 import prompts from '../data/system_prompts.json' with { type: 'json' }
-import knowledge_base from '../data/knowledge_base.json' with { type: 'json' }
+import _knowledge_base from '../data/knowledge_base.json' with { type: 'json' }
 
 const app = express()
 app.set('trust proxy', true)
@@ -19,7 +19,7 @@ app.r = (vrb, url, f) => app[vrb](url, async (rq, rs, nxt) => { try { await f(rq
 
 // =============== Server Loading section ============================================================================//
 // In this section the server should fail in case of error and not startup. ==========================================//
-// let knowledge_base = _knowledge_base
+let knowledge_base = _knowledge_base
 
 // LLMs loading
 import OpenAI from 'openai';
