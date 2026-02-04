@@ -3,6 +3,7 @@ qabu.net {
 		dns cloudflare {env.CLOUDFLARE_API_TOKEN}
 	}
 
+	header Content-Type text/html
 	respond <<HTML
 		<!DOCTYPE html>
 		<html>
@@ -23,6 +24,7 @@ qabu.net {
 		</head>
 		<body>
 			<h1>Under Construction</h1>
+			<h2>Qabû</h2>
 		</body>
 		</html>
 		HTML 200
