@@ -1,6 +1,39 @@
-http://localhost,
-http://qabu.mooo.com,
-http://brandelicious.mooo.com {
+qabu.net {
+	tls {
+		dns cloudflare {env.CLOUDFLARE_API_TOKEN}
+	}
+
+	respond <<HTML
+		<!DOCTYPE html>
+		<html>
+		<head>
+			<title>qabu.net</title>
+			<style>
+				body {
+					font-family: sans-serif;
+					display: flex;
+					justify-content: center;
+					align-items: center;
+					height: 100vh;
+					margin: 0;
+					background: #f5f5f5;
+				}
+				h1 { color: #333; }
+			</style>
+		</head>
+		<body>
+			<h1>Under Construction</h1>
+		</body>
+		</html>
+		HTML 200
+}
+
+qabu.mooo.com,
+brandelicious.mooo.com {
+	tls {
+		dns cloudflare {env.CLOUDFLARE_API_TOKEN}
+	}
+
 	handle /facebook-page-signup/* {
 		reverse_proxy facebook-signup:8558
 	}
