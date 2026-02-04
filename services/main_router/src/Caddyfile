@@ -3,29 +3,27 @@ qabu.net {
 		dns cloudflare {env.CLOUDFLARE_API_TOKEN}
 	}
 
-	header Content-Type text/html
-	respond <<HTML
-		<!DOCTYPE html>
-		<html>
-		<head>
-			<title>qabu.net</title>
-			<style>
-				body {
-					font-family: sans-serif;
-					display: flex;
-					justify-content: center;
-					align-items: center;
-					height: 100vh;
-					margin: 0;
-					background: #f5f5f5;
-				}
-				h1 { color: #333; }
-			</style>
-		</head>
-		<body>
-			<h1>Under Construction</h1>
-			<h2>Qabû</h2>
-		</body>
-		</html>
-		HTML 200
+	root * /srv
+	try_files {path} {path}/index.html
+	file_server
+}
+
+*.qabu.net {
+	tls {
+		dns cloudflare {env.CLOUDFLARE_API_TOKEN}
+	}
+
+	reverse_proxy {labels.2}-site-1:80
+
+	handle_errors {
+		header Content-Type text/html
+		respond <<HTML
+			<!DOCTYPE html>
+			<html><head><title>404</title></head>
+			<body style="font-family:sans-serif;display:flex;justify-content:center;align-items:center;height:100vh;margin:0">
+			<h1>404 - Service not found</h1>
+			<p><h2>qabu.net</h2></p>
+			</body></html>
+			HTML 404
+	}
 }
