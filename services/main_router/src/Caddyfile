@@ -27,25 +27,3 @@ qabu.net {
 		</html>
 		HTML 200
 }
-
-qabu.mooo.com,
-brandelicious.mooo.com {
-	tls {
-		dns cloudflare {env.CLOUDFLARE_API_TOKEN}
-	}
-
-	handle /facebook-page-signup/* {
-		reverse_proxy facebook-signup:8558
-	}
-
-	handle /edit/* {
-		uri strip_prefix /edit
-		reverse_proxy editor:8080
-	}
-
-	handle {
-		root * /srv
-		try_files {path} {path}/index.html
-		file_server
-	}
-}

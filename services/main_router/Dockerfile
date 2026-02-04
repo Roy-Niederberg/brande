@@ -7,6 +7,5 @@ COPY --from=builder /usr/bin/caddy /usr/bin/caddy
 # Production stage
 FROM base AS production
 COPY ./src/Caddyfile /etc/caddy/Caddyfile
-COPY ./public/ /srv
 RUN caddy fmt --overwrite /etc/caddy/Caddyfile
 CMD CLOUDFLARE_API_TOKEN=$(cat /run/secrets/cloudflare_api_token) caddy run --config /etc/caddy/Caddyfile
