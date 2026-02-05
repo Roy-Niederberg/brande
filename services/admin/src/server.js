@@ -107,8 +107,8 @@ app.post('/api/knowledge-base', checkSession, async (rq, rs) => {
     const { knowledgeBase } = rq.body
     if (!knowledgeBase) return rs.status(400).json({ error: 'Knowledge base required' })
     await fetch(`${PROMPT_COMPOSER_URL}/knowledge-base`, {
-      method: 'POST', headers: { 'Content-Type': 'text/plain' },
-      body: knowledgeBase
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(knowledgeBase)
     })
     rs.json({ success: true })
   } catch (error) {
