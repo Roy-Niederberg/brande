@@ -2,10 +2,10 @@ services:
 
   site:
     build: {context: ../../services/site/, target: development}
-    ports:  ["3000:80", "3443:443", "3443:443/udp"]
+    ports:  ["${HTTP_PORT:-3000}:80", "${HTTPS_PORT:-3443}:443", "${HTTPS_PORT:-3443}:443/udp"]
     volumes:
       - ../../services/site/srv/:/site/
-      - ../../prod_setup/client_server/craftkidstoys/assets/:/site/assets
+      - ../../prod_setup/client_server/${CLIENT}/assets/:/site/assets
       - ../../services/site/src/Caddyfile:/etc/caddy/Caddyfile:ro
 
   prompt-composer:
@@ -14,7 +14,7 @@ services:
     secrets: [gemini_key_1, gemini_key_2, groq_key_1, groq_key_2]
     volumes:
       - ../../services/prompt_composer/src:/app/src:ro
-      - ./data/:/app/data
+      - ../../prod_setup/client_server/${CLIENT}/data/:/app/data
       - prompt_log:/app/prompt_log
 
   admin:
@@ -77,17 +77,20 @@ volumes:
   ollama_models:
 
 secrets:
-
   # for services
-  google_strategy:   {file: ./secrets/google_strategy.secret}
-  session_config:    {file: ./secrets/session_config.secret}
-  authorized_emails: {file: ./secrets/authorized_emails.json}
-  gemini_key_1:      {file: ./secrets/gemini_key_1.secret}
-  gemini_key_2:      {file: ./secrets/gemini_key_2.secret}
-  groq_key_1:        {file: ./secrets/groq_key_1.secret}
-  groq_key_2:        {file: ./secrets/groq_key_2.secret}
-  # fb_page_access_token: {file: ./secrets/fb_page_access_token.secret}
-
-  # for the router
-  # fb_global_app_id:     {file: ../router/secrets/fb_global_app_id.secret}
-  # fb_global_app_secret: {file: ../router/secrets/fb_global_app_secret.secret}
+  google_strategy:
+    file: ../../prod_setup/client_server/${CLIENT}/secrets/google_strategy.secret
+  session_config:
+    file: ../../prod_setup/client_server/${CLIENT}/secrets/session_config.secret
+  authorized_emails:
+    file: ../../prod_setup/client_server/${CLIENT}/secrets/authorized_emails.json
+  gemini_key_1:
+    file: ../../prod_setup/client_server/${CLIENT}/secrets/gemini_key_1.secret
+  gemini_key_2:
+    file: ../../prod_setup/client_server/${CLIENT}/secrets/gemini_key_2.secret
+  groq_key_1:
+    file: ../../prod_setup/client_server/${CLIENT}/secrets/groq_key_1.secret
+  groq_key_2:
+    file: ../../prod_setup/client_server/${CLIENT}/secrets/groq_key_2.secret
+  # fb_page_access_token:
+  #   file: ../../prod_setup/client_server/${CLIENT}/secrets/fb_page_access_token.secret
