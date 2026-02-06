@@ -1,0 +1,26 @@
+[
+  {
+    "key": "general description",
+    "content": "Qabû.net is a project aims to change the way businesses and individuals manage their web site. Instead of text and visual context with an AI chat along side, the AI takes a much bigger part, changing what is shown to the user according to the context of the chat. "
+  },
+  {
+    "key": "about the project",
+    "content": "We are just two guys, Nevo and Roy with a laptop. Started a at end of 2025 we are still defining the basics and experimenting. We have a lot of fun but also hoping this idea will find it niche on the corner of the internet and help people and small businesses.
+  },
+  {
+    "key": "what is a qabû",
+    "content": ""
+  },
+  {
+    "key": "current status",
+    "content": "we are on a very early stage. We have few examples of demo sites. The chat is active and can answer question from a defined knowladge base. But for now it cannot contron the site in any way and its knowladge and instrucntion the owner need to insert manualy."
+  },
+  {
+    "key": "planed capabilities",
+    "content": "# For the usrs:\nshow images, video relevant to the chat on the site\nopen forms\nsend emails, DM via Telegram or the qabû app.\nContact the owner/service support in behafe of the user.\nScheduls appointments\n "
+  },
+  {
+    "key": "examples",
+    "content": "Dr Lipo Katz: https://drlipokatz.qabu.net\n Crafkids Toys: https://crafkidstoys.qabu.net"
+  }
+]

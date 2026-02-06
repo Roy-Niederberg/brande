@@ -1,0 +1,26 @@
+{
+  "request": {
+    "method": "POST",
+    "urlPattern": "/v1beta/openai/chat/completions.*"
+  },
+  "response": {
+    "status": 200,
+    "fixedDelayMilliseconds": 20,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "id": "mock",
+      "object": "chat.completion",
+      "model": "mock",
+      "choices": [{
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"action\": \"ESCALATE\"}"
+        },
+        "finish_reason": "stop"
+      }]
+    }
+  }
+}

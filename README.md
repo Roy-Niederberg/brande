@@ -1,5 +1,8 @@
 # The Qabu Project
 -------
+## with Nevo
+ - [ ] The admin page should inherate the UI from the 'site'. More logig but looks the same. 
+
 - [ ] Check the last changes:
     - [ ] Add the llm-proxy to client_he
     - [ ] Adding the greeting (see is I can shorten the prompt_composer code, and add task to improve the widget.

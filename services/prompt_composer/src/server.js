@@ -78,7 +78,7 @@ const llm3 = new OpenAI({
 
 llm3.ask = async (q, c) => {
   const r = await llm3.chat.completions.create({
-    model: 'llama-3.3-70b-versatile',
+    model: 'openai/gpt-oss-20b',
     messages: [
       { role: 'system', content: c },
       { role: 'user', content: q }
@@ -94,7 +94,7 @@ const llm4 = new OpenAI({
 
 llm4.ask = async (q, c) => {
   const r = await llm4.chat.completions.create({
-    model: 'llama-3.3-70b-versatile',
+    model: 'openai/gpt-oss-20b',
     messages: [
       { role: 'system', content: c },
       { role: 'user', content: q }
@@ -124,21 +124,21 @@ app.r('post', '/ask', async ({ body }, rs) => {
   //Ask the GATEKEEPER if and what we need to ask the main model.
   try {
     const gk_answer = JSON.parse((await gatekeeper.ask(c_prompts.gatekeeper, chat_history)).text)
-    if (gk_answer.action === 'REPLY') {rs.send('(gk)\n ' + gk_answer.text); console.log('GK-replay'); return}
-    if (gk_answer.action === 'IGNORE') {rs.send('(gk empty)'); console.log('GK-ignored'); return}
+    if (gk_answer.action === 'REPLY') {rs.send(gk_answer.text); console.log('GK-replay'); return}
+    if (gk_answer.action === 'IGNORE') {rs.send('(empty)'); console.log('GK-ignored'); return}
   } catch(e) {console.error(`gatekeeper faild: `, e.message)}
 
   // Passed the gatekeeper, Build the prompt
   const kb = body.chat_data.knowledge_base_override || knowledge_base
-  const prompt = prompts.client_question + "\n#KNOWLEDG BASE:\n" + kb.map(e => `## ${e.key}\n${e.content}`).join('\n\n')
+  const prompt = c_prompts.client_question + "\n#KNOWLEDG BASE:\n" + kb.map(e => `## ${e.key}\n${e.content}`).join('\n\n')
   write('prompt_log', `${body.module}_prompt`, `${prompt}\n${chat_history}`)
 
 
   console.log('TRYING with GROQ 1')
-  try {rs.send('(gr1)\n' + (await llm3.ask(prompt, chat_history)).text); return} catch(e) {console.error(`GROQ 1 failed: `, e.message)}
+  try {rs.send('' + (await llm3.ask(prompt, chat_history)).text); return} catch(e) {console.error(`GROQ 1 failed: `, e.message)}
 
   console.log('TRYING with GROQ 2')
-  try {rs.send('(gr2)\n' + (await llm4.ask(prompt, chat_history)).text); return} catch(e) {console.error(`GROQ 2 failed: `, e.message)}
+  try {rs.send('' + (await llm4.ask(prompt, chat_history)).text); return} catch(e) {console.error(`GROQ 2 failed: `, e.message)}
 
   rs.send("The assistance is not available at the moment. Please try again later.")
 })

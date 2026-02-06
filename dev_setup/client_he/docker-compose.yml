@@ -4,8 +4,9 @@ services:
     build: {context: ../../services/site/, target: development}
     ports:  ["4000:80", "4443:443", "4443:443/udp"]
     volumes:
-      - ./srv/:/srv:ro
-      - ../../services/site/public/:/widget/:ro
+      - ../../services/site/srv/:/site/
+      - ../../prod_setup/client_server/drlipokatz/assets/:/site/assets
+      - ../../services/site/src/Caddyfile:/etc/caddy/Caddyfile:ro
 
   prompt-composer:
     build: {context: ../../services/prompt_composer/, target: development}
@@ -41,7 +42,7 @@ services:
   #   image: registry.gitlab.com/rny3/brande/facebook_signup:v0.0.1
   #   networks: [client_network]
   #   secrets: [fb_global_app_id, fb_global_app_secret]
-  #
+
   # ollama:
   #   image: ollama/ollama:latest
   #   environment: [OLLAMA_CONTEXT_LENGTH=16384]
