@@ -8,6 +8,10 @@
 !Dockerfile
 !README.md
 
+# and for claude
+!CLAUDE.md
+!for_claude.md
+
 # don't ignore .gitignore and gitlab-ci
 !.gitignore
 !.gitlab-ci.yml
