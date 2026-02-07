@@ -35,10 +35,17 @@ app.get('/', (rq, rs) => rq.isAuthenticated() && emails.includes(rq.user.email) 
 app.get('/login/', passport.authenticate('google', { scope: ['profile', 'email'] }))
 app.get('/login/callback', passport.authenticate('google', { failureRedirect: '/admin/login/' }), (_, rs) => rs.redirect('/admin/chatQA'))
 
-// Protected routes
-app.get('/chatQA', isAuthorized, (_, rs) => rs.sendFile('/app/views/index.html'))
-app.get('/style.css', isAuthorized, (_, rs) => rs.sendFile('/app/views/style.css'))
-app.get('/script.js', isAuthorized, (_, rs) => rs.sendFile('/app/views/script.js'))
+// Protected routes - serve site HTML with admin.js injected
+app.get('/chatQA', isAuthorized, async (_, rs) => {
+  try {
+    const html = await fetch('http://site:80/index.html').then(r => r.text())
+    rs.send(html.replace('<script src="/loader.js">', '<script src="/admin/admin.js"></script>\n<script src="/loader.js">'))
+  } catch (e) {
+    console.error('Failed to load site HTML:', e.message)
+    rs.status(500).send('Site unavailable')
+  }
+})
+app.get('/admin.js', checkSession, (_, rs) => rs.sendFile('/app/views/admin.js'))
 
 // API routes
 app.get('/api/user', checkSession, (rq, rs) =>

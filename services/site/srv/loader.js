@@ -90,7 +90,8 @@
     // Initialize chat widget
     window.ChatWidgetConfig = {
         targetElement: '#chat-container',
-        ...(config.widget || {})
+        ...(config.widget || {}),
+        ...(window.ChatWidgetConfig || {})
     };
 
     // Load widget script
