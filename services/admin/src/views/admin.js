@@ -11,9 +11,25 @@
   style.textContent = `
     .prompt {
       position: absolute; top: 1%; left: 1%; padding: 12px; width: 98%; height: 98%;
-      border-radius: 10px; background-color: #fffe; overflow-y: auto; overflow-x: hidden;
+      border-radius: 10px; background-color: #fff8; overflow-y: auto; overflow-x: hidden;
+      display: none;
     }
-    .top-buttons { position: absolute; top: 12px; right: 12px; display: flex; gap: 8px; z-index: 10; }
+    .prompt.visible { display: block; }
+    #open-kb-btn {
+      padding: 16px 32px; background: #667eea; color: white; border: none;
+      border-radius: 12px; font-size: 18px; font-weight: 600; cursor: pointer;
+      transition: all 0.2s ease; position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%, -50%); box-shadow: 0 4px 12px rgba(102,126,234,0.4);
+    }
+    #open-kb-btn:hover { background: #5a6fd6; transform: translate(-50%, -50%) scale(1.05); }
+    #close-kb-btn {
+      width: 32px; height: 32px; border-radius: 50%; border: none; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2); transition: all 0.3s ease;
+      color: white; background: #6c757d; font-size: 16px;
+    }
+    #close-kb-btn:hover { background: #5a6268; transform: scale(1.1); }
+    .top-buttons { position: absolute; top: 12px; right: 12px; display: flex; direction: ltr; gap: 8px; z-index: 10; }
     #publish-btn {
       width: 32px; height: 32px; border-radius: 50%; border: none; cursor: pointer;
       display: flex; align-items: center; justify-content: center;
@@ -87,9 +103,22 @@
           <polyline points="7 11 12 16 17 11"/><line x1="12" y1="16" x2="12" y2="3"/>
         </svg>
       </button>
+      <button id="close-kb-btn" title="Close">&times;</button>
     </div>
     <div id="kb-entries">Loading...</div>`
-  document.querySelector('.bg-section').appendChild(prompt)
+  const bgSection = document.querySelector('.bg-section')
+  const openBtn = document.createElement('button')
+  openBtn.id = 'open-kb-btn'
+  openBtn.textContent = 'Edit Knowledge Base'
+  bgSection.appendChild(openBtn)
+  bgSection.appendChild(prompt)
+
+  openBtn.addEventListener('click', () => {
+    prompt.classList.add('visible'); openBtn.style.display = 'none'
+  })
+  document.getElementById('close-kb-btn').addEventListener('click', () => {
+    prompt.classList.remove('visible'); openBtn.style.display = ''
+  })
 
   const escapeHtml = (t) => { const d = document.createElement('div'); d.textContent = t; return d.innerHTML }
   const autoResize = (ta) => { ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 'px' }
