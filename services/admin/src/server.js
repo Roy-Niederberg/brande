@@ -68,17 +68,12 @@ app.post('/ask', checkSession, async (rq, rs) => {
   try {
     console.log(`[${new Date().toISOString()}] Widget chat request from admin`)
 
-    // Extract knowledge base override if provided
-    const { knowledgeBaseOverride, ...restBody } = rq.body
-
-    // Add KB override to chat_data if provided
+    const { knowledgeBaseOverride, systemPromptOverride, ...restBody } = rq.body
     const requestBody = { ...restBody }
-    if (knowledgeBaseOverride) {
-      requestBody.chat_data = {
-        ...requestBody.chat_data,
-        knowledge_base_override: knowledgeBaseOverride
-      }
-      console.log(`[${new Date().toISOString()}] Using knowledge base override (${knowledgeBaseOverride.length} chars)`)
+    if (knowledgeBaseOverride || systemPromptOverride) {
+      requestBody.chat_data = { ...requestBody.chat_data }
+      if (knowledgeBaseOverride) requestBody.chat_data.knowledge_base_override = knowledgeBaseOverride
+      if (systemPromptOverride) requestBody.chat_data.system_prompt_override = systemPromptOverride
     }
 
     const response = await fetch(`${PROMPT_COMPOSER_URL}/ask`, {
@@ -98,9 +93,9 @@ app.post('/api/instructions', checkSession, async (rq, rs) => {
   try {
     const { instructions } = rq.body
     if (!instructions) return rs.status(400).json({ error: 'Instructions required' })
-    await fetch(`${PROMPT_COMPOSER_URL}/instructions`, {
-      method: 'POST', headers: { 'Content-Type': 'text/plain' },
-      body: instructions
+    await fetch(`${PROMPT_COMPOSER_URL}/prompt-instructions`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(instructions)
     })
     rs.json({ success: true })
   } catch (error) {

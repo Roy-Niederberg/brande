@@ -1,7 +1,7 @@
 import fs from 'fs'
 import express from 'express'
 import rateLimit from 'express-rate-limit'
-import prompts from '../data/system_prompts.json' with { type: 'json' }
+let prompts = JSON.parse(fs.readFileSync('./data/system_prompts.json', 'utf-8'))
 import _knowledge_base from '../data/knowledge_base.json' with { type: 'json' }
 
 const app = express()
@@ -130,7 +130,8 @@ app.r('post', '/ask', async ({ body }, rs) => {
 
   // Passed the gatekeeper, Build the prompt
   const kb = body.chat_data.knowledge_base_override || knowledge_base
-  const prompt = c_prompts.client_question + "\n#KNOWLEDG BASE:\n" + kb.map(e => `## ${e.key}\n${e.content}`).join('\n\n')
+  const client_question = body.chat_data.system_prompt_override?.[body.module] || c_prompts.client_question
+  const prompt = client_question + "\n#KNOWLEDG BASE:\n" + kb.map(e => `## ${e.key}\n${e.content}`).join('\n\n')
   write('prompt_log', `${body.module}_prompt`, `${prompt}\n${chat_history}`)
 
 
@@ -149,6 +150,19 @@ app.r('post', '/ask', async ({ body }, rs) => {
 app.r('get', '/knowledge-base', (_, rs) => rs.json(knowledge_base))
 app.r('post', '/knowledge-base',
   ({ body }, rs) => (knowledge_base = body, fs.writeFileSync('./data/knowledge_base.json', JSON.stringify(body, null, 2), 'utf-8'), rs.sendStatus(200)))
+
+app.r('get', '/prompt-instructions', (_, rs) => {
+  const result = {}
+  for (const [mod, data] of Object.entries(prompts)) result[mod] = data.client_question
+  rs.json(result)
+})
+app.r('post', '/prompt-instructions', ({ body }, rs) => {
+  for (const [mod, text] of Object.entries(body)) {
+    if (prompts[mod]) prompts[mod].client_question = text
+  }
+  fs.writeFileSync('./data/system_prompts.json', JSON.stringify(prompts, null, 4), 'utf-8')
+  rs.sendStatus(200)
+})
 
 // =============== Error handling middleware =========================================================================//
 app.use((e, _, rs, _nxt) => { console.error(e.response?.data || e.message, `\n${e.stack}`), rs.sendStatus(500) })
