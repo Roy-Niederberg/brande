@@ -89,6 +89,17 @@ app.post('/ask', checkSession, async (rq, rs) => {
   }
 })
 
+app.get('/api/prompt-log/:name', checkSession, async (rq, rs) => {
+  try {
+    const response = await fetch(`${PROMPT_COMPOSER_URL}/prompt-log/${rq.params.name}`)
+    if (!response.ok) return rs.status(response.status).send(await response.text())
+    rs.type('text').send(await response.text())
+  } catch (error) {
+    console.error(`[${new Date().toISOString()}] Prompt log error:`, error.message)
+    rs.status(500).send('Failed to fetch prompt log')
+  }
+})
+
 app.post('/api/instructions', checkSession, async (rq, rs) => {
   try {
     const { instructions } = rq.body

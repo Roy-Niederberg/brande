@@ -7,7 +7,7 @@
         : config.targetElement)
     : document.body // Default to body if not specified
   targetElement.dir ='ltr'
-  const API = config.apiEndpoint || '/widget-api/ask'
+  const API = config.apiEndpoint || '/site/ask'
   const STORAGE_KEY = 'chat_history'
   const history = []
 
@@ -470,7 +470,7 @@
     const abort = { stopped: false }
     greetingAbort = abort
     try {
-      let requestBody = { module: 'widget', chat_data: {} }
+      let requestBody = { module: 'widget', chat_data: {}, apiEndpoint: API }
       const res = await fetch(API, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -542,7 +542,7 @@
 
     try {
       const chat_history = history.map(h => `${h.role === 'user' ? '<<<USER>>>: ' : '<<<ASSISTANT>>>: '}${h.content}`).join('\n')
-      let requestBody = { module: 'widget', chat_data: { chat_history } }
+      let requestBody = { module: 'widget', chat_data: { chat_history }, apiEndpoint: API }
 
       // Allow config to modify request body before sending
       if (config.beforeSend && typeof config.beforeSend === 'function') {

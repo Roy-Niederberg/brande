@@ -8,7 +8,7 @@ const app = express()
 app.set('trust proxy', true)
 app.use(express.json())
 app.use(express.text())
-app.use(rateLimit({ windowMs: 20000, max: 5, message: 'Try again later', validate: { trustProxy: false } }))
+app.use('/ask', rateLimit({ windowMs: 20000, max: 5, message: 'Try again later', validate: { trustProxy: false } }))
 
 // =============== Util Functions ====================================================================================//
 const write  = (dir, name, content) => fs.writeFileSync(`./${dir}/${name}.txt`, content, 'utf-8')
@@ -132,7 +132,8 @@ app.r('post', '/ask', async ({ body }, rs) => {
   const kb = body.chat_data.knowledge_base_override || knowledge_base
   const client_question = body.chat_data.system_prompt_override?.[body.module] || c_prompts.client_question
   const prompt = client_question + "\n#KNOWLEDG BASE:\n" + kb.map(e => `## ${e.key}\n${e.content}`).join('\n\n')
-  write('prompt_log', `${body.module}_prompt`, `${prompt}\n${chat_history}`)
+  const logName = body.apiEndpoint.replace(/^\//, '').replace(/\//g, '_') + '_' + body.module
+  write('prompt_log', logName, `${prompt}\n${chat_history}`)
 
 
   console.log('TRYING with Gemini 1')
@@ -150,6 +151,12 @@ app.r('post', '/ask', async ({ body }, rs) => {
 app.r('get', '/knowledge-base', (_, rs) => rs.json(knowledge_base))
 app.r('post', '/knowledge-base',
   ({ body }, rs) => (knowledge_base = body, fs.writeFileSync('./data/knowledge_base.json', JSON.stringify(body, null, 2), 'utf-8'), rs.sendStatus(200)))
+
+app.r('get', '/prompt-log/:name', (rq, rs) => {
+  const name = rq.params.name.replace(/[^a-zA-Z0-9_-]/g, '')
+  try { rs.type('text').send(fs.readFileSync(`./prompt_log/${name}.txt`, 'utf-8')) }
+  catch { rs.status(404).send('Log not found') }
+})
 
 app.r('get', '/prompt-instructions', (_, rs) => {
   const result = {}

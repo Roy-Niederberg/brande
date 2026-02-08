@@ -65,6 +65,13 @@ These directories mirror what's running in production.
 Each client has a `client-config.json` in its assets directory (`prod_setup/client_server/<client>/assets/`)
 that configures language, direction, title, background image, and social links.
 
+## Caddy Routing
+
+The site Caddyfile (`services/site/src/Caddyfile`) routes:
+- `/admin/*` → admin BE (port 9876)
+- `/site/*` → prompt-composer (port 4321), prefix stripped
+- Everything else → static site files
+
 ## Admin
 
 The admin reuses the site's `index.html` — no separate HTML. The admin BE fetches
@@ -72,15 +79,47 @@ the site's HTML at runtime (`http://site:80/index.html`) and injects
 `<script src="/admin/admin.js">` before `loader.js`. This means site layout/style
 changes automatically apply to the admin.
 
-`admin.js` does three things:
-1. Pre-sets `window.ChatWidgetConfig` (apiEndpoint, beforeSend) — `loader.js` merges
-   it via `...(window.ChatWidgetConfig || {})`.
-2. Injects the knowledge base editor UI into `.bg-section`.
-3. Contains all KB management logic (load, edit, draft/publish).
+`admin.js` pre-sets `window.ChatWidgetConfig` (apiEndpoint, beforeSend) —
+`loader.js` merges it via `...(window.ChatWidgetConfig || {})`. It uses a factory
+pattern (`createPanel`/`createEditor`) to build editor panels in `.bg-section`.
+Three buttons on the main screen:
+
+1. **Edit Knowledge Base** — CRUD editor for KB entries (`{key, content}` pairs).
+   `canModify: true` — supports add/delete entries.
+2. **Edit System Prompts** — Editor for `client_question` per module.
+   `canModify: false` — keys (module names) are read-only, no add/delete.
+3. **See Last Prompt** — Read-only viewer with Admin/Site tabs showing the last
+   composed prompt. Tabs switch between `admin_ask_widget` and `site_ask_widget`
+   log files. Cached per panel open, with a refresh button.
+
+Both KB and SP editors use localStorage drafts and a publish flow.
+`beforeSend` sends both KB and SP draft overrides on every admin chat request,
+so changes can be tested in the widget before publishing.
 
 Request flow:
-- Widget chat: browser → Caddy `/admin/*` → admin BE `/ask` (auth) → prompt-composer
-- KB load: admin BE `/api/initial-content` → prompt-composer `/knowledge-base`
+- Admin chat: browser → Caddy `/admin/*` → admin BE `/ask` (auth) → prompt-composer
+- Site chat: browser → Caddy `/site/*` → prompt-composer `/ask`
+- Initial load: admin BE `/api/initial-content` → prompt-composer `/knowledge-base` + `/prompt-instructions`
 - KB publish: admin BE `/api/knowledge-base` → prompt-composer `/knowledge-base`
+- SP publish: admin BE `/api/instructions` → prompt-composer `/prompt-instructions`
+- Prompt log: admin BE `/api/prompt-log/:name` → prompt-composer `/prompt-log/:name`
+
+### Prompt Logging
+
+The widget sends its `apiEndpoint` in the request body. The prompt-composer uses
+`apiEndpoint + module` for the log filename (e.g., `admin_ask_widget.txt` vs
+`site_ask_widget.txt`), so admin testing doesn't overwrite production logs.
+
+### System Prompts
+
+Stored in `prod_setup/client_server/<client>/data/system_prompts.json`. Structure:
+`{ "module": { greeting: {...}, gatekeeper: "...", client_question: "..." } }`.
+The prompt-composer loads them mutably (`let` + `fs.readFileSync`) so they can be
+updated at runtime via the admin. Only `client_question` is editable in the admin UI.
+
+### Rate Limiting
+
+The prompt-composer rate limiter (5 req/20s) applies only to `/ask`, not to
+config/log endpoints.
 
 Direction (RTL/LTR) is inherited from the site's `client-config.json` — no toggle needed.

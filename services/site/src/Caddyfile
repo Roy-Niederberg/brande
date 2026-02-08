@@ -5,8 +5,8 @@
 		}
 	}
 
-	handle /widget-api/* {
-		uri strip_prefix /widget-api
+	handle /site/* {
+		uri strip_prefix /site
 		reverse_proxy prompt-composer:4321
 	}
 

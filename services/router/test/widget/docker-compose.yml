@@ -29,7 +29,7 @@ services:
               'Cache-Control': 'no-cache, no-store, must-revalidate'
             });
             res.end(widgetContent);
-          } else if (req.url === '/widget-api/ask' && req.method === 'POST') {
+          } else if (req.url === '/site/ask' && req.method === 'POST') {
             let body = '';
             req.on('data', chunk => body += chunk);
             req.on('end', async () => {

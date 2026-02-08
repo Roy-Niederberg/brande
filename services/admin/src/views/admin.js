@@ -43,6 +43,29 @@
     #open-kb-btn:hover { background: #5a6fd6; }
     #open-sp-btn { background: #ff9800; box-shadow: 0 4px 12px rgba(255,152,0,0.4); }
     #open-sp-btn:hover { background: #e68a00; }
+    #open-log-btn { background: #17a2b8; box-shadow: 0 4px 12px rgba(23,162,184,0.4); }
+    #open-log-btn:hover { background: #138496; }
+    .log-tabs { display: flex; gap: 0; }
+    .log-tab {
+      padding: 10px 24px; border: 1px solid #ddd; border-bottom: none;
+      background: #f0f0f0; cursor: pointer; font-size: 14px; font-weight: 500;
+      border-radius: 8px 8px 0 0; transition: all 0.2s ease; color: #666;
+    }
+    .log-tab:hover { background: #e8e8e8; }
+    .log-tab.active { background: #fff; border-color: #667eea; color: #667eea; }
+    .log-panel { overflow: hidden; display: none; flex-direction: column; padding: 16px; }
+    .log-panel.visible { display: flex; }
+    .log-header {
+      display: flex; direction: ltr; justify-content: space-between; align-items: flex-end;
+    }
+    .log-header .top-buttons { position: static; align-items: center; }
+    .log-content {
+      border: 1px solid #ddd; border-radius: 0 8px 8px 8px; padding: 16px;
+      background: #fff; white-space: pre-wrap; word-wrap: break-word;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 13px; line-height: 1.5;
+      overflow-y: auto; flex: 1; margin: 0;
+    }
     .top-buttons { position: absolute; top: 12px; right: 12px; display: flex; direction: ltr; gap: 8px; z-index: 10; }
     .publish-btn {
       width: 32px; height: 32px; border-radius: 50%; border: none; cursor: pointer;
@@ -56,6 +79,13 @@
       content: ''; position: absolute; top: -2px; right: -2px; width: 10px; height: 10px;
       background: #f44336; border-radius: 50%; border: 2px solid white;
     }
+    .refresh-btn {
+      width: 32px; height: 32px; border-radius: 50%; border: none; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2); transition: all 0.3s ease;
+      color: white; background: #17a2b8;
+    }
+    .refresh-btn:hover { background: #138496; transform: scale(1.1); }
     .close-panel-btn {
       width: 32px; height: 32px; border-radius: 50%; border: none; cursor: pointer;
       display: flex; align-items: center; justify-content: center;
@@ -241,11 +271,54 @@
   const kbPanel = createPanel()
   const spPanel = createPanel()
 
+  const logPanel = document.createElement('div')
+  logPanel.className = 'prompt log-panel'
+  const refreshSvg = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>'
+  logPanel.innerHTML = `
+    <div class="log-header">
+      <div class="log-tabs">
+        <button class="log-tab active" data-log="admin_ask_widget">Admin</button>
+        <button class="log-tab" data-log="site_ask_widget">Site</button>
+      </div>
+      <div class="top-buttons">
+        <button class="refresh-btn" title="Refresh">${refreshSvg}</button>
+        <button class="close-panel-btn" title="Close">&times;</button>
+      </div>
+    </div>
+    <pre class="log-content"></pre>`
+  bgSection.appendChild(logPanel)
+
+  const logContent = logPanel.querySelector('.log-content')
+  const logTabs = logPanel.querySelectorAll('.log-tab')
+  const logCache = {}
+
+  async function loadLog(name, force) {
+    if (!force && logCache[name]) { logContent.textContent = logCache[name]; return }
+    logContent.textContent = 'Loading...'
+    try {
+      const res = await fetch(`/admin/api/prompt-log/${name}`)
+      logCache[name] = res.ok ? await res.text() : 'No log found'
+    } catch { logCache[name] = 'Error loading log' }
+    logContent.textContent = logCache[name]
+  }
+
+  logTabs.forEach(tab => tab.addEventListener('click', () => {
+    logTabs.forEach(t => t.classList.remove('active'))
+    tab.classList.add('active')
+    loadLog(tab.dataset.log)
+  }))
+
+  logPanel.querySelector('.refresh-btn').addEventListener('click', () => {
+    const active = logPanel.querySelector('.log-tab.active')
+    loadLog(active.dataset.log, true)
+  })
+
   const adminBtns = document.createElement('div')
   adminBtns.id = 'admin-buttons'
   adminBtns.innerHTML = `
     <button id="open-kb-btn" class="admin-open-btn">Edit Knowledge Base</button>
-    <button id="open-sp-btn" class="admin-open-btn">Edit System Prompts</button>`
+    <button id="open-sp-btn" class="admin-open-btn">Edit System Prompts</button>
+    <button id="open-log-btn" class="admin-open-btn">See Last Prompt</button>`
   bgSection.appendChild(adminBtns)
 
   const openPanel = (panel) => {
@@ -256,8 +329,13 @@
 
   document.getElementById('open-kb-btn').addEventListener('click', () => openPanel(kbPanel))
   document.getElementById('open-sp-btn').addEventListener('click', () => openPanel(spPanel))
+  document.getElementById('open-log-btn').addEventListener('click', () => {
+    logCache.admin_ask_widget = logCache.site_ask_widget = null
+    openPanel(logPanel); loadLog('admin_ask_widget')
+  })
   kbPanel.querySelector('.close-panel-btn').addEventListener('click', () => closePanel(kbPanel))
   spPanel.querySelector('.close-panel-btn').addEventListener('click', () => closePanel(spPanel))
+  logPanel.querySelector('.close-panel-btn').addEventListener('click', () => closePanel(logPanel))
 
   kbEditor = createEditor(kbPanel, {
     draftKey: 'kb_draft', canModify: true,
