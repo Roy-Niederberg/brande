@@ -11,6 +11,7 @@
 # and for claude
 !CLAUDE.md
 !for_claude.md
+!TASKS.md
 
 # don't ignore .gitignore and gitlab-ci
 !.gitignore

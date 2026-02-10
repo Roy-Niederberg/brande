@@ -13,6 +13,7 @@
           So It will also ask the prompt_composer for stuff to keep the user engaged, play the greeting and so on. The widget is the initiator.
 
 - [ ] .gitignore on prod_setup (?!)
+- [] Create site for Qabu. poc.
 - [ ] Organize my desk
 - [ ] Make sure I have all the secrets backed up
 - [ ] Go over CLAUDE.md and read it. (in ~/tmp/qabu_CLAUDE.md)
