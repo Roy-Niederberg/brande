@@ -29,13 +29,10 @@ const gatekeeper = new OpenAI({
   apiKey: secret('groq_key_1'),
   baseURL: 'https://api.groq.com/openai/v1'
 })
-gatekeeper.ask = async (c, q) => {
+gatekeeper.ask = async (c, msgs) => {
   const r = await gatekeeper.chat.completions.create({
     model: 'openai/gpt-oss-20b',
-    messages: [
-      { role: 'system', content: c },
-      { role: 'user', content: q }
-    ],
+    messages: [{ role: 'system', content: c }, ...msgs],
     response_format: {
       type: 'json_schema',
       json_schema: {
@@ -60,13 +57,10 @@ const llm1 = new OpenAI({
   baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai/'
 })
 
-llm1.ask = async (q, c) => {
+llm1.ask = async (c, msgs) => {
   const r = await llm1.chat.completions.create({
-    model: 'gemini-2.5-flash-lite',
-    messages: [
-      { role: 'system', content: c },
-      { role: 'user', content: q }
-    ]
+    model: 'gemini-3-flash-preview',
+    messages: [{ role: 'system', content: c }, ...msgs]
   })
   return { text: r.choices[0]?.message?.content || '' }
 }
@@ -76,13 +70,10 @@ const llm2 = new OpenAI({
   baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai/'
 })
 
-llm2.ask = async (q, c) => {
+llm2.ask = async (c, msgs) => {
   const r = await llm2.chat.completions.create({
     model: 'gemini-2.5-flash-lite',
-    messages: [
-      { role: 'system', content: c },
-      { role: 'user', content: q }
-    ]
+    messages: [{ role: 'system', content: c }, ...msgs]
   })
   return { text: r.choices[0]?.message?.content || '' }
 }
@@ -92,13 +83,10 @@ const llm3 = new OpenAI({
   baseURL: 'https://api.groq.com/openai/v1'
 })
 
-llm3.ask = async (q, c) => {
+llm3.ask = async (c, msgs) => {
   const r = await llm3.chat.completions.create({
-    model: 'openai/gpt-oss-20b',
-    messages: [
-      { role: 'system', content: c },
-      { role: 'user', content: q }
-    ]
+    model: 'openai/gpt-oss-120b',
+    messages: [{ role: 'system', content: c }, ...msgs]
   })
   return { text: r.choices[0]?.message?.content || '' }
 }
@@ -112,11 +100,9 @@ app.r('post', '/ask', async ({ body }, rs) => {
   }
 
   const c_prompts = prompts[body.module]
-
   const chat_history = body.chat_data?.chat_history
-  console.log(chat_history)
 
-  if (!chat_history) {
+  if (!chat_history?.length) {
     rs.json(c_prompts.greeting);
     return;
   }
@@ -133,17 +119,21 @@ app.r('post', '/ask', async ({ body }, rs) => {
   const client_question = body.chat_data.system_prompt_override?.[body.module] || c_prompts.client_question
   const prompt = client_question + "\n#KNOWLEDG BASE:\n" + kb.map(e => `## ${e.key}\n${e.content}`).join('\n\n')
   const logName = body.apiEndpoint.replace(/^\//, '').replace(/\//g, '_') + '_' + body.module
-  write('prompt_log', logName, `${prompt}\n${chat_history}`)
+  const chatLog = chat_history.map(h => `[${h.role}]: ${h.content}`).join('\n')
+  write('prompt_log', logName, `${prompt}\n\n#CHAT HISTORY:\n"${chatLog}`)
 
 
   console.log('TRYING with Gemini 1')
-  try {rs.send('' + (await llm1.ask(prompt, chat_history)).text); return} catch(e) {console.error(`gemini 1 failed: `, e.message)}
-
-  console.log('TRYING with Gemini 2')
-  try {rs.send('' + (await llm2.ask(prompt, chat_history)).text); return} catch(e) {console.error(`gemini 2 failed: `, e.message)}
+  try {rs.send('' + (await llm1.ask(prompt, chat_history)).text); return}
+  catch(e) {console.error(`gemini 1 failed: `, e.message)}
 
   console.log('TRYING with Grok 1')
-  try {rs.send('' + (await llm3.ask(prompt, chat_history)).text); return} catch(e) {console.error(`Grok 1 failed: `, e.message)}
+  try {rs.send('' + (await llm3.ask(prompt, chat_history)).text); return}
+  catch(e) {console.error(`Grok 1 failed: `, e.message)}
+
+  console.log('TRYING with Gemini 2')
+  try {rs.send('' + (await llm2.ask(prompt, chat_history)).text); return}
+  catch(e){console.error(`gemini 2 failed: `, e.message)}
 
   rs.send("The assistance is not available at the moment. Please try again later.")
 })
@@ -154,8 +144,7 @@ app.r('post', '/knowledge-base',
 
 app.r('get', '/prompt-log/:name', (rq, rs) => {
   const name = rq.params.name.replace(/[^a-zA-Z0-9_-]/g, '')
-  try { rs.type('text').send(fs.readFileSync(`./prompt_log/${name}.txt`, 'utf-8')) }
-  catch { rs.status(404).send('Log not found') }
+  rs.type('text').send(fs.readFileSync(`./prompt_log/${name}.txt`, 'utf-8'))
 })
 
 app.r('get', '/prompt-instructions', (_, rs) => {
@@ -166,6 +155,19 @@ app.r('get', '/prompt-instructions', (_, rs) => {
 app.r('post', '/prompt-instructions', ({ body }, rs) => {
   for (const [mod, text] of Object.entries(body)) {
     if (prompts[mod]) prompts[mod].client_question = text
+  }
+  fs.writeFileSync('./data/system_prompts.json', JSON.stringify(prompts, null, 4), 'utf-8')
+  rs.sendStatus(200)
+})
+
+app.r('get', '/greeting', (_, rs) => {
+  const result = {}
+  for (const [mod, data] of Object.entries(prompts)) result[mod] = data.greeting
+  rs.json(result)
+})
+app.r('post', '/greeting', ({ body }, rs) => {
+  for (const [mod, greeting] of Object.entries(body)) {
+    if (prompts[mod]) prompts[mod].greeting = greeting
   }
   fs.writeFileSync('./data/system_prompts.json', JSON.stringify(prompts, null, 4), 'utf-8')
   rs.sendStatus(200)

@@ -34,17 +34,19 @@
       display: flex; flex-direction: column; gap: 16px; align-items: center;
     }
     .admin-open-btn {
-      padding: 16px 32px; color: white; border: none;
+      padding: 16px 32px; width: 240px; color: white; border: 1px solid rgba(0,0,0,0.15);
       border-radius: 12px; font-size: 18px; font-weight: 600; cursor: pointer;
-      transition: all 0.2s ease;
+      transition: all 0.2s ease; box-shadow: 0 4px 14px rgba(0,0,0,0.25);
     }
     .admin-open-btn:hover { transform: scale(1.05); }
-    #open-kb-btn { background: #667eea; box-shadow: 0 4px 12px rgba(102,126,234,0.4); }
-    #open-kb-btn:hover { background: #5a6fd6; }
-    #open-sp-btn { background: #ff9800; box-shadow: 0 4px 12px rgba(255,152,0,0.4); }
-    #open-sp-btn:hover { background: #e68a00; }
-    #open-log-btn { background: #17a2b8; box-shadow: 0 4px 12px rgba(23,162,184,0.4); }
-    #open-log-btn:hover { background: #138496; }
+    #open-kb-btn { background: #7b8eb5; box-shadow: 0 4px 12px rgba(123,142,181,0.3); }
+    #open-kb-btn:hover { background: #6a7da4; }
+    #open-sp-btn { background: #c4956d; box-shadow: 0 4px 12px rgba(196,149,109,0.3); }
+    #open-sp-btn:hover { background: #b3845c; }
+    #open-gr-btn { background: #a87c9e; box-shadow: 0 4px 12px rgba(168,124,158,0.3); }
+    #open-gr-btn:hover { background: #976b8d; }
+    #open-log-btn { background: #7ba8a0; box-shadow: 0 4px 12px rgba(123,168,160,0.3); }
+    #open-log-btn:hover { background: #6a978f; }
     .log-tabs { display: flex; gap: 0; }
     .log-tab {
       padding: 10px 24px; border: 1px solid #ddd; border-bottom: none;
@@ -86,6 +88,13 @@
       color: white; background: #17a2b8;
     }
     .refresh-btn:hover { background: #138496; transform: scale(1.1); }
+    .copy-btn {
+      width: 32px; height: 32px; border-radius: 50%; border: none; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2); transition: all 0.2s ease;
+      color: white; background: #28a745;
+    }
+    .copy-btn:hover { background: #218838; transform: scale(1.1); }
     .close-panel-btn {
       width: 32px; height: 32px; border-radius: 50%; border: none; cursor: pointer;
       display: flex; align-items: center; justify-content: center;
@@ -270,6 +279,7 @@
   // Create panels and admin buttons
   const kbPanel = createPanel()
   const spPanel = createPanel()
+  const grPanel = createPanel()
 
   const logPanel = document.createElement('div')
   logPanel.className = 'prompt log-panel'
@@ -281,6 +291,7 @@
         <button class="log-tab" data-log="site_ask_widget">Site</button>
       </div>
       <div class="top-buttons">
+        <button class="copy-btn" title="Copy All"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
         <button class="refresh-btn" title="Refresh">${refreshSvg}</button>
         <button class="close-panel-btn" title="Close">&times;</button>
       </div>
@@ -308,6 +319,13 @@
     loadLog(tab.dataset.log)
   }))
 
+  logPanel.querySelector('.copy-btn').addEventListener('click', async () => {
+    await navigator.clipboard.writeText(logContent.textContent)
+    const btn = logPanel.querySelector('.copy-btn')
+    btn.style.background = '#17a2b8'
+    setTimeout(() => btn.style.background = '', 600)
+  })
+
   logPanel.querySelector('.refresh-btn').addEventListener('click', () => {
     const active = logPanel.querySelector('.log-tab.active')
     loadLog(active.dataset.log, true)
@@ -318,6 +336,7 @@
   adminBtns.innerHTML = `
     <button id="open-kb-btn" class="admin-open-btn">Edit Knowledge Base</button>
     <button id="open-sp-btn" class="admin-open-btn">Edit System Prompts</button>
+    <button id="open-gr-btn" class="admin-open-btn">Edit Greeting</button>
     <button id="open-log-btn" class="admin-open-btn">See Last Prompt</button>`
   bgSection.appendChild(adminBtns)
 
@@ -329,12 +348,14 @@
 
   document.getElementById('open-kb-btn').addEventListener('click', () => openPanel(kbPanel))
   document.getElementById('open-sp-btn').addEventListener('click', () => openPanel(spPanel))
+  document.getElementById('open-gr-btn').addEventListener('click', () => openPanel(grPanel))
   document.getElementById('open-log-btn').addEventListener('click', () => {
     logCache.admin_ask_widget = logCache.site_ask_widget = null
     openPanel(logPanel); loadLog('admin_ask_widget')
   })
   kbPanel.querySelector('.close-panel-btn').addEventListener('click', () => closePanel(kbPanel))
   spPanel.querySelector('.close-panel-btn').addEventListener('click', () => closePanel(spPanel))
+  grPanel.querySelector('.close-panel-btn').addEventListener('click', () => closePanel(grPanel))
   logPanel.querySelector('.close-panel-btn').addEventListener('click', () => closePanel(logPanel))
 
   kbEditor = createEditor(kbPanel, {
@@ -347,6 +368,12 @@
     draftKey: 'sp_draft', canModify: false,
     publishUrl: '/admin/api/instructions',
     toBody: (draft) => ({ instructions: Object.fromEntries(draft.map(e => [e.key, e.content])) })
+  })
+
+  const grEditor = createEditor(grPanel, {
+    draftKey: 'gr_draft', canModify: true,
+    publishUrl: '/admin/api/greeting',
+    toBody: (draft) => ({ greeting: { widget: { messages: draft.map(e => ({ delay: parseInt(e.key) || 0, text: e.content })) } } })
   })
 
   // Load data
@@ -367,9 +394,17 @@
         if (typeof sp !== 'object' || Array.isArray(sp)) sp = {}
         spEditor.load(Object.entries(sp).map(([key, content]) => ({ key, content })))
       } else spEditor.showError('No system prompts available')
+
+      if (data.greeting) {
+        let gr = data.greeting
+        if (typeof gr === 'string') try { gr = JSON.parse(gr) } catch { gr = {} }
+        const msgs = gr.widget?.messages || []
+        grEditor.load(msgs.map(m => ({ key: String(m.delay), content: m.text })))
+      } else grEditor.showError('No greeting available')
     } catch {
       kbEditor.showError('Error loading knowledge base')
       spEditor.showError('Error loading system prompts')
+      grEditor.showError('Error loading greeting')
     }
   })()
 })()

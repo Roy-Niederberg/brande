@@ -1,7 +1,11 @@
 # The Qabu Project
 -------
 ## with Nevo
- - [ ] The admin page should inherate the UI from the 'site'. More logig but looks the same. 
+
+ - [ ] The admin page should inherate the UI from the 'site'. More logig but looks the same.
+ - [ ] Go over the claude bot results - https://claude.ai/code/session_015amX6XQKE6anSW2Vf9QjoU
+ - [ ] Go over the claude bot results - https://claude.ai/code/session_013buYQPiU1E2Fyo9qYzqSCK
+ - [ ] Clear the code - remove old tests
 
 - [ ] Check the last changes:
     - [ ] Add the llm-proxy to client_he

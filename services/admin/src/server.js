@@ -53,11 +53,12 @@ app.get('/api/user', checkSession, (rq, rs) =>
 
 app.get('/api/initial-content', checkSession, async (_rq, rs) => {
   try {
-    const [instructionsRes, knowledgeBaseRes] = await Promise.all([
+    const [instructionsRes, knowledgeBaseRes, greetingRes] = await Promise.all([
       fetch(`${PROMPT_COMPOSER_URL}/prompt-instructions`),
-      fetch(`${PROMPT_COMPOSER_URL}/knowledge-base`)
+      fetch(`${PROMPT_COMPOSER_URL}/knowledge-base`),
+      fetch(`${PROMPT_COMPOSER_URL}/greeting`)
     ])
-    rs.json({ instructions: await instructionsRes.text(), knowledgeBase: await knowledgeBaseRes.text() })
+    rs.json({ instructions: await instructionsRes.text(), knowledgeBase: await knowledgeBaseRes.text(), greeting: await greetingRes.text() })
   } catch (error) {
     console.error(`[${new Date().toISOString()}] Error fetching initial content:`, error.message)
     rs.json({ instructions: '', knowledgeBase: '', error: 'Could not fetch initial content from response-engine' })
@@ -127,6 +128,21 @@ app.post('/api/knowledge-base', checkSession, async (rq, rs) => {
   } catch (error) {
     console.error(`[${new Date().toISOString()}] Update knowledge base error:`, error.message)
     rs.status(500).json({ error: 'Failed to update knowledge base' })
+  }
+})
+
+app.post('/api/greeting', checkSession, async (rq, rs) => {
+  try {
+    const { greeting } = rq.body
+    if (!greeting) return rs.status(400).json({ error: 'Greeting required' })
+    await fetch(`${PROMPT_COMPOSER_URL}/greeting`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(greeting)
+    })
+    rs.json({ success: true })
+  } catch (error) {
+    console.error(`[${new Date().toISOString()}] Update greeting error:`, error.message)
+    rs.status(500).json({ error: 'Failed to update greeting' })
   }
 })
 
