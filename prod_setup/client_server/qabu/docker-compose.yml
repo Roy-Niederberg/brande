@@ -3,7 +3,7 @@ services:
   site:
     image: registry.gitlab.com/rny3/brande/site:latest
     networks: [client_network, qabu_network]
-    volumes: [./assets:/srv]
+    volumes: [./assets:/site/assets]
 
   prompt-composer:
     image: registry.gitlab.com/rny3/brande/prompt_composer:latest
