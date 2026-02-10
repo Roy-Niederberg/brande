@@ -6,11 +6,10 @@
 # and not docker stuff
 !docker-compose.yml
 !Dockerfile
-!README.md
 
 # and for claude
+!README.md
 !CLAUDE.md
-!for_claude.md
 !TASKS.md
 
 # don't ignore .gitignore and gitlab-ci
