@@ -59,7 +59,7 @@ const llm1 = new OpenAI({
 
 llm1.ask = async (c, msgs) => {
   const r = await llm1.chat.completions.create({
-    model: 'gemini-3-flash-preview',
+    model: 'gemini-2.5-flash',
     messages: [{ role: 'system', content: c }, ...msgs]
   })
   return { text: r.choices[0]?.message?.content || '' }
