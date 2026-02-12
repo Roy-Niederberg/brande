@@ -9,6 +9,10 @@ services:
   #   image:   registry.gitlab.com/rny3/brande/facebook_signup:latest
   #   secrets: [fb_global_app_id, fb_global_app_secret]
 
+  # facebook-dispatcher:
+  #   image:   registry.gitlab.com/rny3/brande/facebook_dispatcher:latest
+  #   secrets: [fb_global_webhook_verify_token, fb_app_secret]
+
 volumes:
   router_data:
   router_config:

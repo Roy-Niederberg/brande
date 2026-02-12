@@ -32,8 +32,9 @@ passport.deserializeUser((user, done) => done(null, user))
 
 // Public routes
 app.get('/', (rq, rs) => rq.isAuthenticated() && emails.includes(rq.user.email) ? rs.redirect('/admin/chatQA') : rs.redirect('/admin/login/'))
-app.get('/login/', passport.authenticate('google', { scope: ['profile', 'email'] }))
+app.get('/login/', passport.authenticate('google', { scope: ['profile', 'email'], prompt: 'select_account' }))
 app.get('/login/callback', passport.authenticate('google', { failureRedirect: '/admin/login/' }), (_, rs) => rs.redirect('/admin/chatQA'))
+app.get('/logout', (rq, rs) => rq.logout(() => rq.session.destroy(() => rs.redirect('/'))))
 
 // Protected routes - serve site HTML with admin.js injected
 app.get('/chatQA', isAuthorized, async (_, rs) => {
@@ -147,6 +148,6 @@ app.post('/api/greeting', checkSession, async (rq, rs) => {
 })
 
 // Error handling
-app.use((_, rs) => rs.sendStatus(404))
 app.use((e, _, rs, _nxt) => { console.error(e.response?.data || e.message, `\n${e.stack}`), rs.sendStatus(500) })
+app.use('*', (_, rs) => rs.sendStatus(404))
 app.listen(9876, ()=> console.log('Server Start Up'))

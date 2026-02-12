@@ -31,7 +31,7 @@ app.post('/facebook-page-signup/api/get-permanent-tokens', async (req, res) => {
 
     try {
         // 1. Exchange Short-Lived User Token for Long-Lived User Token (60 days)
-        const exchangeUrl = `https://graph.facebook.com/v18.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${app_id}&client_secret=${app_secret}&fb_exchange_token=${shortLivedToken}`;
+        const exchangeUrl = `https://graph.facebook.com/v24.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${app_id}&client_secret=${app_secret}&fb_exchange_token=${shortLivedToken}`;
 
         const exchangeResponse = await fetch(exchangeUrl);
         const exchangeData = await exchangeResponse.json();

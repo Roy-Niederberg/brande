@@ -95,7 +95,7 @@ llm3.ask = async (c, msgs) => {
 // In this section the server should keep running and give the best answer it can. ===================================//
 app.r('post', '/ask', async ({ body }, rs) => {
   if (!body.module || !prompts[body.module]) {
-    rs.send(`NO MUDULE [${body.module}]`);
+    rs.send(`NO MODULE [${body.module}]`);
     return;
   }
 

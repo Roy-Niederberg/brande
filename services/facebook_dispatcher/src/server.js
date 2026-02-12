@@ -1,20 +1,22 @@
-const fs = require('fs')
-const express = require('express')
-const crypto = require('crypto')
-const axios = require('axios')
+import fs from 'fs'
+import express from 'express'
+import crypto from 'crypto'
 const app = express()
 
 const read_scrt = name => fs.readFileSync(`/run/secrets/${name}`, 'utf-8').trim()
+
 const dispatch_to = (target, page_id, events) => {
-  axios.post( `http://facebook-${target}-${page_id}:3210`, { page_id, events }, {
+  const url = `http://facebook-${target}-${page_id}:3210`
+  fetch(url, {
+    method: 'POST',
     headers: { 'content-type': 'application/json' },
-  }).catch(err => {
-      console.error(`Forward Error:http://facebook-${target}-${page_id}:3210:`, err.message)
-    })
+    body: JSON.stringify({ page_id, events })
+  }).catch(err => console.error(`Forward Error:${url}:`, err.message))
 }
 
-const verify_token = read_scrt('fb_global_webhook_verify_token')
-const fb_app_secret = read_scrt('fb_global_app_secret')
+const verify_token = read_scrt('fb_webhook_verify_token')
+const fb_app_secret = read_scrt('fb_app_secret')
+
 app.use(express.json({ verify: (rq, _rs, buf) => rq.rawBody = buf.toString('utf8') }))
 
 app.get('/', (rq, rs) => {
@@ -80,7 +82,10 @@ function verifySignature(signature, rawBody) {
   const signatureHash = elements[1]
   const expectedHash = crypto.createHmac('sha256', fb_app_secret).update(rawBody).digest('hex')
 
-  return signatureHash === expectedHash
+return crypto.timingSafeEqual(
+  Buffer.from(signatureHash, 'hex'),
+  Buffer.from(expectedHash, 'hex')
+)
 }
 
 app.listen(3210, ()=> console.log('Server Start Up'))

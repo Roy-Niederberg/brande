@@ -148,6 +148,12 @@
     }
     .add-entry-btn:hover { background: #218838; transform: translateY(-1px); }
     .empty-state { text-align: center; padding: 40px; color: #6c757d; }
+    #logout-btn {
+      padding: 8px 16px; width: 140px; background: transparent; color: #999;
+      border: 1px solid #ccc; border-radius: 8px; font-size: 13px;
+      cursor: pointer; transition: all 0.2s ease; margin-top: 8px;
+    }
+    #logout-btn:hover { color: #dc3545; border-color: #dc3545; }
     @media (max-aspect-ratio: 1/1) { .prompt { width: 100%; height: 100%; border-radius: 0; } }
   `
   document.head.appendChild(style)
@@ -337,8 +343,13 @@
     <button id="open-kb-btn" class="admin-open-btn">Edit Knowledge Base</button>
     <button id="open-sp-btn" class="admin-open-btn">Edit System Prompts</button>
     <button id="open-gr-btn" class="admin-open-btn">Edit Greeting</button>
-    <button id="open-log-btn" class="admin-open-btn">See Last Prompt</button>`
+    <button id="open-log-btn" class="admin-open-btn">See Last Prompt</button>
+    <button id="logout-btn">Logout</button>`
   bgSection.appendChild(adminBtns)
+
+  document.getElementById('logout-btn').addEventListener('click', () => {
+    if (confirm('Log out?')) window.location.href = '/admin/logout'
+  })
 
   const openPanel = (panel) => {
     panel.classList.add('visible'); adminBtns.style.display = 'none'

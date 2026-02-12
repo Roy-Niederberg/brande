@@ -1,7 +1,15 @@
 services:
   web:
-    image: nginx:alpine
-    ports:
-      - "9000:80"
-    volumes:
-      - ../../prod_setup/main_server/srv/:/usr/share/nginx/html:ro
+    image:   nginx:alpine
+    ports:   ["9000:80"]
+    volumes: [../../prod_setup/main_server/srv/:/usr/share/nginx/html:ro]
+
+  facebook-dispatcher:
+    build:   {context: ../../services/facebook_dispatcher/, target: development}
+    ports:   ["3210:3210"]
+    secrets: [fb_webhook_verify_token, fb_app_secret]
+    volumes: [../../services/facebook_dispatcher/src/:/app/src/]
+
+secrets:
+  fb_webhook_verify_token: {file: ./secrets/fb_webhook_verify_token.secret}
+  fb_app_secret: {file: ./secrets/fb_app_secret.secret}
