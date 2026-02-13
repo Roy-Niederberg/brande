@@ -46,7 +46,7 @@ app.post('/', (rq, rs) => {
   }
   send(rs, 200,'EVENT_RECEIVED', 'Webhook POST received')
 
-  (rq.body?.entry || []).forEach(entry => {
+  ;(rq.body?.entry || []).forEach(entry => {
     if (entry.changes)   dispatch_to('comments', entry.id, entry.changes)
     if (entry.messaging) dispatch_to('dm', entry.id, entry.messaging)
   })
