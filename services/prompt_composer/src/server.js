@@ -5,10 +5,10 @@ let prompts = JSON.parse(fs.readFileSync('./data/system_prompts.json', 'utf-8'))
 import _knowledge_base from '../data/knowledge_base.json' with { type: 'json' }
 
 const app = express()
-app.set('trust proxy', true)
+app.set('trust proxy', 1)
 app.use(express.json())
 app.use(express.text())
-app.use('/ask', rateLimit({ windowMs: 20000, max: 5, message: 'Try again later', validate: { trustProxy: false } }))
+app.use('/ask', rateLimit({ windowMs: 20000, max: 5, message: 'Try again later' }))
 
 // =============== Util Functions ====================================================================================//
 const write  = (dir, name, content) => fs.writeFileSync(`./${dir}/${name}.txt`, content, 'utf-8')
