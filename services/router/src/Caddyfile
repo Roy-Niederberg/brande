@@ -2,6 +2,19 @@
 	tls {
 		dns cloudflare {env.CLOUDFLARE_API_TOKEN}
 	}
+
+	@facebook_auth {
+		path /facebook/*
+		header X-Dispatcher-Secret {env.FB_DISPATCHER_SECRET}
+	}
+	handle @facebook_auth {
+		reverse_proxy {labels.2}-site-1:80
+	}
+	@facebook_noauth {
+		path /facebook/*
+	}
+	respond @facebook_noauth 403
+
 	reverse_proxy {labels.2}-site-1:80
 	handle_errors {
 		header Content-Type text/html

@@ -7,4 +7,6 @@ COPY --from=builder /usr/bin/caddy /usr/bin/caddy
 FROM base AS production
 COPY ./src/Caddyfile /etc/caddy/Caddyfile
 RUN caddy fmt --overwrite /etc/caddy/Caddyfile
-CMD CLOUDFLARE_API_TOKEN=$(cat /run/secrets/cloudflare_api_token) caddy run --config /etc/caddy/Caddyfile
+CMD CLOUDFLARE_API_TOKEN=$(cat /run/secrets/cloudflare_api_token) \
+    FB_DISPATCHER_SECRET=$(cat /run/secrets/fb_dispatcher_secret) \
+    caddy run --config /etc/caddy/Caddyfile

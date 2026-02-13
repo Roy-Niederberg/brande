@@ -3,9 +3,15 @@ qabu.net {
 		dns cloudflare {env.CLOUDFLARE_API_TOKEN}
 	}
 
-	root * /srv
-	try_files {path} {path}/index.html
-	file_server
+	handle_path /facebook* {
+		reverse_proxy facebook-dispatcher:3210
+	}
+
+	handle {
+		root * /srv
+		try_files {path} {path}/index.html
+		file_server
+	}
 }
 
 *.qabu.net {
