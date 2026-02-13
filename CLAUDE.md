@@ -67,9 +67,21 @@ that configures language, direction, title, background image, and social links.
 
 ## Caddy Routing
 
-The site Caddyfile (`services/site/src/Caddyfile`) routes:
+Three Caddyfiles handle routing across the two VMs:
+
+**Main router** (`services/main_router/src/Caddyfile`) — on main VM:
+- `qabu.net/facebook*` → facebook-dispatcher (port 3210), prefix stripped
+- `qabu.net` (everything else) → static site files
+
+**Client router** (`services/router/src/Caddyfile`) — on client VM:
+- `*.qabu.net` → `{subdomain}-site-1:80` (client sites)
+- `/facebook/*` — validates `X-Dispatcher-Secret` header, rejects 403 if missing
+
+**Site Caddyfile** (`services/site/src/Caddyfile`) — per client container:
 - `/admin/*` → admin BE (port 9876)
 - `/site/*` → prompt-composer (port 4321), prefix stripped
+- `/facebook/dm` → facebook-dm (port 3210)
+- `/facebook/comments` → facebook-comments (port 3210)
 - Everything else → static site files
 
 ## Admin
@@ -123,3 +135,39 @@ The prompt-composer rate limiter (5 req/20s) applies only to `/ask`, not to
 config/log endpoints.
 
 Direction (RTL/LTR) is inherited from the site's `client-config.json` — no toggle needed.
+
+## Facebook Integration
+
+Facebook webhooks use a centralized dispatcher on the main server that routes
+events to the correct client server by page ID.
+
+Request flow:
+```
+Facebook webhook → https://qabu.net/facebook
+  → main_router → facebook-dispatcher (validates HMAC signature)
+  → looks up page_id in page_routes.json → client hostname
+  → HTTPS forward to https://{client}.qabu.net/facebook/{dm|comments}
+  → client router (validates X-Dispatcher-Secret) → site Caddy
+  → facebook-dm or facebook-comments
+  → prompt-composer → LLM → reply to Facebook API
+```
+
+### Page Routing
+
+`prod_setup/main_server/data/page_routes.json` maps Facebook page IDs to client
+hostnames: `{ "808626769002262": "craftkidstoys.qabu.net" }`. The dispatcher
+loads this at startup.
+
+### Authentication
+
+- Facebook → dispatcher: HMAC-SHA256 signature verification (`fb_app_secret`)
+- Dispatcher → client router: shared secret header (`X-Dispatcher-Secret`)
+- The `fb_dispatcher_secret` lives on the main server (dispatcher) and the client
+  VM router — not per-client
+
+### Services
+
+- **facebook-dispatcher** (main server) — validates webhooks, routes by page ID
+- **facebook-dm** (per client) — handles DMs, fetches conversation history
+- **facebook-comments** (per client) — handles comment threads, traverses tree
+- **facebook-signup** (main server, standalone) — OAuth flow for page tokens
