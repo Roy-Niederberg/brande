@@ -1,0 +1,22 @@
+{
+    "widget": {
+        "messages": [
+            {
+                "delay": 1000,
+                "text": "👋"
+            },
+            {
+                "delay": 1000,
+                "text": "I'm __CraftKids Toys__ qabû (_qabû_ is like a digital AI avatar)\n   Need any help?"
+            },
+            {
+                "delay": 20000,
+                "text": "Let me give you some background data about **CraftKids Toys**..."
+            },
+            {
+                "delay": 500,
+                "text": "Nestled at 42 Greenleaf Lane, our charming toy store specializes in exquisite wooden toys crafted from 100% FSC-certified materials. With a dedicated play area for kids and a commitment to fair trade practices, we prioritize a joyful experience for every family. Explore our eco-friendly collection online—join our CraftTokens loyalty program for rewards with every purchase, and get ready for meaningful moments of fun and learning! Visit us today to inspire the next generation through imaginative play!"
+            }
+        ]
+    }
+}

@@ -5,7 +5,11 @@
     apiEndpoint: '/admin/ask',
     beforeSend: (body) => {
       body.knowledgeBaseOverride = kbEditor.getDraft()
-      body.systemPromptOverride = Object.fromEntries(spEditor.getDraft().map(e => [e.key, e.content]))
+      const spDraft = spEditor.getDraft().filter(e => e.key.startsWith(body.mod + '/'))
+      if (spDraft.length) {
+        body.systemPromptOverride = {}
+        for (const e of spDraft) body.systemPromptOverride[e.key.split('/')[1]] = e.content
+      }
       return body
     }
   }
@@ -311,11 +315,7 @@
 
   async function loadLog(name, force) {
     if (!force && logCache[name]) { logContent.textContent = logCache[name]; return }
-    logContent.textContent = 'Loading...'
-    try {
-      const res = await fetch(`/admin/api/prompt-log/${name}`)
-      logCache[name] = res.ok ? await res.text() : 'No log found'
-    } catch { logCache[name] = 'Error loading log' }
+    logCache[name] = 'Not implemented yet'
     logContent.textContent = logCache[name]
   }
 
@@ -343,7 +343,7 @@
     <button id="open-kb-btn" class="admin-open-btn">Edit Knowledge Base</button>
     <button id="open-sp-btn" class="admin-open-btn">Edit System Prompts</button>
     <button id="open-gr-btn" class="admin-open-btn">Edit Greeting</button>
-    <button id="open-log-btn" class="admin-open-btn">See Last Prompt</button>
+    <button id="open-log-btn" class="admin-open-btn">See Prompt</button>
     <button id="logout-btn">Logout</button>`
   bgSection.appendChild(adminBtns)
 
@@ -371,14 +371,22 @@
 
   kbEditor = createEditor(kbPanel, {
     draftKey: 'kb_draft', canModify: true,
-    publishUrl: '/admin/api/knowledge-base',
+    publishUrl: '/admin/api/knowledge_base',
     toBody: (draft) => ({ knowledgeBase: draft })
   })
 
   spEditor = createEditor(spPanel, {
     draftKey: 'sp_draft', canModify: false,
-    publishUrl: '/admin/api/instructions',
-    toBody: (draft) => ({ instructions: Object.fromEntries(draft.map(e => [e.key, e.content])) })
+    publishUrl: '/admin/api/system_prompts',
+    toBody: (draft) => {
+      const sp = {}
+      for (const e of draft) {
+        const [mod, field] = e.key.split('/')
+        if (!sp[mod]) sp[mod] = {}
+        sp[mod][field] = e.content
+      }
+      return { systemPrompts: sp }
+    }
   })
 
   const grEditor = createEditor(grPanel, {
@@ -403,7 +411,12 @@
         let sp = data.instructions
         if (typeof sp === 'string') try { sp = JSON.parse(sp) } catch { sp = {} }
         if (typeof sp !== 'object' || Array.isArray(sp)) sp = {}
-        spEditor.load(Object.entries(sp).map(([key, content]) => ({ key, content })))
+        const entries = []
+        for (const [mod, fields] of Object.entries(sp)) {
+          for (const [field, content] of Object.entries(fields))
+            entries.push({ key: `${mod}/${field}`, content })
+        }
+        spEditor.load(entries)
       } else spEditor.showError('No system prompts available')
 
       if (data.greeting) {

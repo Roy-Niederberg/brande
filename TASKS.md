@@ -1,6 +1,12 @@
 # The Qabu Project
 -------
-- [ ] Should I move the routing from the site caddy to the router caddy?
+ - [x] Finish the review with claude on /ask
+ - [x] get rid of the prompt logging. 
+ - [x] Get rid of the apiEndpoint (for the second perpose, where is is not needed)
+ - [ ] Make facebook comment prompt fit the OpenAI api. no time stamp - just (a long time ago) ... make sure we know who is the assistant
+ - [ ] The admin will ask the prompt-composer to build for it the prompt as if it was sending it to the llm (for the See Last Prompt button)
+
+ - [ ] Should I move the routing from the site caddy to the router caddy?
  - [ ] I the CODE_REVIEW_REPORT, the is a bug about the auth between the admin and the prompt_composer specially when the admin use an alternative prompt of knowledge_base. If I will use a shared_secret like in the facebook_dispatcher to the client servers. I have an idea to make it zero down time on key rotation.
  - [ ] Clear the code - remove old tests
  - [ ] Go over the claude bot results - https://claude.ai/code/session_015amX6XQKE6anSW2Vf9QjoU

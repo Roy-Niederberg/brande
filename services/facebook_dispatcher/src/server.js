@@ -6,14 +6,11 @@ const app = express()
 
 // =============== Util Functions ===============================================================//
 const secret = (name) => fs.readFileSync(`/run/secrets/${name}`, 'utf-8').trim()
+
 const send = (rs, code, body, log) => {
   if (log) console.log(log)
   rs.status(code).send(body)
 }
-
-const verify_token      = secret('fb_webhook_verify_token')
-const fb_app_secret     = secret('fb_app_secret')
-const dispatcher_secret = secret('fb_dispatcher_secret')
 
 function verify_signature(signature, rawBody) {
   const parts = signature?.split('=')
@@ -30,6 +27,10 @@ const dispatch_to = (target, page_id, events) => {
   }).catch(err => console.error('🚩 Forward Error: ', err.message))
 }
 
+// =============== Server Loading section =======================================================//
+const verify_token      = secret('fb_webhook_verify_token')
+const fb_app_secret     = secret('fb_app_secret')
+const dispatcher_secret = secret('fb_dispatcher_secret')
 app.use(express.json({ verify: (rq, _rs, buf) => rq.rawBody = buf.toString('utf8') }))
 
 // =============== Endpoints ====================================================================//
@@ -42,9 +43,9 @@ app.get('/', (rq, rs) => {
 
 app.post('/', (rq, rs) => {
   if (!verify_signature(rq.headers['x-hub-signature-256'], rq.rawBody)) {
-    return send(rs, 403, '🚩 Webhook Invalid signature')
+    return send(rs, 403, {}, '🚩 Webhook Invalid signature')
   }
-  send(rs, 200,'EVENT_RECEIVED', 'Webhook POST received')
+  send(rs, 200, 'EVENT_RECEIVED', 'Webhook POST received')
 
   ;(rq.body?.entry || []).forEach(entry => {
     if (entry.changes)   dispatch_to('comments', entry.id, entry.changes)

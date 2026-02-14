@@ -55,8 +55,8 @@ app.get('/api/user', checkSession, (rq, rs) =>
 app.get('/api/initial-content', checkSession, async (_rq, rs) => {
   try {
     const [instructionsRes, knowledgeBaseRes, greetingRes] = await Promise.all([
-      fetch(`${PROMPT_COMPOSER_URL}/prompt-instructions`),
-      fetch(`${PROMPT_COMPOSER_URL}/knowledge-base`),
+      fetch(`${PROMPT_COMPOSER_URL}/system_prompts`),
+      fetch(`${PROMPT_COMPOSER_URL}/knowledge_base`),
       fetch(`${PROMPT_COMPOSER_URL}/greeting`)
     ])
     rs.json({ instructions: await instructionsRes.text(), knowledgeBase: await knowledgeBaseRes.text(), greeting: await greetingRes.text() })
@@ -66,17 +66,23 @@ app.get('/api/initial-content', checkSession, async (_rq, rs) => {
   }
 })
 
+app.get('/greeting', checkSession, async (_, rs) => {
+  try {
+    const response = await fetch(`${PROMPT_COMPOSER_URL}/greeting`)
+    rs.json(JSON.parse(await response.text()))
+  } catch (error) {
+    console.error(`[${new Date().toISOString()}] Greeting error:`, error.message)
+    rs.sendStatus(500)
+  }
+})
+
 app.post('/ask', checkSession, async (rq, rs) => {
   try {
     console.log(`[${new Date().toISOString()}] Widget chat request from admin`)
 
-    const { knowledgeBaseOverride, systemPromptOverride, ...restBody } = rq.body
-    const requestBody = { ...restBody }
-    if (knowledgeBaseOverride || systemPromptOverride) {
-      requestBody.chat_data = { ...requestBody.chat_data }
-      if (knowledgeBaseOverride) requestBody.chat_data.knowledge_base_override = knowledgeBaseOverride
-      if (systemPromptOverride) requestBody.chat_data.system_prompt_override = systemPromptOverride
-    }
+    const { knowledgeBaseOverride, systemPromptOverride, ...requestBody } = rq.body
+    if (knowledgeBaseOverride)  requestBody.kb_override = knowledgeBaseOverride
+    if (systemPromptOverride)  requestBody.sp_override = systemPromptOverride
 
     const response = await fetch(`${PROMPT_COMPOSER_URL}/ask`, {
       method: 'POST',
@@ -91,37 +97,26 @@ app.post('/ask', checkSession, async (rq, rs) => {
   }
 })
 
-app.get('/api/prompt-log/:name', checkSession, async (rq, rs) => {
+app.post('/api/system_prompts', checkSession, async (rq, rs) => {
   try {
-    const response = await fetch(`${PROMPT_COMPOSER_URL}/prompt-log/${rq.params.name}`)
-    if (!response.ok) return rs.status(response.status).send(await response.text())
-    rs.type('text').send(await response.text())
-  } catch (error) {
-    console.error(`[${new Date().toISOString()}] Prompt log error:`, error.message)
-    rs.status(500).send('Failed to fetch prompt log')
-  }
-})
-
-app.post('/api/instructions', checkSession, async (rq, rs) => {
-  try {
-    const { instructions } = rq.body
-    if (!instructions) return rs.status(400).json({ error: 'Instructions required' })
-    await fetch(`${PROMPT_COMPOSER_URL}/prompt-instructions`, {
+    const { systemPrompts } = rq.body
+    if (!systemPrompts) return rs.status(400).json({ error: 'System prompts required' })
+    await fetch(`${PROMPT_COMPOSER_URL}/system_prompts`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(instructions)
+      body: JSON.stringify(systemPrompts)
     })
     rs.json({ success: true })
   } catch (error) {
-    console.error(`[${new Date().toISOString()}] Update instructions error:`, error.message)
-    rs.status(500).json({ error: 'Failed to update instructions' })
+    console.error(`[${new Date().toISOString()}] Update system prompts error:`, error.message)
+    rs.status(500).json({ error: 'Failed to update system prompts' })
   }
 })
 
-app.post('/api/knowledge-base', checkSession, async (rq, rs) => {
+app.post('/api/knowledge_base', checkSession, async (rq, rs) => {
   try {
     const { knowledgeBase } = rq.body
     if (!knowledgeBase) return rs.status(400).json({ error: 'Knowledge base required' })
-    await fetch(`${PROMPT_COMPOSER_URL}/knowledge-base`, {
+    await fetch(`${PROMPT_COMPOSER_URL}/knowledge_base`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(knowledgeBase)
     })

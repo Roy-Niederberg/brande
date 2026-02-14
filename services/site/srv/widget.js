@@ -471,15 +471,10 @@
     const abort = { stopped: false }
     greetingAbort = abort
     try {
-      let requestBody = { module: 'widget', chat_data: {}, apiEndpoint: API }
-      const res = await fetch(API, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestBody)
-      })
+      const res = await fetch(API.replace('/ask', '/greeting'))
       if (!res.ok || abort.stopped) return
-      const data = await res.json()
-      if (!data.messages || !data.messages.length || abort.stopped) return
+      const data = (await res.json()).widget
+      if (!data?.messages?.length || abort.stopped) return
       for (const msg of data.messages) {
         if (abort.stopped) break
         await new Promise(r => setTimeout(r, msg.delay || 1000))
@@ -542,8 +537,8 @@
     showTyping()
 
     try {
-      const chat_history = history.map(h => ({ role: h.role === 'user' ? 'user' : 'assistant', content: h.content }))
-      let requestBody = { module: 'widget', chat_data: { chat_history }, apiEndpoint: API }
+      const chat = history.map(h => ({ role: h.role === 'user' ? 'user' : 'assistant', content: h.content }))
+      let requestBody = { mod: 'widget', chat }
 
       // Allow config to modify request body before sending
       if (config.beforeSend && typeof config.beforeSend === 'function') {

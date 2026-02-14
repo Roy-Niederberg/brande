@@ -17,6 +17,18 @@ more. See `for_claude.md` for full project context.
 - Whitelist `.gitignore` (not blacklist).
 - Everything runs in Docker - no node/npm/python on the host.
 
+## Express Async Error Handling
+
+Express doesn't catch errors thrown in `async` route handlers. We use `app.r`
+to wrap handlers with try/catch and forward errors to the error middleware:
+
+```js
+app.r = (vrb,u,f)=>app[vrb](u,async (rq,rs,nxt)=>{try{ await f(rq,rs,nxt)} catch(e) {nxt(e)}})
+```
+
+Use `app.r('get', '/path', handler)` instead of `app.get('/path', handler)`.
+Thrown errors hit the error middleware at the bottom of the file (logs + 500).
+
 ## Project Structure
 
 ```

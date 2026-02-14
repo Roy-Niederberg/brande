@@ -1,6 +1,7 @@
-// Facebook is flattening Level 3 comments. This means that `parent.id` for a comment replaying to a
-// level 3  comment will be a level 2  comment  (the parent of the actual level 3  comment which the
-// user replay to).  To get the full context, we need all level 3  comments ordered by created_time.
+// Facebook is flattening Level 3 comments. This means that `parent.id` for a comment 
+// replaying to a level  3  comment  will  be  a  level 2 comment  (the parent of the 
+// actual level 3 comment  which  the  user  replay to).  To get the full context, we 
+// need all level 3 comments ordered by created_time.
 // TODO: Edit comment above to explain how weird Facebook API for comment is.
 
 import fs from 'fs'
@@ -106,20 +107,20 @@ const process_comment = async (comment_id, parent_id, post_id, page_id) => {
   console.log('--------------------- Query -------------------------------------------------------')
   console.log(chat_history)
 
-  const llm_res = await fetch('http://prompt-composer:4321/ask', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({module: 'facebook_comments', chat_data: { post, chat_history } })
-  })
-  if (!llm_res.ok && LOG(7, `${llm_res.status} ${llm_res.statusText}`)) return
-  const answer = await llm_res.text()
-  console.log('--------------------- Answer ------------------------------------------------------')
-  console.log(answer)
-
-  // Reply to Facebook on the original comment
-  const rep_url = `${fb_url}${comment_id}/comments?message=${encodeURIComponent(answer)}&${access}`
-  const public_res = await fetch(rep_url, { method: 'POST' })
-  if (!public_res.ok && LOG(8, `${public_res.status} ${public_res.statusText}`)) return
-  console.log(`✅ Publicly Reply to Facebook`)
+  // const llm_res = await fetch('http://prompt-composer:4321/ask', {
+  //   method: 'POST', headers: { 'Content-Type': 'application/json' },
+  //   body: JSON.stringify({ mod: 'facebook_comments', chat: chat_history })
+  // })
+  // if (!llm_res.ok && LOG(7, `${llm_res.status} ${llm_res.statusText}`)) return
+  // const answer = await llm_res.text()
+  // console.log('--------------------- Answer ------------------------------------------------------')
+  // console.log(answer)
+  //
+  // // Reply to Facebook on the original comment
+  // const rep_url = `${fb_url}${comment_id}/comments?message=${encodeURIComponent(answer)}&${access}`
+  // const public_res = await fetch(rep_url, { method: 'POST' })
+  // if (!public_res.ok && LOG(8, `${public_res.status} ${public_res.statusText}`)) return
+  // console.log(`✅ Publicly Reply to Facebook`)
 
   // Send private reply to the commenter
   //const private_res = await fetch( `${fb_url}${page_id}/messages?${access}`, {
