@@ -11,6 +11,7 @@ MAIN_VM_PATH="/home/user"
 
 DRY_RUN=false
 [ "${1:-}" = "--dry-run" ] && DRY_RUN=true
+[ "$DRY_RUN" = true ] && echo "DRY RUN MODE"
 
 [ -f .gitlab-ci.yml ] || { echo "Run from repo root"; exit 1; }
 
