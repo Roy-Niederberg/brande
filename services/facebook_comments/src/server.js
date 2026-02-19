@@ -112,11 +112,11 @@ const process_comment = async (comment_id, parent_id, post_id, _page_id) => {
   console.log('--------------------- Answer ------------------------------------------------------')
   console.log(answer)
 
-  // // Reply to Facebook on the original comment
-  // const rep_url = `${fb_url}${comment_id}/comments?message=${encodeURIComponent(answer)}&${access}`
-  // const public_res = await fetch(rep_url, { method: 'POST' })
-  // if (!public_res.ok && LOG(8, `${public_res.status} ${public_res.statusText}`)) return
-  // console.log(`✅ Publicly Reply to Facebook`)
+  // Reply to Facebook on the original comment
+  const rep_url = `${fb_url}${comment_id}/comments?message=${encodeURIComponent(answer)}&${access}`
+  const public_res = await fetch(rep_url, { method: 'POST' })
+  if (!public_res.ok && LOG(8, `${public_res.status} ${public_res.statusText}`)) return
+  console.log(`✅ Publicly Reply to Facebook`)
 
   // Send private reply to the commenter
   //const private_res = await fetch( `${fb_url}${page_id}/messages?${access}`, {
