@@ -9,9 +9,9 @@ MAIN_VM="brande@129.159.134.3"
 MAIN_VM_PATH="~/main"
 # ───────────────────────────────────────────────────────
 
-DRY_RUN=false
-[ "${1:-}" = "--dry-run" ] && DRY_RUN=true
-[ "$DRY_RUN" = true ] && echo "DRY RUN MODE"
+DRY_RUN=
+[ "${1:-}" = "--dry-run" ] && DRY_RUN=1
+[ -n "$DRY_RUN" ] && echo "DRY RUN MODE"
 
 [ -f .gitlab-ci.yml ] || { echo "Run from repo root"; exit 1; }
 
@@ -48,7 +48,7 @@ fi
 # ── Build and push changed services ──
 if [ ${#SERVICES[@]} -gt 0 ]; then
   echo "Services to build: ${SERVICES[*]}"
-  if [ "$DRY_RUN" = false ]; then
+  if [ -z "$DRY_RUN" ]; then
     for SVC in "${SERVICES[@]}"; do
       [ -f "services/$SVC/Dockerfile" ] || continue
       echo "-- $SVC --"
@@ -82,7 +82,7 @@ rsync -avz ${DRY_RUN:+--dry-run} \
   prod_setup/main_server/ "$MAIN_VM:$MAIN_VM_PATH/"
 
 # ── Pull and restart ──
-if [ "$DRY_RUN" = false ]; then
+if [ -z "$DRY_RUN" ]; then
   for DIR in prod_setup/client_server/*/; do
     NAME=$(basename "$DIR")
     echo "-- $NAME: pull + up --"
@@ -104,7 +104,7 @@ fi
 if git diff --quiet -- '*/data/'; then
   echo "No data changes from production"
 else
-  if [ "$DRY_RUN" = false ]; then
+  if [ -z "$DRY_RUN" ]; then
     git add '*/data/'
     git commit -m "sync production data"
     git push origin dev
@@ -123,7 +123,7 @@ while git rev-parse "$TAG" >/dev/null 2>&1; do
   N=$((N + 1))
 done
 
-if [ "$DRY_RUN" = false ]; then
+if [ -z "$DRY_RUN" ]; then
   git tag "$TAG"
   git push origin "$TAG"
   echo "Deployed $TAG ($HASH)"
