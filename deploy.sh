@@ -3,10 +3,10 @@ set -euo pipefail
 
 # ── Config (edit these) ────────────────────────────────
 REGISTRY="registry.gitlab.com/rny3/brande"
-CLIENT_VM="user@client-vm-ip"
-CLIENT_VM_PATH="/home/user"
-MAIN_VM="user@main-vm-ip"
-MAIN_VM_PATH="/home/user"
+CLIENT_VM="brande@129.159.159.251"
+CLIENT_VM_PATH="~/brande"
+MAIN_VM="brande@129.159.134.3"
+MAIN_VM_PATH="~/main"
 # ───────────────────────────────────────────────────────
 
 DRY_RUN=false
