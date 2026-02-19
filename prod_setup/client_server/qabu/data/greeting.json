@@ -1,0 +1,22 @@
+{
+    "widget": {
+        "messages": [
+            {
+                "delay": 1000,
+                "text": "👋"
+            },
+            {
+                "delay": 1000,
+                "text": "I'm **Qabû** — an AI-first web presence for small businesses.\n   Ask me anything about how it works!"
+            },
+            {
+                "delay": 20000,
+                "text": "Here's the short version..."
+            },
+            {
+                "delay": 500,
+                "text": "Every business gets a name.qabu.net site where customers just ask what they need — hours, services, pricing — and the AI answers instantly from the business's knowledge base. Setup takes minutes, not months."
+            }
+        ]
+    }
+}

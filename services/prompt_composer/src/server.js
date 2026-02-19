@@ -56,23 +56,25 @@ const ask = async (llm, content, msgs) => {
 // =============== Endpoints ====================================================================//
 app.r('post', '/ask', async ({ body }, rs) => {
   if (!body.mod || !$.system_prompts[body.mod] || !body.chat?.length)
-    throw `ASK validation [${body.mod}][${$.system_prompts[body.mod]}][${body.chat?.length}]`
+    throw `ASK validation [${body.mod}][${$.system_prompts[body.mod]}][${JSON.stringify(body.chat)}]`
 
   body.sp_override = body.sp_override || $.system_prompts[body.mod]
   body.kb_override = body.kb_override || $.knowledge_base
 
   //Ask the GATEKEEPER if and what we need to ask the main model.
   try {
+    console.log(`System:\n ${body.sp_override.gatekeeper}\nMsgs:\n ${JSON.stringify(body.chat)}`)
     const gk_answer = JSON.parse(await ask(gk, body.sp_override.gatekeeper, body.chat))
     if (gk_answer.action === 'REPLY')  return rs.send(gk_answer.text)
     if (gk_answer.action === 'IGNORE') return rs.send('     😖     ')
-  } catch(e) {console.error(`gatekeeper failed: `, e.message)}
+  } catch(e) {console.error(`🚩 gatekeeper failed: `, e.message)}
 
   // Passed the gatekeeper, Build the prompt
-  const kb   = body.kb_override.map(e => `## ${e.key}\n${e.content}`).join('\n\n')
+  const kb    = body.kb_override.map(e => `## ${e.key}\n${e.content}`).join('\n\n')
   const query = body.sp_override.main + "\n#KNOWLEDGE BASE:\n" + kb
 
   for (const llm of [m1, m3, m2]) {
+    console.log(`System:\n ${query}\nMsgs:\n ${JSON.stringify(body.chat)}\n`)
     try      {return rs.send(await ask(llm, query, body.chat))}
     catch(e) {console.error(`🚩 ${llm[1]} failed:`, e.message)}
   }
@@ -83,7 +85,7 @@ crud('knowledge_base', 'system_prompts', 'greeting')
 
 // =============== Error handling middleware ====================================================//
 app.use((e, _, rs, _n) => {
-  console.error(`${e.response?.data || e.message}\n${e.stack}`)
+  console.error(`🚩 MSSG: ${e.response?.data || e.message}\nSTACK: ${e.stack}\nERR: ${e}`)
   rs.sendStatus(500)
 })
 app.use('*', (_, rs) => rs.sendStatus(404))

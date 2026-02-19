@@ -51,6 +51,16 @@
     #open-gr-btn:hover { background: #976b8d; }
     #open-log-btn { background: #7ba8a0; box-shadow: 0 4px 12px rgba(123,168,160,0.3); }
     #open-log-btn:hover { background: #6a978f; }
+    #open-fb-btn { background: #5b7bbf; box-shadow: 0 4px 12px rgba(91,123,191,0.3); }
+    #open-fb-btn:hover { background: #4a6aae; }
+    .content { position: relative; }
+    .fb-panel {
+      position: absolute; inset: 0; z-index: 100; background: #f0f2f5;
+      display: none;
+    }
+    .fb-panel.visible { display: block; }
+    .fb-panel .top-buttons { position: absolute; top: 8px; right: 8px; z-index: 10; }
+    .fb-iframe { width:100%; height:100%; border:none; }
     .log-tabs { display: flex; gap: 0; }
     .log-tab {
       padding: 10px 24px; border: 1px solid #ddd; border-bottom: none;
@@ -337,6 +347,15 @@
     loadLog(active.dataset.log, true)
   })
 
+  const fbPanel = document.createElement('div')
+  fbPanel.className = 'fb-panel'
+  fbPanel.innerHTML = `
+    <div class="top-buttons">
+      <button class="close-panel-btn" title="Close">&times;</button>
+    </div>
+    <iframe class="fb-iframe" src="/mock-facebook/"></iframe>`
+  document.querySelector('.content').appendChild(fbPanel)
+
   const adminBtns = document.createElement('div')
   adminBtns.id = 'admin-buttons'
   adminBtns.innerHTML = `
@@ -344,6 +363,7 @@
     <button id="open-sp-btn" class="admin-open-btn">Edit System Prompts</button>
     <button id="open-gr-btn" class="admin-open-btn">Edit Greeting</button>
     <button id="open-log-btn" class="admin-open-btn">See Prompt</button>
+    <button id="open-fb-btn" class="admin-open-btn">Test Facebook Comments</button>
     <button id="logout-btn">Logout</button>`
   bgSection.appendChild(adminBtns)
 
@@ -360,6 +380,7 @@
   document.getElementById('open-kb-btn').addEventListener('click', () => openPanel(kbPanel))
   document.getElementById('open-sp-btn').addEventListener('click', () => openPanel(spPanel))
   document.getElementById('open-gr-btn').addEventListener('click', () => openPanel(grPanel))
+  document.getElementById('open-fb-btn').addEventListener('click', () => fbPanel.classList.toggle('visible'))
   document.getElementById('open-log-btn').addEventListener('click', () => {
     logCache.admin_ask_widget = logCache.site_ask_widget = null
     openPanel(logPanel); loadLog('admin_ask_widget')
@@ -368,6 +389,7 @@
   spPanel.querySelector('.close-panel-btn').addEventListener('click', () => closePanel(spPanel))
   grPanel.querySelector('.close-panel-btn').addEventListener('click', () => closePanel(grPanel))
   logPanel.querySelector('.close-panel-btn').addEventListener('click', () => closePanel(logPanel))
+  fbPanel.querySelector('.close-panel-btn').addEventListener('click', () => fbPanel.classList.remove('visible'))
 
   kbEditor = createEditor(kbPanel, {
     draftKey: 'kb_draft', canModify: true,

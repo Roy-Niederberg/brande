@@ -5,8 +5,8 @@ services:
     ports:  ["${HTTP_PORT:-3000}:80", "${HTTPS_PORT:-3443}:443", "${HTTPS_PORT:-3443}:443/udp"]
     volumes:
       - ../../services/site/srv/:/site/
-      - ../../prod_setup/client_server/${CLIENT}/assets/:/site/assets
       - ../../services/site/src/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ../../prod_setup/client_server/${CLIENT}/assets/:/site/assets
 
   prompt-composer:
     build: {context: ../../services/prompt_composer/, target: development}
@@ -24,6 +24,12 @@ services:
       - ../../services/admin/src/:/app/src/
       - ../../services/admin/src/views:/app/views
       - admin_sessions:/app/sessions
+
+  mock-facebook:
+    build: {context: ../../services/mock_facebook/, target: development}
+    volumes:
+      - ../../services/mock_facebook/src/:/app/src/
+      - ../../prod_setup/client_server/${CLIENT}/assets/mock_facebook/:/app/data/
 
   # facebook-comments-808626769002262:
   #   image: registry.gitlab.com/rny3/brande/facebook_comments:latest

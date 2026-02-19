@@ -1,9 +1,16 @@
 # The Qabu Project
 -------
- - [x] Finish the review with claude on /ask
- - [x] get rid of the prompt logging. 
- - [x] Get rid of the apiEndpoint (for the second perpose, where is is not needed)
- - [ ] Make facebook comment prompt fit the OpenAI api. no time stamp - just (a long time ago) ... make sure we know who is the assistant
+
+ - [x] I don't like what Claude did with the CLIENT env var in the mock facebook. I want the volume to use the production data/srv to display the correct post-comments mock UI.
+ - [x] Make facebook comment prompt fit the OpenAI api. no time stamp - just (a long time ago) ... make sure we know who is the assistant. How the hell this is working right now????
+ - [ ] I need to enable the admin user to comment as few different users (add some images for random avatars to the docker images)
+ - [ ] I want to make the change to move to rsync deploy for now. (make sure I have a restart script with entr, and that I don't override Nevo work on the prompts)
+ - [ ] Should I move to podman?
+ - [ ] Text the facebook_comments and the facebook_dm in production
+ - [ ] With Nevo - facebook_comments to DM per the gatekeeper decision.
+ - [ ] I want to change the gatekeeper - no need for a json - replay with the answer of replay one word - IGNORE/ESCALAT.
+ - [ ] SAFETY: Need to validate the /ask in case there is a override sp/kb. Like in facebook_dispatcher with the secret (check: why do we need secret in facebook_dispatcher?)
+
  - [ ] The admin will ask the prompt-composer to build for it the prompt as if it was sending it to the llm (for the See Last Prompt button)
 
  - [ ] Should I move the routing from the site caddy to the router caddy?
@@ -11,6 +18,7 @@
  - [ ] Clear the code - remove old tests
  - [ ] Go over the claude bot results - https://claude.ai/code/session_015amX6XQKE6anSW2Vf9QjoU
  - [ ] Go over the claude bot results - https://claude.ai/code/session_013buYQPiU1E2Fyo9qYzqSCK
+ - [ ] Review the QABU-VISION
 
 - [ ] Check the last changes:
     - [ ] Also make the 'clear function save the old chat for reference'
@@ -24,22 +32,15 @@
 
 - [ ] *Continuous improvement:*
     - [ ] *network of agents:*
-        - [x] Make sure the setup is what we need. MAIN with Caddy and each server with Caddy.
-            - [x] The main caddy is just for facebook, maybe for google login callback.
-        - [x] in `prompt_composer`, work with the json prompt.
-        - [x] Somehow, I need to edit this json prompt.
-        - [x] Chat background.
-        - [x] Work with grok openai-oss-120b (move to 20 be if needed)
-        - [x] Deploy CraftKids and Dr Lipo with the gatekeeper.
-        - [ ] Create Qabu for Vered and Irena and a third demo one.
-    - [x] Create a starter message for each client (The message the will start the chat. Can be timed)
+        - [ ] Plan the network - not just gatekeeper and main.
+    - [ ] Create Qabu for Vered and Irena and a third demo one.
     - [ ] API For Qabu to 'control' the site (see the Qabu for Qabu for detail on MVP)
     - [ ] Change the site to be node.js, instead of just Caddy (Do I still need the caddy??)
 
 - [ ] *Build Qabu for Qabu:*
     - [x] Qabu logo
     - [ ] Video Demo
-    - [x] Buy the domain (`qabu.co.il` or `qabu.net`?) (I bought qabu.net)
+    - [ ] Buy the domain (`qabu.co.il` or `qabu.net`?) (I bought qabu.net, and I want the co.il one also)
     - [ ] Qabu js interface: Movie clip, form to input phone number, form to pay.
     - [ ] links to demos
     - [ ] improve the 404 on `./services/router/src/Caddyfile` 

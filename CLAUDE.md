@@ -77,6 +77,10 @@ These directories mirror what's running in production.
 Each client has a `client-config.json` in its assets directory (`prod_setup/client_server/<client>/assets/`)
 that configures language, direction, title, background image, and social links.
 
+Each client also has a `mock_facebook/` subfolder in assets with `post-data.json`
+(and optionally `profile-pic.jpg`, `post-image.jpg`) for the mock Facebook admin
+testing interface. Missing images fall back to defaults (SVG avatar, site background).
+
 ## Caddy Routing
 
 Three Caddyfiles handle routing across the two VMs:
@@ -94,6 +98,7 @@ Three Caddyfiles handle routing across the two VMs:
 - `/site/*` → prompt-composer (port 4321), prefix stripped
 - `/facebook/dm` → facebook-dm (port 3210)
 - `/facebook/comments` → facebook-comments (port 3210)
+- `/mock-facebook/*` → mock-facebook (port 3210)
 - Everything else → static site files
 
 ## Admin
@@ -106,15 +111,21 @@ changes automatically apply to the admin.
 `admin.js` pre-sets `window.ChatWidgetConfig` (apiEndpoint, beforeSend) —
 `loader.js` merges it via `...(window.ChatWidgetConfig || {})`. It uses a factory
 pattern (`createPanel`/`createEditor`) to build editor panels in `.bg-section`.
-Three buttons on the main screen:
+Five buttons on the main screen:
 
 1. **Edit Knowledge Base** — CRUD editor for KB entries (`{key, content}` pairs).
    `canModify: true` — supports add/delete entries.
 2. **Edit System Prompts** — Editor for `client_question` per module.
    `canModify: false` — keys (module names) are read-only, no add/delete.
-3. **See Last Prompt** — Read-only viewer with Admin/Site tabs showing the last
+3. **Edit Greeting** — Editor for widget greeting messages (delay + text pairs).
+4. **See Prompt** — Read-only viewer with Admin/Site tabs showing the last
    composed prompt. Tabs switch between `admin_ask_widget` and `site_ask_widget`
    log files. Cached per panel open, with a refresh button.
+5. **Test Facebook Comments** — Opens a mock Facebook post (iframe) on the content
+   side (over the widget). Admin types comments, JS formats chat history matching
+   `facebook_comments` service format, POSTs to `/admin/ask` with `mod:
+   'facebook_comments'` + draft overrides from localStorage. Opens independently
+   of other panels so admin can edit SP on one side and test on the other.
 
 Both KB and SP editors use localStorage drafts and a publish flow.
 `beforeSend` sends both KB and SP draft overrides on every admin chat request,
@@ -182,4 +193,5 @@ loads this at startup.
 - **facebook-dispatcher** (main server) — validates webhooks, routes by page ID
 - **facebook-dm** (per client) — handles DMs, fetches conversation history
 - **facebook-comments** (per client) — handles comment threads, traverses tree
+- **mock-facebook** (per client, dev only) — mock Facebook post UI for admin testing
 - **facebook-signup** (main server, standalone) — OAuth flow for page tokens

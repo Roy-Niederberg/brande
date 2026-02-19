@@ -10,13 +10,10 @@ const app = express()
 app.use(express.json())
 
 // =============== Util Functions ================================================================//
-
 const read_scrt = name => fs.readFileSync(`/run/secrets/${name}`, 'utf-8').trim()
 const LOG = (num, e) => { console.log(`🚨 ERROR ${num} 🚨 : ${e}`); return true }
 
 // =============== Server Loading section ========================================================//
-// In this section the server should fail in case of error and not startup. ======================//
-
 const access = `access_token=${read_scrt('fb_page_access_token')}`
 access.length > 'access_token='.length || LOG(0, 'Page Token is empty.')
 
@@ -24,8 +21,6 @@ const fb_url = process.env.FACEBOOK_API_URL
 fb_url.length > 0 || LOG(0, 'FACEBOOK_API_URL is empty')
 
 // =============== Endpoints =====================================================================//
-// In this section the server should keep running and give the best answer it can. ===============//
-
 app.post('/', async (req, res) => {
   res.status(200).send('EVENT_RECEIVED')
   const { page_id, events } = req.body
@@ -39,7 +34,7 @@ app.post('/', async (req, res) => {
   })
 })
 
-const process_comment = async (comment_id, parent_id, post_id, page_id) => {
+const process_comment = async (comment_id, parent_id, post_id, _page_id) => {
   // Get the level 1 comment (the comment on the post):
   let level1_comment = comment_id  // if the comment itself is L1
   if (parent_id !== post_id) {     // if the parent not the post, it's not L1 and we need go up.
@@ -107,15 +102,16 @@ const process_comment = async (comment_id, parent_id, post_id, page_id) => {
   console.log('--------------------- Query -------------------------------------------------------')
   console.log(chat_history)
 
-  // const llm_res = await fetch('http://prompt-composer:4321/ask', {
-  //   method: 'POST', headers: { 'Content-Type': 'application/json' },
-  //   body: JSON.stringify({ mod: 'facebook_comments', chat: chat_history })
-  // })
-  // if (!llm_res.ok && LOG(7, `${llm_res.status} ${llm_res.statusText}`)) return
-  // const answer = await llm_res.text()
-  // console.log('--------------------- Answer ------------------------------------------------------')
-  // console.log(answer)
-  //
+  const chat = [{ role: 'user', content: chat_history }]
+  const llm_res = await fetch('http://prompt-composer:4321/ask', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ mod: 'facebook_comments', chat })
+  })
+  if (!llm_res.ok && LOG(7, `${llm_res.status} ${llm_res.statusText}`)) return
+  const answer = await llm_res.text()
+  console.log('--------------------- Answer ------------------------------------------------------')
+  console.log(answer)
+
   // // Reply to Facebook on the original comment
   // const rep_url = `${fb_url}${comment_id}/comments?message=${encodeURIComponent(answer)}&${access}`
   // const public_res = await fetch(rep_url, { method: 'POST' })

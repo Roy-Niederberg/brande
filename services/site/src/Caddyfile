@@ -18,6 +18,10 @@
 		reverse_proxy facebook-comments:3210
 	}
 
+	handle_path /mock-facebook/* {
+		reverse_proxy mock-facebook:3210
+	}
+
 	handle {
 		root * /site
 		file_server

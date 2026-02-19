@@ -1,6 +1,6 @@
 services:
   router:
-    image:    registry.gitlab.com/rny3/brande/router:v0.0.20
+    image:    registry.gitlab.com/rny3/brande/router:latest
     ports:    ["80:80", "443:443", "443:443/udp"]
     volumes:  [router_data:/data, router_config:/config]
     networks: [qabu_network]
