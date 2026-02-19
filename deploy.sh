@@ -75,10 +75,10 @@ done
 
 # ── Sync prod directories ──
 echo "-- Syncing client server --"
-rsync -avz ${DRY_RUN:+--dry-run} \
+rsync -avz --delete ${DRY_RUN:+--dry-run} \
   prod_setup/client_server/ "$CLIENT_VM:$CLIENT_VM_PATH/"
 echo "-- Syncing main server --"
-rsync -avz ${DRY_RUN:+--dry-run} \
+rsync -avz --delete ${DRY_RUN:+--dry-run} \
   prod_setup/main_server/ "$MAIN_VM:$MAIN_VM_PATH/"
 
 # ── Pull and restart ──
