@@ -4,8 +4,7 @@ services:
     ports:    ["80:80", "443:443", "443:443/udp"]
     volumes:  [router_data:/data, router_config:/config]
     networks: [qabu_network]
-    secrets:  [cloudflare_api_token]
-    # secrets:  [cloudflare_api_token, fb_dispatcher_secret]
+    secrets:  [cloudflare_api_token, fb_dispatcher_secret]
 
 volumes:
   router_data:
@@ -16,4 +15,4 @@ networks:
 
 secrets:
   cloudflare_api_token: {file: ./secrets/cloudflare_api_token.secret}
-  # fb_dispatcher_secret: {file: ./secrets/fb_dispatcher_secret.secret}
+  fb_dispatcher_secret: {file: ./secrets/fb_dispatcher_secret.secret}

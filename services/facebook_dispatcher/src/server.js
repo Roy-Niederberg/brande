@@ -24,7 +24,8 @@ const dispatch_to = (target, page_id, events) => {
     method: 'POST',
     headers: {'content-type': 'application/json', 'x-dispatcher-secret': dispatcher_secret},
     body: JSON.stringify({ page_id, events })
-  }).catch(err => console.error('🚩 Forward Error: ', err.message))
+  }).then(r => { if (!r.ok) console.error(`🚩 Forward Error: ${r.status} ${r.statusText}`) })
+    .catch(e => console.error('🚩 Forward Error: ', e.message))
 }
 
 // =============== Server Loading section =======================================================//
