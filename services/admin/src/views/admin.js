@@ -61,26 +61,11 @@
     .fb-panel.visible { display: block; }
     .fb-panel .top-buttons { position: absolute; top: 8px; right: 8px; z-index: 10; }
     .fb-iframe { width:100%; height:100%; border:none; }
-    .log-tabs { display: flex; gap: 0; }
-    .log-tab {
-      padding: 10px 24px; border: 1px solid #ddd; border-bottom: none;
-      background: #f0f0f0; cursor: pointer; font-size: 14px; font-weight: 500;
-      border-radius: 8px 8px 0 0; transition: all 0.2s ease; color: #666;
-    }
-    .log-tab:hover { background: #e8e8e8; }
-    .log-tab.active { background: #fff; border-color: #667eea; color: #667eea; }
-    .log-panel { overflow: hidden; display: none; flex-direction: column; padding: 16px; }
-    .log-panel.visible { display: flex; }
-    .log-header {
-      display: flex; direction: ltr; justify-content: space-between; align-items: flex-end;
-    }
-    .log-header .top-buttons { position: static; align-items: center; }
     .log-content {
-      border: 1px solid #ddd; border-radius: 0 8px 8px 8px; padding: 16px;
+      border: 1px solid #ddd; border-radius: 8px; padding: 16px;
       background: #fff; white-space: pre-wrap; word-wrap: break-word;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      font-size: 13px; line-height: 1.5;
-      overflow-y: auto; flex: 1; margin: 0;
+      font-size: 13px; line-height: 1.5; margin-top: 48px;
     }
     .top-buttons { position: absolute; top: 12px; right: 12px; display: flex; direction: ltr; gap: 8px; z-index: 10; }
     .publish-btn {
@@ -302,38 +287,28 @@
   const grPanel = createPanel()
 
   const logPanel = document.createElement('div')
-  logPanel.className = 'prompt log-panel'
+  logPanel.className = 'prompt'
   const refreshSvg = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>'
+  const copySvg = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>'
   logPanel.innerHTML = `
-    <div class="log-header">
-      <div class="log-tabs">
-        <button class="log-tab active" data-log="admin_ask_widget">Admin</button>
-        <button class="log-tab" data-log="site_ask_widget">Site</button>
-      </div>
-      <div class="top-buttons">
-        <button class="copy-btn" title="Copy All"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
-        <button class="refresh-btn" title="Refresh">${refreshSvg}</button>
-        <button class="close-panel-btn" title="Close">&times;</button>
-      </div>
+    <div class="top-buttons">
+      <button class="copy-btn" title="Copy All">${copySvg}</button>
+      <button class="refresh-btn" title="Refresh">${refreshSvg}</button>
+      <button class="close-panel-btn" title="Close">&times;</button>
     </div>
     <pre class="log-content"></pre>`
   bgSection.appendChild(logPanel)
 
   const logContent = logPanel.querySelector('.log-content')
-  const logTabs = logPanel.querySelectorAll('.log-tab')
-  const logCache = {}
 
-  async function loadLog(name, force) {
-    if (!force && logCache[name]) { logContent.textContent = logCache[name]; return }
-    logCache[name] = 'Not implemented yet'
-    logContent.textContent = logCache[name]
+  async function loadLastPrompt() {
+    try {
+      const data = await fetch('/admin/api/last_prompt').then(r => r.json())
+      logContent.textContent = Object.entries(data)
+        .map(([k, v]) => `${k}\n${typeof v === 'string' ? v : JSON.stringify(v, null, 2)}`)
+        .join('\n\n')
+    } catch { logContent.textContent = 'Error loading last prompt' }
   }
-
-  logTabs.forEach(tab => tab.addEventListener('click', () => {
-    logTabs.forEach(t => t.classList.remove('active'))
-    tab.classList.add('active')
-    loadLog(tab.dataset.log)
-  }))
 
   logPanel.querySelector('.copy-btn').addEventListener('click', async () => {
     await navigator.clipboard.writeText(logContent.textContent)
@@ -342,10 +317,7 @@
     setTimeout(() => btn.style.background = '', 600)
   })
 
-  logPanel.querySelector('.refresh-btn').addEventListener('click', () => {
-    const active = logPanel.querySelector('.log-tab.active')
-    loadLog(active.dataset.log, true)
-  })
+  logPanel.querySelector('.refresh-btn').addEventListener('click', loadLastPrompt)
 
   const fbPanel = document.createElement('div')
   fbPanel.className = 'fb-panel'
@@ -382,8 +354,7 @@
   document.getElementById('open-gr-btn').addEventListener('click', () => openPanel(grPanel))
   document.getElementById('open-fb-btn').addEventListener('click', () => fbPanel.classList.toggle('visible'))
   document.getElementById('open-log-btn').addEventListener('click', () => {
-    logCache.admin_ask_widget = logCache.site_ask_widget = null
-    openPanel(logPanel); loadLog('admin_ask_widget')
+    openPanel(logPanel); loadLastPrompt()
   })
   kbPanel.querySelector('.close-panel-btn').addEventListener('click', () => closePanel(kbPanel))
   spPanel.querySelector('.close-panel-btn').addEventListener('click', () => closePanel(spPanel))

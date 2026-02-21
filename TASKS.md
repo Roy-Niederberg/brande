@@ -1,15 +1,16 @@
 # The Qabu Project
 -------
 
+ - [ ] Add reset all changes button to the admin site (the user want to go back to the current published sp/kb/greeting)
+ - [ ] Add discard button to the edit/save buttons on the admin site (user want to leave the editing mode of the text box without saving)
  - [x] I don't like what Claude did with the CLIENT env var in the mock facebook. I want the volume to use the production data/srv to display the correct post-comments mock UI.
  - [x] Make facebook comment prompt fit the OpenAI api. no time stamp - just (a long time ago) ... make sure we know who is the assistant. How the hell this is working right now????
  - [ ] I need to enable the admin user to comment as few different users (add some images for random avatars to the docker images)
- - [ ] I want to make the change to move to rsync deploy for now. (make sure I have a restart script with entr, and that I don't override Nevo work on the prompts)
- - [ ] Should I move to podman?
  - [ ] Text the facebook_comments and the facebook_dm in production
  - [ ] With Nevo - facebook_comments to DM per the gatekeeper decision.
  - [ ] I want to change the gatekeeper - no need for a json - replay with the answer of replay one word - IGNORE/ESCALAT.
  - [ ] SAFETY: Need to validate the /ask in case there is a override sp/kb. Like in facebook_dispatcher with the secret (check: why do we need secret in facebook_dispatcher?)
+- [ ] In the prompt_composer i use a last_prompt global variable. For that I use the 'crud' function that create a crud for all the other global vars. But this function also works with a file that is being update on the post call. But nothing call this post for this last_prompt variable. Maybe I can add a call from the admin to save the last_prompt to disk before updating it? 
 
  - [ ] The admin will ask the prompt-composer to build for it the prompt as if it was sending it to the llm (for the See Last Prompt button)
 
@@ -46,8 +47,9 @@
     - [ ] improve the 404 on `./services/router/src/Caddyfile` 
     - [ ] Security hardening  - Only allow Cloudflare IP addresses at your origin.
 
-- [ ]    Facebook:
-    - [ ]  Webhook to main (use the secret for URL?)
+## Backlog
+ - [ ] Should I move to podman?
 
-- [ ]    What to do with the GitHub mirror?
-- [ ]  
+- Facebook:
+    - [ ]  Multi-page per client support
+

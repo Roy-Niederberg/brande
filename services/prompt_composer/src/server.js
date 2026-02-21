@@ -45,25 +45,26 @@ const m2 = [new OpenAI({apiKey: GEM_KEY1, baseURL: GEMINI}), 'gemini-2.5-flash-l
 const m3 = [new OpenAI({apiKey: GRK_KEY2, baseURL: GROQ  }), 'openai/gpt-oss-120b']
 
 const ask = async (llm, content, msgs) => {
-  const r = await llm[0].chat.completions.create({
+  const ask_obj = { // TODO: DO i need this? can it be the $.last_prompt directly
     model: llm[1],
     messages: [{ role: 'system', content }, ...msgs],
     ...llm[2]
-  })
+  }
+  $.last_prompt = ask_obj
+  const r = await llm[0].chat.completions.create(ask_obj)
   return r.choices[0]?.message?.content || ''
 }
 
 // =============== Endpoints ====================================================================//
 app.r('post', '/ask', async ({ body }, rs) => {
   if (!body.mod || !$.system_prompts[body.mod] || !body.chat?.length)
-    throw `ASK validation [${body.mod}][${$.system_prompts[body.mod]}][${JSON.stringify(body.chat)}]`
+    throw `ASK validation [${body.mod}][${$.system_prompts[body.mod]}][${body.chat?.length}]`
 
   body.sp_override = body.sp_override || $.system_prompts[body.mod]
   body.kb_override = body.kb_override || $.knowledge_base
 
   //Ask the GATEKEEPER if and what we need to ask the main model.
   try {
-    console.log(`System:\n ${body.sp_override.gatekeeper}\nMsgs:\n ${JSON.stringify(body.chat)}`)
     const gk_answer = JSON.parse(await ask(gk, body.sp_override.gatekeeper, body.chat))
     if (gk_answer.action === 'REPLY')  return rs.send(gk_answer.text)
     if (gk_answer.action === 'IGNORE') return rs.send('     😖     ')
@@ -74,14 +75,13 @@ app.r('post', '/ask', async ({ body }, rs) => {
   const query = body.sp_override.main + "\n#KNOWLEDGE BASE:\n" + kb
 
   for (const llm of [m1, m3, m2]) {
-    console.log(`System:\n ${query}\nMsgs:\n ${JSON.stringify(body.chat)}\n`)
     try      {return rs.send(await ask(llm, query, body.chat))}
     catch(e) {console.error(`🚩 ${llm[1]} failed:`, e.message)}
   }
   rs.send("The assistance is not available at the moment. Please try again later.")
 })
 
-crud('knowledge_base', 'system_prompts', 'greeting')
+crud('knowledge_base', 'system_prompts', 'greeting', 'last_prompt')
 
 // =============== Error handling middleware ====================================================//
 app.use((e, _, rs, _n) => {

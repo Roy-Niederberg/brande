@@ -66,6 +66,16 @@ app.get('/api/initial-content', checkSession, async (_rq, rs) => {
   }
 })
 
+app.get('/api/last_prompt', checkSession, async (_, rs) => {
+  try {
+    const response = await fetch(`${PROMPT_COMPOSER_URL}/last_prompt`)
+    rs.json(JSON.parse(await response.text()))
+  } catch (error) {
+    console.error(`[${new Date().toISOString()}] Last prompt error:`, error.message)
+    rs.sendStatus(500)
+  }
+})
+
 app.get('/greeting', checkSession, async (_, rs) => {
   try {
     const response = await fetch(`${PROMPT_COMPOSER_URL}/greeting`)
