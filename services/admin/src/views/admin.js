@@ -22,7 +22,8 @@
     publish: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/><polyline points="7 11 12 16 17 11"/><line x1="12" y1="16" x2="12" y2="3"/></svg>',
     pencil: '<svg class="pencil-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3l4 4L7 21H3v-4L17 3z"/></svg>',
     disk: '<svg class="disk-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>',
-    trash: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>'
+    trash: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>',
+    discard: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>'
   }
 
   const style = document.createElement('style')
@@ -40,9 +41,13 @@
     .admin-open-btn {
       padding: 16px 32px; width: 240px; color: white; border: 1px solid rgba(0,0,0,0.15);
       border-radius: 12px; font-size: 18px; font-weight: 600; cursor: pointer;
-      transition: all 0.2s ease; box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+      transition: all 0.2s ease; box-shadow: 0 4px 14px rgba(0,0,0,0.25); position: relative;
     }
     .admin-open-btn:hover { transform: scale(1.05); }
+    .admin-open-btn.has-draft::after {
+      content: ''; position: absolute; top: 6px; right: 6px; width: 10px; height: 10px;
+      background: #f44336; border-radius: 50%; border: 2px solid white;
+    }
     #open-kb-btn { background: #7b8eb5; box-shadow: 0 4px 12px rgba(123,142,181,0.3); }
     #open-kb-btn:hover { background: #6a7da4; }
     #open-sp-btn { background: #c4956d; box-shadow: 0 4px 12px rgba(196,149,109,0.3); }
@@ -76,6 +81,14 @@
     }
     .publish-btn:hover { transform: scale(1.1); }
     .publish-btn:disabled { background: #ccc; cursor: not-allowed; opacity: 0.6; }
+    .discard-btn {
+      width: 32px; height: 32px; border-radius: 50%; border: none; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2); transition: all 0.3s ease;
+      color: white; background: #dc3545;
+    }
+    .discard-btn:hover { background: #c82333; transform: scale(1.1); }
+    .discard-btn:disabled { background: #ccc; cursor: not-allowed; opacity: 0.6; }
     .publish-btn.has-changes::after {
       content: ''; position: absolute; top: -2px; right: -2px; width: 10px; height: 10px;
       background: #f44336; border-radius: 50%; border: 2px solid white;
@@ -165,6 +178,7 @@
     panel.innerHTML = `
       <div class="top-buttons">
         <button class="publish-btn" title="Publish Changes">${icons.publish}</button>
+        <button class="discard-btn" title="Discard Changes" disabled>${icons.discard}</button>
         <button class="close-panel-btn" title="Close">&times;</button>
       </div>
       <div class="entries-list">Loading...</div>`
@@ -176,6 +190,7 @@
     let published = [], draft = []
     const entriesEl = panel.querySelector('.entries-list')
     const publishBtn = panel.querySelector('.publish-btn')
+    const discardBtn = panel.querySelector('.discard-btn')
 
     function render() {
       if (!draft.length) {
@@ -247,7 +262,16 @@
       publishBtn.classList.toggle('has-changes', changed)
       publishBtn.disabled = !changed
       publishBtn.title = changed ? 'Publish Changes' : 'No changes to publish'
+      discardBtn.disabled = !changed
+      if (cfg.openBtn) cfg.openBtn.classList.toggle('has-draft', changed)
     }
+
+    discardBtn.addEventListener('click', () => {
+      if (!confirm('Discard all changes?')) return
+      draft = deepClone(published)
+      localStorage.removeItem(cfg.draftKey)
+      render(); updatePublish()
+    })
 
     publishBtn.addEventListener('click', async () => {
       if (!confirm('Publish changes? This will affect all users.')) return
@@ -363,13 +387,13 @@
   fbPanel.querySelector('.close-panel-btn').addEventListener('click', () => fbPanel.classList.remove('visible'))
 
   kbEditor = createEditor(kbPanel, {
-    draftKey: 'kb_draft', canModify: true,
+    draftKey: 'kb_draft', canModify: true, openBtn: document.getElementById('open-kb-btn'),
     publishUrl: '/admin/api/knowledge_base',
     toBody: (draft) => ({ knowledgeBase: draft })
   })
 
   spEditor = createEditor(spPanel, {
-    draftKey: 'sp_draft', canModify: false,
+    draftKey: 'sp_draft', canModify: false, openBtn: document.getElementById('open-sp-btn'),
     publishUrl: '/admin/api/system_prompts',
     toBody: (draft) => {
       const sp = {}
@@ -383,7 +407,7 @@
   })
 
   const grEditor = createEditor(grPanel, {
-    draftKey: 'gr_draft', canModify: true,
+    draftKey: 'gr_draft', canModify: true, openBtn: document.getElementById('open-gr-btn'),
     publishUrl: '/admin/api/greeting',
     toBody: (draft) => ({ greeting: { widget: { messages: draft.map(e => ({ delay: parseInt(e.key) || 0, text: e.content })) } } })
   })
