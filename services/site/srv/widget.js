@@ -471,9 +471,14 @@
     const abort = { stopped: false }
     greetingAbort = abort
     try {
-      const res = await fetch(API.replace('/ask', '/greeting'))
-      if (!res.ok || abort.stopped) return
-      const data = (await res.json()).widget
+      let data
+      if (config.greetingOverride) {
+        data = config.greetingOverride()
+      } else {
+        const res = await fetch(API.replace('/ask', '/greeting'))
+        if (!res.ok || abort.stopped) return
+        data = (await res.json()).widget
+      }
       if (!data?.messages?.length || abort.stopped) return
       for (const msg of data.messages) {
         if (abort.stopped) break

@@ -1,8 +1,9 @@
 (function() {
-  let kbEditor, spEditor
+  let kbEditor, spEditor, grEditor
 
   window.ChatWidgetConfig = {
     apiEndpoint: '/admin/ask',
+    greetingOverride: () => ({ messages: grEditor.getDraft().map(e => ({ delay: parseInt(e.key) || 0, text: e.content })) }),
     beforeSend: (body) => {
       body.knowledgeBaseOverride = kbEditor.getDraft()
       const spDraft = spEditor.getDraft().filter(e => e.key.startsWith(body.mod + '/'))
@@ -406,7 +407,7 @@
     }
   })
 
-  const grEditor = createEditor(grPanel, {
+  grEditor = createEditor(grPanel, {
     draftKey: 'gr_draft', canModify: true, openBtn: document.getElementById('open-gr-btn'),
     publishUrl: '/admin/api/greeting',
     toBody: (draft) => ({ greeting: { widget: { messages: draft.map(e => ({ delay: parseInt(e.key) || 0, text: e.content })) } } })

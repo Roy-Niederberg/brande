@@ -28,30 +28,15 @@ const crud = (...names) => names.forEach(name => {
   })
 })
 
-const gk_fmt = { response_format: { type: 'json_schema', json_schema: {
-  name: 'gatekeeper_response', schema: {
-    type: 'object',
-    properties: {
-      action: { type: 'string', enum: ['REPLY', 'IGNORE', 'ESCALATE'] },
-      text:   { type: 'string' }
-    },
-    required: ['action']
-  }
-}}}
-
-const gk = [new OpenAI({apiKey: GRK_KEY1, baseURL: GROQ  }), 'openai/gpt-oss-20b', gk_fmt]
+const gk = [new OpenAI({apiKey: GEM_KEY1, baseURL: GEMINI}), 'gemini-2.5-flash-lite']
 const m1 = [new OpenAI({apiKey: GEM_KEY2, baseURL: GEMINI}), 'gemini-2.5-flash']
-const m2 = [new OpenAI({apiKey: GEM_KEY1, baseURL: GEMINI}), 'gemini-2.5-flash-lite']
 const m3 = [new OpenAI({apiKey: GRK_KEY2, baseURL: GROQ  }), 'openai/gpt-oss-120b']
+const m2 = [new OpenAI({apiKey: GRK_KEY1, baseURL: GROQ  }), 'openai/gpt-oss-20b']
 
 const ask = async (llm, content, msgs) => {
-  const ask_obj = { // TODO: DO i need this? can it be the $.last_prompt directly
-    model: llm[1],
-    messages: [{ role: 'system', content }, ...msgs],
-    ...llm[2]
-  }
-  $.last_prompt = ask_obj
+  const ask_obj = {model: llm[1], messages: [{ role: 'system', content }, ...msgs]}
   const r = await llm[0].chat.completions.create(ask_obj)
+  $.last_prompt = ask_obj
   return r.choices[0]?.message?.content || ''
 }
 
@@ -65,9 +50,10 @@ app.r('post', '/ask', async ({ body }, rs) => {
 
   //Ask the GATEKEEPER if and what we need to ask the main model.
   try {
-    const gk_answer = JSON.parse(await ask(gk, body.sp_override.gatekeeper, body.chat))
-    if (gk_answer.action === 'REPLY')  return rs.send(gk_answer.text)
-    if (gk_answer.action === 'IGNORE') return rs.send('     😖     ')
+    const gk_answer = await ask(gk, body.sp_override.gatekeeper, body.chat)
+    console.log(gk_answer)
+    if (gk_answer === 'IGNORE')    return rs.send('')
+    if (gk_answer !== 'ESCALATE')  return rs.send(gk_answer)
   } catch(e) {console.error(`🚩 gatekeeper failed: `, e.message)}
 
   // Passed the gatekeeper, Build the prompt

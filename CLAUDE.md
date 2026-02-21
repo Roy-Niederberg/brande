@@ -108,9 +108,11 @@ the site's HTML at runtime (`http://site:80/index.html`) and injects
 `<script src="/admin/admin.js">` before `loader.js`. This means site layout/style
 changes automatically apply to the admin.
 
-`admin.js` pre-sets `window.ChatWidgetConfig` (apiEndpoint, beforeSend) —
+`admin.js` pre-sets `window.ChatWidgetConfig` (apiEndpoint, beforeSend, greetingOverride) —
 `loader.js` merges it via `...(window.ChatWidgetConfig || {})`. It uses a factory
 pattern (`createPanel`/`createEditor`) to build editor panels in `.bg-section`.
+Each editor panel has a **publish** button and a **discard** button (resets draft to
+published). Main buttons show a red dot when that editor has unpublished changes.
 Five buttons on the main screen:
 
 1. **Edit Knowledge Base** — CRUD editor for KB entries (`{key, content}` pairs).
@@ -127,9 +129,10 @@ Five buttons on the main screen:
    'facebook_comments'` + draft overrides from localStorage. Opens independently
    of other panels so admin can edit SP on one side and test on the other.
 
-Both KB and SP editors use localStorage drafts and a publish flow.
-`beforeSend` sends both KB and SP draft overrides on every admin chat request,
-so changes can be tested in the widget before publishing.
+All three editors (KB, SP, greeting) use localStorage drafts and a publish flow.
+`beforeSend` sends KB and SP draft overrides on every admin `/ask` request.
+`greetingOverride` is called by `widget.js` `playGreeting()` instead of fetching
+`/greeting` from the server, so greeting draft changes are also testable before publishing.
 
 Request flow:
 - Admin chat: browser → Caddy `/admin/*` → admin BE `/ask` (auth) → prompt-composer
@@ -148,9 +151,14 @@ The widget sends its `apiEndpoint` in the request body. The prompt-composer uses
 ### System Prompts
 
 Stored in `prod_setup/client_server/<client>/data/system_prompts.json`. Structure:
-`{ "module": { greeting: {...}, gatekeeper: "...", client_question: "..." } }`.
+`{ "module": { gatekeeper: "...", main: "..." } }`.
 The prompt-composer loads them mutably (`let` + `fs.readFileSync`) so they can be
-updated at runtime via the admin. Only `client_question` is editable in the admin UI.
+updated at runtime via the admin. Only `main` is editable in the admin UI.
+
+The gatekeeper runs on Gemini flash-lite and returns **plain text** (no JSON/tool use):
+- `IGNORE` → drop the request silently
+- `ESCALATE` → pass to the main model with full KB
+- anything else → send directly as the reply (e.g. a short greeting response)
 
 ### Rate Limiting
 
