@@ -28,10 +28,10 @@ const crud = (...names) => names.forEach(name => {
   })
 })
 
-const gk = [new OpenAI({apiKey: GEM_KEY1, baseURL: GEMINI}), 'gemini-2.5-flash-lite']
+const gk = [new OpenAI({apiKey: GRK_KEY2, baseURL: GROQ  }), 'meta-llama/llama-4-scout-17b-16e-instruct']
 const m1 = [new OpenAI({apiKey: GEM_KEY2, baseURL: GEMINI}), 'gemini-2.5-flash']
-const m3 = [new OpenAI({apiKey: GRK_KEY2, baseURL: GROQ  }), 'openai/gpt-oss-120b']
-const m2 = [new OpenAI({apiKey: GRK_KEY1, baseURL: GROQ  }), 'openai/gpt-oss-20b']
+const m2 = [new OpenAI({apiKey: GEM_KEY1, baseURL: GEMINI}), 'gemini-2.5-flash-lite']
+const m3 = [new OpenAI({apiKey: GRK_KEY1, baseURL: GROQ  }), 'openai/gpt-oss-20b']
 
 const ask = async (llm, content, msgs) => {
   const ask_obj = {model: llm[1], messages: [{ role: 'system', content }, ...msgs]}
@@ -60,7 +60,7 @@ app.r('post', '/ask', async ({ body }, rs) => {
   const kb    = body.kb_override.map(e => `## ${e.key}\n${e.content}`).join('\n\n')
   const query = body.sp_override.main + "\n#KNOWLEDGE BASE:\n" + kb
 
-  for (const llm of [m1, m3, m2]) {
+  for (const llm of [m1, m2, m3]) {
     try      {return rs.send(await ask(llm, query, body.chat))}
     catch(e) {console.error(`🚩 ${llm[1]} failed:`, e.message)}
   }

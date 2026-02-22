@@ -1,6 +1,7 @@
 # The Qabu Project
 -------
 
+ - [ ] I need to test the widget also as a widget. Build a demo site for the client and use the widget and test it.
  - [ ] Add reset all changes button to the admin site (the user want to go back to the current published sp/kb/greeting)
  - [ ] Add discard button to the edit/save buttons on the admin site (user want to leave the editing mode of the text box without saving)
  - [x] I don't like what Claude did with the CLIENT env var in the mock facebook. I want the volume to use the production data/srv to display the correct post-comments mock UI.
