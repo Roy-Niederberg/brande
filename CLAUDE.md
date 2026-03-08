@@ -7,7 +7,38 @@ more. See `for_claude.md` for full project context.
 
 - Owners: Roy & Nevo, based in Israel. Domain: `qabu.net` (GoDaddy).
 - Infra: Two Oracle Cloud VMs (client server + main server), Docker everywhere.
-- Repo: Private GitLab, mirrored to GitHub.
+- Repo: Private GitLab (`origin`), mirrored to GitHub (`github` remote).
+
+## GitHub Mirror (Claude Code Mobile)
+
+Claude Code on mobile works with GitHub. The GitHub repo is a mirror — GitLab
+is the single source of truth. Never merge on GitHub UI.
+
+Add the remote (one-time):
+```sh
+git remote add github git@github.com:roy-niederberg/brande.git
+```
+
+When Claude Code creates a branch on GitHub, merge locally:
+```sh
+git fetch github                                    # 1. fetch new branches
+git branch -r --list 'github/*'                     # 2. see what's new
+git diff origin/dev...github/<branch>               # 3. review changes
+git merge github/<branch>                           # 4. merge into dev
+git push origin                                     # 5. push to GitLab
+git push github --delete <branch>                   # 6. clean up remote branch
+```
+
+## Setup (new machine)
+
+Install each plugin listed in `.claude/settings.json` via `/plugin install <name>`.
+For the local skill, run: `/plugin install local .claude/plugins/qabu-prompt-engineer`
+
+## Skills
+
+Before responding to any request, check the available skills list. If there is
+even a 1% chance a skill applies, invoke it with the Skill tool before doing
+anything else.
 
 ## Dev Philosophy
 
@@ -16,6 +47,10 @@ more. See `for_claude.md` for full project context.
 - Minimize third-party dependencies.
 - Whitelist `.gitignore` (not blacklist).
 - Everything runs in Docker - no node/npm/python on the host.
+- **Multi-channel awareness**: Every change must consider all channels — widget
+  (EN + HE), Facebook comments, and Facebook DMs. Prompt-composer serves all of
+  them, so changes there affect everything. When discussing features, always verify
+  they work for both English and Hebrew clients and don't break Facebook flows.
 
 ## Express Async Error Handling
 
@@ -66,9 +101,24 @@ Client-specific assets, data, and secrets are loaded from `prod_setup/client_ser
 
 ## Deployment
 
-Production is deployed via rsync to two Oracle Cloud VMs:
-- `prod_setup/client_server/` syncs to the client VM (hosts client sites + agents)
-- `prod_setup/main_server/` syncs to the main VM (hosts qabu.net + shared services)
+Run from repo root on the `dev` branch (clean, in sync with origin):
+
+```sh
+./deploy.sh           # full deploy
+./deploy.sh --dry-run # preview without changes
+```
+
+What it does:
+1. Pre-flight: must be on `dev`, clean, and in sync with `origin/dev`
+2. Detects services changed since last `deploy-*` tag → builds + pushes Docker images to GitLab registry
+3. Pulls runtime-edited data from prod VMs back into `prod_setup/*/data/`
+4. Rsyncs `prod_setup/client_server/` → client VM, `prod_setup/main_server/` → main VM
+5. SSH: `docker compose pull && docker compose up -d` on each VM
+6. Commits any synced data changes and tags the deploy (`deploy-YYYY-MM-DD`)
+
+Two Oracle Cloud VMs:
+- Client VM (`brande@129.159.159.251`) — hosts client sites + agents
+- Main VM (`brande@129.159.134.3`) — hosts qabu.net + shared services
 
 These directories mirror what's running in production.
 
@@ -151,11 +201,12 @@ The widget sends its `apiEndpoint` in the request body. The prompt-composer uses
 ### System Prompts
 
 Stored in `prod_setup/client_server/<client>/data/system_prompts.json`. Structure:
-`{ "module": { gatekeeper: "...", main: "..." } }`.
-The prompt-composer loads them mutably (`let` + `fs.readFileSync`) so they can be
-updated at runtime via the admin. Only `main` is editable in the admin UI.
+`{ "module": { gatekeeper: "...", main: "...", capabilities: "..." } }`.
+The prompt-composer loads them via `import` at startup. `main` and `capabilities`
+are editable in the admin UI. The `capabilities` key is optional — modules without
+it (e.g. `facebook_comments`) don't get capability instructions in their prompt.
 
-The gatekeeper runs on Gemini flash-lite and returns **plain text** (no JSON/tool use):
+The gatekeeper returns **plain text** (no JSON/tool use):
 - `IGNORE` → drop the request silently
 - `ESCALATE` → pass to the main model with full KB
 - anything else → send directly as the reply (e.g. a short greeting response)
@@ -166,6 +217,77 @@ The prompt-composer rate limiter (5 req/20s) applies only to `/ask`, not to
 config/log endpoints.
 
 Direction (RTL/LTR) is inherited from the site's `client-config.json` — no toggle needed.
+
+## Capabilities (LLM Tool Use)
+
+The LLM can trigger client-side UI actions (forms, delays, etc.) via capabilities.
+Each client has a `capabilities.js` in its `data/` directory — an ES module
+(`export default { ... }`) with named capabilities, each having `description` and
+`run(args, canvasElement)`.
+
+### How It Works
+
+1. **Prompt-composer** imports `capabilities.js` at startup, extracts
+   `name: description` pairs, and appends them to the prompt when the module's SP
+   has a `capabilities` key. The composed prompt is:
+   `main + capabilities_instructions + #CAPABILITIES list + #KNOWLEDGE BASE`.
+2. **The LLM** ends its reply with an action block:
+   ```
+   || ACTIONS
+   || sleep 2000
+   || contact_form
+   ```
+3. **The widget** parses the `|| ACTIONS` block, strips it from displayed text,
+   and runs each action sequentially. Each `run()` returns
+   `{ result: string, continue: boolean }`. Non-empty results are collected and
+   auto-sent back to the LLM (with `skip_gk: true` to bypass the gatekeeper).
+4. **Canvas element**: capabilities that show UI receive `canvasElement` (set via
+   `ChatWidgetConfig.canvasElement`, defaults to `null`). On the Qabu site this is
+   `.bg-section`. The widget itself stays decoupled from the site layout.
+
+### Files
+
+- `prod_setup/client_server/<client>/data/capabilities.js` — per-client capabilities
+- `services/site/srv/widget.js` — action parsing + execution loop
+- `services/prompt_composer/src/server.js` — loads capabilities, injects into prompt
+
+### Prompt-Composer Data Loading
+
+All data files are loaded via ES `import` at startup into the global `$` object.
+The `crud` loop registers GET (serves file from disk) and POST (updates `$` +
+writes to disk) endpoints for each file. JSON files use `writeJSON` (with
+`JSON.stringify`), JS files use `writeFile` (raw string).
+
+```js
+const $ = {}
+for (const f of files) {
+  $[name] = (await import(`./data/${f}`, arg)).default
+  // GET serves from disk, POST updates $ and writes to disk
+}
+```
+
+### Request Flags
+
+- `skip_gk: true` — skip gatekeeper (used for capability result follow-ups)
+- `skip_kb: true` — skip knowledge base injection
+- `skip_caps: true` — skip capabilities injection
+
+## Widget Embeddability
+
+The widget (`widget.js`) is designed to be embeddable on any external site with
+a config object and a script tag. It loads per-client capabilities via dynamic
+`import('/site/capabilities.js')`.
+
+Config options: `targetElement` (selector or element, defaults to `document.body`),
+`canvasElement` (element for capability UI, defaults to `null`),
+`apiEndpoint`, `fontFamily`, `googleFontsUrl`, `beforeSend`, `greetingOverride`.
+
+### Known Issues
+
+- **Minimize/reopen was removed.** An earlier version (commit `ea62340`, when the
+  widget lived at `services/router/public/widget.js`) had minimize/maximize with a
+  floating reopen bubble — essential for embedding on existing pages. This was lost
+  in the "big rewrite" (`6cdf7d5`). Should be restored for embed use cases.
 
 ## Facebook Integration
 

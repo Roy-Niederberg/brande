@@ -1,7 +1,13 @@
 # The Qabu Project
 -------
 
+ - [ ] Finish skills - see what Claude had to offer, implement it. Ask for a prompt writer skill that it will load when it needs to write/review the prompts in the syetsm.
+ - [ ] Try changing the knowledge_base to js file with it own JSON.stingiry funciton. Same for the sp.
+ - [ ] What Nevo sent I  - see [mail](https://mail.google.com/mail/u/0/#inbox/WhctKLbvVXrBNMTCBwqFvcjcfzFdLtdQjlGfblZTDlbmrkprCsgZwRjkplvmrJVBQDZSBpQ)
+ - [ ] What Nevo sent II - see [mail](https://mail.google.com/mail/u/0/#inbox/WhctKLbvVXbFBvGWJclwtWNzmkzlWHhppdMVgzplnpwMWHVnCrjkRXngmNBQNZrJVMplDkQ)
+
  - [ ] I need to test the widget also as a widget. Build a demo site for the client and use the widget and test it.
+    - There was a version with a shirk/grow for the widget but it's gone from the code now. Claude wrote about it in CLOUDE.md so I can get it beck in the future.
  - [ ] Add reset all changes button to the admin site (the user want to go back to the current published sp/kb/greeting)
  - [ ] Add discard button to the edit/save buttons on the admin site (user want to leave the editing mode of the text box without saving)
  - [x] I don't like what Claude did with the CLIENT env var in the mock facebook. I want the volume to use the production data/srv to display the correct post-comments mock UI.
@@ -11,7 +17,7 @@
  - [ ] With Nevo - facebook_comments to DM per the gatekeeper decision.
  - [ ] I want to change the gatekeeper - no need for a json - replay with the answer of replay one word - IGNORE/ESCALAT.
  - [ ] SAFETY: Need to validate the /ask in case there is a override sp/kb. Like in facebook_dispatcher with the secret (check: why do we need secret in facebook_dispatcher?)
-- [ ] In the prompt_composer i use a last_prompt global variable. For that I use the 'crud' function that create a crud for all the other global vars. But this function also works with a file that is being update on the post call. But nothing call this post for this last_prompt variable. Maybe I can add a call from the admin to save the last_prompt to disk before updating it? 
+ - [ ] I want to use git worktree, after I will need one.
 
  - [ ] The admin will ask the prompt-composer to build for it the prompt as if it was sending it to the llm (for the See Last Prompt button)
 
@@ -54,3 +60,13 @@
 - Facebook:
     - [ ]  Multi-page per client support
 
+
+# Claude Skills
+1. superpowers — teaches Claude better development patterns globally
+1. skill-creator — for building your Qabû-specific skills
+1. security-guidance — healthcare context, install early
+1. code-review — everyday value
+1. claude-md-management — keeps your CLAUDE.md healthy
+1. playwright — when you're ready to add UI tests
+1. frontend-design — for the chat/canvas UI work
+1. code-simplifier — good for keeping things lean
