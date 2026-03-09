@@ -131,6 +131,23 @@ Each client also has a `mock_facebook/` subfolder in assets with `post-data.json
 (and optionally `profile-pic.jpg`, `post-image.jpg`) for the mock Facebook admin
 testing interface. Missing images fall back to defaults (SVG avatar, site background).
 
+## Client Profiles
+
+**craftkidstoys** — English demo client. Generic toy shop.
+
+**drlipokatz** — Hebrew demo client. Cataract surgery clinic (ד"ר ליפו כץ).
+Modeled after Nevo's master spec (`Nevo.txt`) with 15 consolidated intents
+(`intent.md`). KB has 12 entries covering the cataract patient journey. Key
+prompt design patterns:
+- **Slot tracking** (prompt-only, no code): the main SP instructs the LLM to
+  gather 5 data points naturally (topic, not emergency, HMO, insurance, readiness)
+  before showing a booking link. At least 3 must be known.
+- **Emergency guardrails**: both gatekeeper (ESCALATE) and main prompt detect
+  emergency symptoms (sudden vision loss, severe pain, flashes, dark spots,
+  curtain sensation) and respond with ER referral — no booking offered.
+- **Tiered CTAs**: soft CTA for educational questions, HMO question for cost
+  queries, direct booking CTA for surgery-ready users.
+
 ## Caddy Routing
 
 Three Caddyfiles handle routing across the two VMs:
