@@ -6,7 +6,7 @@ REGISTRY="registry.gitlab.com/rny3/brande"
 CLIENT_VM="brande@129.159.159.251"
 CLIENT_VM_PATH="~/brande"
 MAIN_VM="brande@129.159.134.3"
-MAIN_VM_PATH="~/main"
+MAIN_VM_PATH="~/app"
 # ───────────────────────────────────────────────────────
 
 DRY_RUN=
