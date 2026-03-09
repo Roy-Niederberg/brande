@@ -59,7 +59,7 @@
     #open-log-btn:hover { background: #6a978f; }
     #open-fb-btn { background: #5b7bbf; box-shadow: 0 4px 12px rgba(91,123,191,0.3); }
     #open-fb-btn:hover { background: #4a6aae; }
-    .content { position: relative; }
+    .chat-section { position: relative; }
     .fb-panel {
       position: absolute; inset: 0; z-index: 100; background: #f0f2f5;
       display: none;
@@ -68,10 +68,28 @@
     .fb-panel .top-buttons { position: absolute; top: 8px; right: 8px; z-index: 10; }
     .fb-iframe { width:100%; height:100%; border:none; }
     .log-content {
-      border: 1px solid #ddd; border-radius: 8px; padding: 16px;
-      background: #fff; white-space: pre-wrap; word-wrap: break-word;
+      display: flex; flex-direction: column; gap: 12px;
+      padding-top: 48px; padding-bottom: 20px;
+    }
+    .log-model {
+      padding: 10px 14px; background: #f0f4f8; border-radius: 8px;
+      font-family: 'Consolas', 'Monaco', monospace; font-size: 14px; color: #334;
+    }
+    .log-model b { color: #555; }
+    .log-msg {
+      border: 1px solid #e1e4e8; border-radius: 8px; overflow: hidden;
+    }
+    .log-msg-header {
+      padding: 8px 14px; font-weight: 600; font-size: 13px;
+      font-family: 'Consolas', 'Monaco', monospace;
+    }
+    .log-msg[data-role="system"] .log-msg-header { background: #e8f0fe; color: #1a56db; }
+    .log-msg[data-role="user"] .log-msg-header { background: #fef3e2; color: #b45309; }
+    .log-msg[data-role="assistant"] .log-msg-header { background: #e6f9ed; color: #166534; }
+    .log-msg-content {
+      padding: 12px 14px; background: #fff; white-space: pre-wrap; word-wrap: break-word;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      font-size: 13px; line-height: 1.5; margin-top: 48px;
+      font-size: 13px; line-height: 1.5; max-height: 400px; overflow-y: auto;
     }
     .top-buttons { position: absolute; top: 12px; right: 12px; display: flex; direction: ltr; gap: 8px; z-index: 10; }
     .publish-btn {
@@ -171,7 +189,7 @@
   `
   document.head.appendChild(style)
 
-  const bgSection = document.querySelector('.bg-section')
+  const siteSection = document.querySelector('.site-section')
 
   function createPanel() {
     const panel = document.createElement('div')
@@ -183,7 +201,7 @@
         <button class="close-panel-btn" title="Close">&times;</button>
       </div>
       <div class="entries-list">Loading...</div>`
-    bgSection.appendChild(panel)
+    siteSection.appendChild(panel)
     return panel
   }
 
@@ -321,22 +339,34 @@
       <button class="refresh-btn" title="Refresh">${refreshSvg}</button>
       <button class="close-panel-btn" title="Close">&times;</button>
     </div>
-    <pre class="log-content"></pre>`
-  bgSection.appendChild(logPanel)
+    <div class="log-content"></div>`
+  siteSection.appendChild(logPanel)
 
   const logContent = logPanel.querySelector('.log-content')
 
   async function loadLastPrompt() {
     try {
       const data = await fetch('/admin/api/last_prompt').then(r => r.json())
-      logContent.textContent = Object.entries(data)
-        .map(([k, v]) => `${k}\n${typeof v === 'string' ? v : JSON.stringify(v, null, 2)}`)
-        .join('\n\n')
-    } catch { logContent.textContent = 'Error loading last prompt' }
+      let html = `<div class="log-model"><b>model:</b> ${escapeHtml(data.model || '?')}</div>`
+      if (Array.isArray(data.messages)) {
+        for (const m of data.messages) {
+          const role = m.role || 'unknown'
+          html += `<div class="log-msg" data-role="${escapeHtml(role)}">
+            <div class="log-msg-header">${escapeHtml(role)}</div>
+            <div class="log-msg-content">${escapeHtml(m.content || '')}</div></div>`
+        }
+      }
+      if (data.response) {
+        html += `<div class="log-msg" data-role="assistant">
+          <div class="log-msg-header">response (raw)</div>
+          <div class="log-msg-content">${escapeHtml(data.response)}</div></div>`
+      }
+      logContent.innerHTML = html
+    } catch { logContent.innerHTML = '<div style="color:#e74c3c;padding:40px;text-align:center">Error loading last prompt</div>' }
   }
 
   logPanel.querySelector('.copy-btn').addEventListener('click', async () => {
-    await navigator.clipboard.writeText(logContent.textContent)
+    await navigator.clipboard.writeText(logContent.innerText)
     const btn = logPanel.querySelector('.copy-btn')
     btn.style.background = '#17a2b8'
     setTimeout(() => btn.style.background = '', 600)
@@ -351,7 +381,7 @@
       <button class="close-panel-btn" title="Close">&times;</button>
     </div>
     <iframe class="fb-iframe" src="/mock-facebook/"></iframe>`
-  document.querySelector('.content').appendChild(fbPanel)
+  document.querySelector('.chat-section').appendChild(fbPanel)
 
   const adminBtns = document.createElement('div')
   adminBtns.id = 'admin-buttons'
@@ -362,7 +392,7 @@
     <button id="open-log-btn" class="admin-open-btn">See Prompt</button>
     <button id="open-fb-btn" class="admin-open-btn">Test Facebook Comments</button>
     <button id="logout-btn">Logout</button>`
-  bgSection.appendChild(adminBtns)
+  siteSection.appendChild(adminBtns)
 
   document.getElementById('logout-btn').addEventListener('click', () => {
     if (confirm('Log out?')) window.location.href = '/admin/logout'

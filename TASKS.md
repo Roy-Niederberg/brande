@@ -1,6 +1,8 @@
 # The Qabu Project
 -------
 
+## Roy's Tasks
+
  - [ ] Finish skills - see what Claude had to offer, implement it. Ask for a prompt writer skill that it will load when it needs to write/review the prompts in the syetsm.
  - [ ] Try changing the knowledge_base to js file with it own JSON.stingiry funciton. Same for the sp.
  - [ ] What Nevo sent I  - see [mail](https://mail.google.com/mail/u/0/#inbox/WhctKLbvVXrBNMTCBwqFvcjcfzFdLtdQjlGfblZTDlbmrkprCsgZwRjkplvmrJVBQDZSBpQ)
@@ -51,7 +53,7 @@
     - [ ] Buy the domain (`qabu.co.il` or `qabu.net`?) (I bought qabu.net, and I want the co.il one also)
     - [ ] Qabu js interface: Movie clip, form to input phone number, form to pay.
     - [ ] links to demos
-    - [ ] improve the 404 on `./services/router/src/Caddyfile` 
+    - [ ] improve the 404 on `./services/router/src/Caddyfile`
     - [ ] Security hardening  - Only allow Cloudflare IP addresses at your origin.
 
 ## Backlog
@@ -61,12 +63,18 @@
     - [ ]  Multi-page per client support
 
 
-# Claude Skills
-1. superpowers — teaches Claude better development patterns globally
-1. skill-creator — for building your Qabû-specific skills
-1. security-guidance — healthcare context, install early
-1. code-review — everyday value
-1. claude-md-management — keeps your CLAUDE.md healthy
-1. playwright — when you're ready to add UI tests
-1. frontend-design — for the chat/canvas UI work
-1. code-simplifier — good for keeping things lean
+- [ ] *Claude skills*:
+    1. superpowers — teaches Claude better development patterns globally
+    1. skill-creator — for building your Qabû-specific skills
+    1. security-guidance — healthcare context, install early
+    1. code-review — everyday value
+    1. claude-md-management — keeps your CLAUDE.md healthy
+    1. playwright — when you're ready to add UI tests
+    1. frontend-design — for the chat/canvas UI work
+    1. code-simplifier — good for keeping things lean
+
+# Claude's Tasks
+
+- [ ] **Fix trailing SLEEP action in LLM responses.** The LLM sometimes appends a standalone `|| SLEEP 2500` as the last (or only) action in its response, even when there's no subsequent UI action to follow. This happens because the capabilities instructions in the system prompt say "use SLEEP before UI actions to give the user time to read the message" — the model learns the `SLEEP → CONTACT_FORM` pattern and then over-applies it, treating SLEEP as a generic "let the user read" signal rather than a delay *before another action*. It's harmless (just adds a pointless 2.5s pause) but wasteful. The fix is to clarify in the capabilities section of the system prompt that SLEEP should only be used when followed by another action, never as the last action. Suggested wording: "השתמש ב-SLEEP רק לפני פעולה נוספת (כמו CONTACT_FORM) כדי לתת למשתמש זמן לקרוא. אל תשתמש ב-SLEEP כפעולה אחרונה — אין בכך תועלת." Use the `qabu-prompt-engineer` skill when making this fix.
+
+

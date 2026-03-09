@@ -12,12 +12,12 @@
     // Set page title
     document.title = config.title || 'Chat';
 
-    // Reorder elements based on direction (RTL: content first, LTR: bg first)
+    // Reorder sections based on direction (RTL: chat first, LTR: site first)
     const container = document.querySelector('.container');
-    const content = document.querySelector('.content');
-    const bgSection = document.querySelector('.bg-section');
+    const chatSection = document.querySelector('.chat-section');
+    const siteSection = document.querySelector('.site-section');
     if (config.direction === 'ltr') {
-        container.insertBefore(bgSection, content);
+        container.insertBefore(siteSection, chatSection);
     }
 
     // Load custom font if specified
@@ -89,7 +89,8 @@
 
     // Initialize chat widget
     window.ChatWidgetConfig = {
-        targetElement: '#chat-container',
+        targetElement: '#chat-section',
+        canvasElement: '.site-section',
         ...(config.widget || {}),
         ...(window.ChatWidgetConfig || {})
     };
@@ -97,5 +98,12 @@
     // Load widget script
     const widgetScript = document.createElement('script');
     widgetScript.src = '/widget.js';
+    widgetScript.onload = () => {
+        const loader = document.getElementById('qabu-loader');
+        if (loader) {
+            loader.classList.add('hide');
+            setTimeout(() => loader.remove(), 400);
+        }
+    };
     document.body.appendChild(widgetScript);
 })();

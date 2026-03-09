@@ -151,6 +151,25 @@ Three Caddyfiles handle routing across the two VMs:
 - `/mock-facebook/*` → mock-facebook (port 3210)
 - Everything else → static site files
 
+## Site Layout: Chat Section + Site Section
+
+The Qabu site (`index.html`) has a split-view layout with two sections inside a
+flex `.container`:
+
+- **`.chat-section`** (`#chat-section`) — holds the chat widget. In admin mode,
+  the Facebook test panel overlays this section.
+- **`.site-section`** — holds the background image, branding overlay, and in admin
+  mode the editor panels and admin buttons. Capabilities render their UI here
+  (passed as `canvasElement` to the widget).
+
+In portrait mode (`max-aspect-ratio: 1/1`), both sections stack as absolute
+overlays — the chat section sits on top of the site section.
+
+`loader.js` reorders sections based on direction: LTR puts site-section first
+(left), RTL puts chat-section first (right). When embedding the widget on an
+external site, `canvasElement` can point to any element (or `null` to disable
+capability UI).
+
 ## Admin
 
 The admin reuses the site's `index.html` — no separate HTML. The admin BE fetches
@@ -160,7 +179,7 @@ changes automatically apply to the admin.
 
 `admin.js` pre-sets `window.ChatWidgetConfig` (apiEndpoint, beforeSend, greetingOverride) —
 `loader.js` merges it via `...(window.ChatWidgetConfig || {})`. It uses a factory
-pattern (`createPanel`/`createEditor`) to build editor panels in `.bg-section`.
+pattern (`createPanel`/`createEditor`) to build editor panels in `.site-section`.
 Each editor panel has a **publish** button and a **discard** button (resets draft to
 published). Main buttons show a red dot when that editor has unpublished changes.
 Five buttons on the main screen:
@@ -173,8 +192,8 @@ Five buttons on the main screen:
 4. **See Prompt** — Read-only viewer with Admin/Site tabs showing the last
    composed prompt. Tabs switch between `admin_ask_widget` and `site_ask_widget`
    log files. Cached per panel open, with a refresh button.
-5. **Test Facebook Comments** — Opens a mock Facebook post (iframe) on the content
-   side (over the widget). Admin types comments, JS formats chat history matching
+5. **Test Facebook Comments** — Opens a mock Facebook post (iframe) on the chat
+   section (over the widget). Admin types comments, JS formats chat history matching
    `facebook_comments` service format, POSTs to `/admin/ask` with `mod:
    'facebook_comments'` + draft overrides from localStorage. Opens independently
    of other panels so admin can edit SP on one side and test on the other.
@@ -243,7 +262,7 @@ Each client has a `capabilities.js` in its `data/` directory — an ES module
    auto-sent back to the LLM (with `skip_gk: true` to bypass the gatekeeper).
 4. **Canvas element**: capabilities that show UI receive `canvasElement` (set via
    `ChatWidgetConfig.canvasElement`, defaults to `null`). On the Qabu site this is
-   `.bg-section`. The widget itself stays decoupled from the site layout.
+   `.site-section`. The widget itself stays decoupled from the site layout.
 
 ### Files
 

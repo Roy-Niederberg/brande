@@ -7,9 +7,30 @@
         : config.targetElement)
     : document.body // Default to body if not specified
   targetElement.dir ='ltr'
+  const canvasElement = config.canvasElement
+    ? (typeof config.canvasElement === 'string'
+        ? document.querySelector(config.canvasElement)
+        : config.canvasElement)
+    : null
   const API = config.apiEndpoint || '/site/ask'
   const STORAGE_KEY = 'chat_history'
   const history = []
+
+  // Load per-client capabilities
+  const capabilities = import('/site/capabilities')
+    .then(m => m.default || {}).catch(() => ({}))
+
+  const parseActions = (text) => {
+    const idx = text.indexOf('\n|| ACTIONS')
+    if (idx === -1) return { text, actions: [] }
+    const actions = text.slice(idx).split('\n')
+      .filter(l => l.startsWith('|| ') && l !== '|| ACTIONS')
+      .map(l => {
+        const parts = l.slice(3).split(' ')
+        return { name: parts[0], args: parts.slice(1).join(' ') }
+      })
+    return { text: text.slice(0, idx).trimEnd(), actions }
+  }
 
   // Font configuration
   const defaultFontFamily = "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif"
@@ -458,7 +479,7 @@
       const entries = JSON.parse(saved)
       if (!entries.length) return false
       for (const entry of entries) {
-        addMsg(entry.content, entry.role === 'user' ? 'user' : 'bot')
+        if (!entry.hidden) addMsg(entry.content, entry.role === 'user' ? 'user' : 'bot')
         history.push(entry)
       }
       return true
@@ -515,6 +536,61 @@
   // Initial adjustment
   adjustHeight()
 
+  const callLLM = async (abort, skipGk) => {
+    const chat = history.map(h => ({
+      role: h.role === 'user' ? 'user' : 'assistant', content: h.content
+    }))
+    let requestBody = { mod: 'widget', chat }
+    if (skipGk) requestBody.skip_gk = true
+    if (config.beforeSend && typeof config.beforeSend === 'function')
+      requestBody = config.beforeSend(requestBody) || requestBody
+    const res = await fetch(API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(requestBody)
+    })
+    if (abort.stopped) return null
+    return res.text()
+  }
+
+  const runActions = async (actions, abort) => {
+    const caps = await capabilities
+    const msgs = []
+    for (const action of actions) {
+      if (abort.stopped) return
+      const cap = caps[action.name]
+      if (!cap) { console.error(`Unknown capability: ${action.name}`); continue }
+      const out = await cap.run(action.args, canvasElement)
+      if (out.result) msgs.push(`(${action.name}) ${out.result}`)
+      if (!out.continue) break
+    }
+    if (!msgs.length || abort.stopped) return
+    const content = msgs.join('\n')
+    history.push({ role: 'user', content, hidden: true })
+    saveHistory()
+    showTyping()
+    const raw = await callLLM(abort, true)
+    if (raw === null) return
+    const parsed = parseActions(raw)
+    hideTyping()
+    addMsg(parsed.text, 'bot')
+    history.push({ role: 'assistant', content: parsed.text })
+    saveHistory()
+    if (parsed.actions.length) await runActions(parsed.actions, abort)
+  }
+
+  const askAndProcess = async (abort) => {
+    showTyping()
+    const raw = await callLLM(abort, false)
+    if (raw === null) return
+    const parsed = parseActions(raw)
+    hideTyping()
+    addMsg(parsed.text, 'bot')
+    history.push({ role: 'assistant', content: parsed.text })
+    saveHistory()
+    if (parsed.actions.length) await runActions(parsed.actions, abort)
+  }
+
   let sendAbort = null
 
   const sendMsg = async () => {
@@ -539,28 +615,9 @@
 
     const abort = { stopped: false }
     sendAbort = abort
-    showTyping()
 
     try {
-      const chat = history.map(h => ({ role: h.role === 'user' ? 'user' : 'assistant', content: h.content }))
-      let requestBody = { mod: 'widget', chat }
-
-      // Allow config to modify request body before sending
-      if (config.beforeSend && typeof config.beforeSend === 'function') {
-        requestBody = config.beforeSend(requestBody) || requestBody
-      }
-
-      const res = await fetch(API, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestBody)
-      })
-      if (abort.stopped) return
-      const reply = await res.text()
-      hideTyping()
-      addMsg(reply, 'bot')
-      history.push({ role: 'assistant', content: reply })
-      saveHistory()
+      await askAndProcess(abort)
     } catch (e) {
       if (abort.stopped) return
       hideTyping()
