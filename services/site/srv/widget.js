@@ -164,6 +164,9 @@
       white-space: pre-wrap; /* Preserve newlines */
     }
 
+    .chat-msg a { text-decoration: underline; }
+    .chat-msg.bot a { color: #3276AA; }
+
     .chat-msg ul {
       margin: 4px 0;
       padding-left: 0;
@@ -390,6 +393,10 @@
     .replace(/`([^`]+)`/g, '<code>$1</code>')
     .replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g,
       '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
+    .replace(/(?<![="'])((?:https?:\/\/|www\.)[^\s<]+)/g, (_, url) => {
+      const href = url.startsWith('www.') ? 'https://' + url : url
+      return `<a href="${href}" target="_blank" rel="noopener noreferrer">${url}</a>`
+    })
     .replace(/^\s*[\*\-]\s+(.*)$/gm, '<li>$1</li>')
     .replace(/((?:<li>.*<\/li>\s*)+)/g, (m) => '<ul>' + m.replace(/\n/g, '') + '</ul>')
     return html.replace(/\n/g, '<br>')
