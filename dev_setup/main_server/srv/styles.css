@@ -1,7 +1,7 @@
 :root {
-    --primary-color: #2c3e50;
-    --accent-color: #3498db;
-    --bg-color: #fdfdfd;
+    --primary-color: #0F2C59;
+    --accent-color: #3276AA;
+    --bg-color: #F8F9FA;
     --border-color: #e0e0e0;
     --text-color: #333;
     --card-shadow: 0 2px 5px rgba(0,0,0,0.05);
@@ -16,7 +16,7 @@
 
 body {
     font-family: 'Rubik', sans-serif;
-    background-color: #f9f9f9;
+    background-color: #F8F9FA;
     color: var(--text-color);
     height: 100vh;
     display: flex;

@@ -52,6 +52,16 @@ anything else.
   them, so changes there affect everything. When discussing features, always verify
   they work for both English and Hebrew clients and don't break Facebook flows.
 
+## Brand Colors
+
+- **Primary Light Blue `#A6D0DD`** — brand color (30%), bot bubbles, borders
+- **Dark Navy `#0F2C59`** — text/headers (10%), user bubbles
+- **Background `#F8F9FA`** — base canvas (60%)
+- **Accent Blue `#3276AA`** — highlights, buttons, CTAs
+
+Use these consistently. The widget and capabilities already follow this palette.
+Admin buttons intentionally use distinct per-button colors (not brand colors).
+
 ## Express Async Error Handling
 
 Express doesn't catch errors thrown in `async` route handlers. We use `app.r`
