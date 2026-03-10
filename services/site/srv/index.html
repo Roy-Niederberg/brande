@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    {{if fileExists "assets/og-meta.html"}}{{include "assets/og-meta.html"}}{{end}}
     <title>Loading...</title>
     <style>
         /* Base reset and layout */
