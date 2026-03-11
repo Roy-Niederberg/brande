@@ -15,6 +15,8 @@
   const API = config.apiEndpoint || '/site/ask'
   const STORAGE_KEY = 'chat_history'
   const history = []
+  let lastMsgRole = null
+  let lastMsgMinute = null
 
   // Load per-client capabilities
   const capabilities = import('/site/capabilities')
@@ -130,11 +132,11 @@
     #chat-messages {
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 8px;
       flex: 1;
       overflow-y: auto;
       overflow-x: hidden;
-      padding: 20px;
+      padding: 20px 0;
       margin: 0;
       scroll-behavior: smooth;
       scrollbar-width: thin;
@@ -148,20 +150,23 @@
     #chat-messages::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 10px; }
     #chat-messages::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.2); }
 
+    .msg-row { display: flex; align-items: flex-start; width: 100%; }
+    .msg-row.bot { flex-direction: row; padding-right: 4px; }
+    .msg-row.user { flex-direction: row-reverse; padding-left: 4px; }
+    .msg-row.grouped { margin-top: -5px; }
+
     .chat-msg {
-      padding: 18px 22px;
-      padding-bottom: 30px;
-      border-radius: 8px;
-      max-width: 80%;
+      padding: 10px 14px;
+      border-radius: 12px;
+      width: 80%;
       word-wrap: break-word;
-      position: relative;
       font-size: 20px;
       line-height: 1.5;
       pointer-events: auto;
       opacity: 0;
       animation: slideInUp 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards;
       will-change: transform, opacity;
-      white-space: pre-wrap; /* Preserve newlines */
+      white-space: pre-wrap;
     }
 
     .chat-msg a { text-decoration: underline; }
@@ -174,53 +179,42 @@
     }
 
     .chat-timestamp {
-      position: absolute;
-      bottom: 6px;
-      right: 12px;
-      font-size: 13px;
-      opacity: 0.5;
-      pointer-events: none;
+      font-size: 11px; opacity: 0.5; pointer-events: none;
+      padding: 2px 8px; white-space: nowrap; flex-shrink: 0;
     }
 
     .chat-msg.user {
       background: #0F2C59;
       color: #ffffff;
-      align-self: flex-end;
       text-align: start;
       border: none;
-      margin-right: 12px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15), 0 2px 4px rgba(0,0,0,0.1);
+      margin-right: -12px;
+      padding-right: 24px;
+      border-radius: 12px 0 0 12px;
+      box-shadow: -4px 4px 12px rgba(15,44,89,0.35), -2px 2px 4px rgba(0,0,0,0.2);
     }
 
     .chat-msg.bot {
       background: #A6D0DD;
       color: #0F2C59;
-      align-self: flex-start;
       border: 1px solid rgba(0,0,0,0.06);
-      margin-left: 12px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.05);
+      margin-left: -12px;
+      padding-left: 24px;
+      border-radius: 0 12px 12px 0;
+      box-shadow: 4px 4px 12px rgba(15,44,89,0.25), 2px 2px 4px rgba(0,0,0,0.15);
     }
-
-    .chat-tail {
-      position: absolute;
-      top: 14px;
-      width: 12px;
-      height: 12px;
-      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
-    }
-    .chat-tail.user { right: -10px; }
-    .chat-tail.bot { left: -10px; }
 
     #typing-indicator {
       padding: 14px 20px;
-      border-radius: 18px;
+      padding-left: 24px;
+      border-radius: 0 12px 12px 0;
       background: #A6D0DD;
-      margin-left: 12px;
+      margin-left: -12px;
       width: auto;
       align-self: flex-start;
       display: none;
       border: 1px solid rgba(0,0,0,0.06);
-      box-shadow: 0 2px 8px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.05);
+      box-shadow: 3px 3px 8px rgba(15,44,89,0.15), 1px 1px 3px rgba(0,0,0,0.1);
       animation: slideInUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
@@ -414,44 +408,39 @@
     return (hebrewCount / totalCount) > 0.3 ? 'rtl' : 'ltr'
   }
 
-  const addMsg = (content, role) => {
+  let restoring = false
+
+  const addMsg = (content, role, time) => {
+    const row = document.createElement('div')
+    row.className = `msg-row ${role}${role === lastMsgRole ? ' grouped' : ''}`
+
     const msg = document.createElement('div')
     msg.className = `chat-msg ${role}`
     msg.innerHTML = parseMarkdown(content)
-    msg.dir = getTextDirection(content) // Set text direction
-    const visibleCount = messages.querySelectorAll('.chat-msg').length
-    msg.style.animationDelay = `${Math.min(visibleCount, 5) * 0.05}s`
-
-    const now = new Date()
-    const hours = String(now.getHours()).padStart(2, '0')
-    const minutes = String(now.getMinutes()).padStart(2, '0')
-    const timestamp = document.createElement('span')
-    timestamp.className = 'chat-timestamp'
-    timestamp.textContent = `${hours}:${minutes}`
-
-    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
-    svg.setAttribute('class', `chat-tail ${role}`)
-    svg.setAttribute('viewBox', '0 0 12 12')
-    svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg')
-
-    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path')
-    if (role === 'user') {
-      path.setAttribute('d', 'M 0 0 L 12 6 L 0 12 Z')
-      path.setAttribute('fill', '#0F2C59')
-      path.setAttribute('stroke', 'none')
+    msg.dir = getTextDirection(content)
+    if (restoring) {
+      msg.style.animation = 'none'
+      msg.style.opacity = '1'
     } else {
-      path.setAttribute('d', 'M 12 0 L 0 6 L 12 12 Z')
-      path.setAttribute('fill', '#A6D0DD')
-      path.setAttribute('stroke', 'rgba(0,0,0,0.06)')
-      path.setAttribute('stroke-width', '0.5')
+      const visibleCount = messages.querySelectorAll('.chat-msg').length
+      msg.style.animationDelay = `${Math.min(visibleCount, 5) * 0.05}s`
     }
 
-    svg.appendChild(path)
-    msg.appendChild(svg)
-    msg.appendChild(timestamp)
-    messages.appendChild(msg)
+    row.appendChild(msg)
 
-    // Smooth scroll to new message
+    const d = time ? new Date(time) : new Date()
+    const minuteKey = `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`
+    if (role !== lastMsgRole || minuteKey !== lastMsgMinute) {
+      const timestamp = document.createElement('span')
+      timestamp.className = 'chat-timestamp'
+      timestamp.textContent = minuteKey
+      row.appendChild(timestamp)
+    }
+    lastMsgRole = role
+    lastMsgMinute = minuteKey
+
+    messages.appendChild(row)
+
     setTimeout(() => {
       messages.scrollTo({
         top: messages.scrollHeight,
@@ -485,10 +474,12 @@
       if (!saved) return false
       const entries = JSON.parse(saved)
       if (!entries.length) return false
+      restoring = true
       for (const entry of entries) {
-        if (!entry.hidden) addMsg(entry.content, entry.role === 'user' ? 'user' : 'bot')
+        if (!entry.hidden) addMsg(entry.content, entry.role === 'user' ? 'user' : 'bot', entry.time)
         history.push(entry)
       }
+      restoring = false
       return true
     } catch { return false }
   }
@@ -517,7 +508,7 @@
         if (abort.stopped) { hideTyping(); break }
         hideTyping()
         addMsg(msg.text, 'bot')
-        history.push({ role: 'assistant', content: msg.text })
+        history.push({ role: 'assistant', content: msg.text, time: Date.now() })
         saveHistory()
       }
     } catch { /* greeting failed — widget still works */ }
@@ -573,7 +564,7 @@
     }
     if (!msgs.length || abort.stopped) return
     const content = msgs.join('\n')
-    history.push({ role: 'user', content, hidden: true })
+    history.push({ role: 'user', content, hidden: true, time: Date.now() })
     saveHistory()
     showTyping()
     const raw = await callLLM(abort, true)
@@ -581,7 +572,7 @@
     const parsed = parseActions(raw)
     hideTyping()
     addMsg(parsed.text, 'bot')
-    history.push({ role: 'assistant', content: parsed.text })
+    history.push({ role: 'assistant', content: parsed.text, time: Date.now() })
     saveHistory()
     if (parsed.actions.length) await runActions(parsed.actions, abort)
   }
@@ -593,7 +584,7 @@
     const parsed = parseActions(raw)
     hideTyping()
     addMsg(parsed.text, 'bot')
-    history.push({ role: 'assistant', content: parsed.text })
+    history.push({ role: 'assistant', content: parsed.text, time: Date.now() })
     saveHistory()
     if (parsed.actions.length) await runActions(parsed.actions, abort)
   }
@@ -612,7 +603,7 @@
     }
 
     addMsg(text, 'user')
-    history.push({ role: 'user', content: text })
+    history.push({ role: 'user', content: text, time: Date.now() })
     saveHistory()
     input.value = ''
     input.dir = 'ltr'
@@ -665,6 +656,8 @@
     messages.innerHTML = ''
     messages.appendChild(typingIndicator)
     history.length = 0
+    lastMsgRole = null
+    lastMsgMinute = null
     send.disabled = false
     input.disabled = false
     sessionStorage.removeItem(STORAGE_KEY)

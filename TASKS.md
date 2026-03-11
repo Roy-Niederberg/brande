@@ -3,10 +3,13 @@
 
 ## Roy's Tasks
 
- - [ ] Finish skills - see what Claude had to offer, implement it. Ask for a prompt writer skill that it will load when it needs to write/review the prompts in the syetsm.
+ - [ ] Finish skills - UI skill with colors
+ - [ ] Finish skills - Customaize the prompt engineer skill to be Qabû-specific - how to make sure I use it all the time?
  - [ ] Try changing the knowledge_base to js file with it own JSON.stingiry funciton. Same for the sp.
  - [ ] What Nevo sent I  - see [mail](https://mail.google.com/mail/u/0/#inbox/WhctKLbvVXrBNMTCBwqFvcjcfzFdLtdQjlGfblZTDlbmrkprCsgZwRjkplvmrJVBQDZSBpQ)
  - [ ] What Nevo sent II - see [mail](https://mail.google.com/mail/u/0/#inbox/WhctKLbvVXbFBvGWJclwtWNzmkzlWHhppdMVgzplnpwMWHVnCrjkRXngmNBQNZrJVMplDkQ)
+ - [ ] Create a mail for Qabu.
+ - [ ] Add capability - REDIRECT (open url in a new tab)
 
  - [ ] I need to test the widget also as a widget. Build a demo site for the client and use the widget and test it.
     - There was a version with a shirk/grow for the widget but it's gone from the code now. Claude wrote about it in CLOUDE.md so I can get it beck in the future.
