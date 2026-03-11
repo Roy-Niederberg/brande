@@ -321,6 +321,11 @@
     #chat-send:disabled {
       cursor: not-allowed;
     }
+
+    @media (max-width: 600px) {
+      .chat-msg { font-size: 13px; }
+      #chat-input { font-size: 14px; }
+    }
   `
 
   const html = `
