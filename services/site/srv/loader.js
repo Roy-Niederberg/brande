@@ -49,6 +49,7 @@
 
     // Set background image
     const bgImage = document.getElementById('bg-image');
+    const bgReady = new Promise(r => { bgImage.onload = bgImage.onerror = r; });
     bgImage.src = `/assets/${config.backgroundImage || 'background.png'}`;
 
     // Build overlay content (title + social links)
@@ -97,13 +98,15 @@
 
     // Load widget script
     const widgetScript = document.createElement('script');
+    const widgetReady = new Promise(r => { widgetScript.onload = r; });
     widgetScript.src = '/widget.js';
-    widgetScript.onload = () => {
-        const loader = document.getElementById('qabu-loader');
-        if (loader) {
-            loader.classList.add('hide');
-            setTimeout(() => loader.remove(), 400);
-        }
-    };
     document.body.appendChild(widgetScript);
+
+    // Hide spinner once both widget and background image are ready
+    await Promise.all([widgetReady, bgReady]);
+    const loader = document.getElementById('qabu-loader');
+    if (loader) {
+        loader.classList.add('hide');
+        setTimeout(() => loader.remove(), 400);
+    }
 })();
