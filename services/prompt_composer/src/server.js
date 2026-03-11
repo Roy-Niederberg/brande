@@ -37,6 +37,12 @@ const ask = async (llm, content, msgs, re='low') => {
   return response
 }
 
+const askStream = (llm, content, msgs, re='low') =>
+  llm[0].chat.completions.create({
+    model: llm[1], stream: true, reasoning_effort: re,
+    messages: [{ role: 'system', content }, ...msgs],
+  })
+
 // =============== Endpoints ====================================================================//
 const files = ['knowledge_base.json', 'system_prompts.json', 'greeting.json', 'capabilities.js']
 const $ = {}
@@ -49,12 +55,70 @@ for (const f of files) {
   app.r('post', '/' + name, ({body}, rs) => {$[name] = body; write(f, body); rs.sendStatus(200)})
 }
 
-app.r('post', '/ask', async ({ body }, rs) => {
+app.r('post', '/ask', async (rq, rs) => {
+  const { body } = rq
   if (!body.mod || !$.system_prompts[body.mod] || !body.chat?.length)
     throw `ASK validation [${body.mod}][${$.system_prompts[body.mod]}][${body.chat?.length}]`
 
   body.sp_override = body.sp_override || $.system_prompts[body.mod]
   body.kb_override = body.kb_override || $.knowledge_base
+
+  const buildQuery = () => {
+    const kb = !body.skip_kb ?
+      '# KNOWLEDGE BASE:\n' +
+        body.kb_override.map(e => `## ${e.key}\n${e.content}`).join('\n\n')
+      : ''
+    let caps = ''
+    if (!body.skip_caps && body.sp_override.capabilities && Object.keys($.capabilities).length) {
+      const list = Object.entries($.capabilities)
+        .map(([k, v]) => `- ${k}: ${v.description}`).join('\n')
+      caps = body.sp_override.capabilities + '\n# CAPABILITIES:\n' + list
+    }
+    return [body.sp_override.main, caps, kb].join('\n\n')
+  }
+
+  if (body.stream) {
+    rs.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+    })
+    const sse = obj => rs.write('data: ' + JSON.stringify(obj) + '\n\n')
+    let closed = false
+    rq.on('close', () => { closed = true })
+
+    if (!body.skip_gk) {
+      try {
+        const gk_answer = await ask(gk, body.sp_override.gatekeeper, body.chat)
+        if (gk_answer === 'IGNORE') { sse({done:true}); return rs.end() }
+        if (gk_answer !== 'ESCALATE') {
+          sse({t:gk_answer}); sse({done:true}); return rs.end()
+        }
+      } catch(e) {console.error(`🚩 gatekeeper failed: `, e.message)}
+    }
+
+    const query = buildQuery()
+    let fullText = ''
+    for (const llm of [m1, m2, m3]) {
+      try {
+        const stream = await askStream(llm, query, body.chat)
+        for await (const chunk of stream) {
+          if (closed) break
+          const delta = chunk.choices[0]?.delta?.content || ''
+          if (delta) { fullText += delta; sse({t:delta}) }
+        }
+        writeJSON('last_prompt.json', {
+          model: llm[1], reasoning_effort: 'low',
+          messages: [{ role: 'system', content: query }, ...body.chat],
+          response: fullText
+        })
+        console.log(fullText)
+        sse({done:true}); return rs.end()
+      } catch(e) {console.error(`🚩 ${llm[1]} failed:`, e.message)}
+    }
+    sse({t:"The assistance is not available at the moment. Please try again later."})
+    sse({done:true}); return rs.end()
+  }
 
   if (!body.skip_gk) {
     try {
@@ -65,20 +129,7 @@ app.r('post', '/ask', async ({ body }, rs) => {
     } catch(e) {console.error(`🚩 gatekeeper failed: `, e.message)}
   }
 
-  const kb = !body.skip_kb ?
-    '# KNOWLEDGE BASE:\n' +
-      body.kb_override.map(e => `## ${e.key}\n${e.content}`).join('\n\n')
-    : ''
-
-  let caps = ''
-  if (!body.skip_caps && body.sp_override.capabilities && Object.keys($.capabilities).length) {
-    const list = Object.entries($.capabilities)
-      .map(([k, v]) => `- ${k}: ${v.description}`).join('\n')
-    caps = body.sp_override.capabilities + '\n# CAPABILITIES:\n' + list
-  }
-
-  const query = [body.sp_override.main, caps, kb].join('\n\n')
-
+  const query = buildQuery()
   for (const llm of [m1, m2, m3]) {
     try      {return rs.send(await ask(llm, query, body.chat))}
     catch(e) {console.error(`🚩 ${llm[1]} failed:`, e.message)}

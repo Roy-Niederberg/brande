@@ -534,11 +534,11 @@
   // Initial adjustment
   adjustHeight()
 
-  const callLLM = async (abort, skipGk) => {
+  const callLLMStream = async (abort, skipGk, onToken) => {
     const chat = history.map(h => ({
       role: h.role === 'user' ? 'user' : 'assistant', content: h.content
     }))
-    let requestBody = { mod: 'widget', chat }
+    let requestBody = { mod: 'widget', chat, stream: true }
     if (skipGk) requestBody.skip_gk = true
     if (config.beforeSend && typeof config.beforeSend === 'function')
       requestBody = config.beforeSend(requestBody) || requestBody
@@ -548,7 +548,45 @@
       body: JSON.stringify(requestBody)
     })
     if (abort.stopped) return null
-    return res.text()
+    const reader = res.body.getReader()
+    const decoder = new TextDecoder()
+    let fullText = '', buffer = ''
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done || abort.stopped) break
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n')
+      buffer = lines.pop()
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue
+        const data = JSON.parse(line.slice(6))
+        if (data.done) return fullText
+        if (data.t) { fullText += data.t; onToken(fullText) }
+      }
+    }
+    return fullText || null
+  }
+
+  const addEmptyBotMsg = () => {
+    const row = document.createElement('div')
+    row.className = `msg-row bot${lastMsgRole === 'bot' ? ' grouped' : ''}`
+    const msg = document.createElement('div')
+    msg.className = 'chat-msg bot'
+    msg.style.animation = 'none'
+    msg.style.opacity = '1'
+    row.appendChild(msg)
+    const d = new Date()
+    const minuteKey = `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`
+    if (lastMsgRole !== 'bot' || minuteKey !== lastMsgMinute) {
+      const timestamp = document.createElement('span')
+      timestamp.className = 'chat-timestamp'
+      timestamp.textContent = minuteKey
+      row.appendChild(timestamp)
+    }
+    lastMsgRole = 'bot'
+    lastMsgMinute = minuteKey
+    messages.appendChild(row)
+    return msg
   }
 
   const runActions = async (actions, abort) => {
@@ -567,11 +605,19 @@
     history.push({ role: 'user', content, hidden: true, time: Date.now() })
     saveHistory()
     showTyping()
-    const raw = await callLLM(abort, true)
+    let msg = null
+    const raw = await callLLMStream(abort, true, (text) => {
+      if (!msg) { hideTyping(); msg = addEmptyBotMsg() }
+      msg.textContent = text
+      messages.scrollTo({ top: messages.scrollHeight })
+    })
     if (raw === null) return
-    const parsed = parseActions(raw)
     hideTyping()
-    addMsg(parsed.text, 'bot')
+    const parsed = parseActions(raw)
+    if (!msg) msg = addEmptyBotMsg()
+    msg.innerHTML = parseMarkdown(parsed.text)
+    msg.dir = getTextDirection(parsed.text)
+    messages.scrollTo({ top: messages.scrollHeight })
     history.push({ role: 'assistant', content: parsed.text, time: Date.now() })
     saveHistory()
     if (parsed.actions.length) await runActions(parsed.actions, abort)
@@ -579,11 +625,19 @@
 
   const askAndProcess = async (abort) => {
     showTyping()
-    const raw = await callLLM(abort, false)
+    let msg = null
+    const raw = await callLLMStream(abort, false, (text) => {
+      if (!msg) { hideTyping(); msg = addEmptyBotMsg() }
+      msg.textContent = text
+      messages.scrollTo({ top: messages.scrollHeight })
+    })
     if (raw === null) return
-    const parsed = parseActions(raw)
     hideTyping()
-    addMsg(parsed.text, 'bot')
+    const parsed = parseActions(raw)
+    if (!msg) msg = addEmptyBotMsg()
+    msg.innerHTML = parseMarkdown(parsed.text)
+    msg.dir = getTextDirection(parsed.text)
+    messages.scrollTo({ top: messages.scrollHeight })
     history.push({ role: 'assistant', content: parsed.text, time: Date.now() })
     saveHistory()
     if (parsed.actions.length) await runActions(parsed.actions, abort)

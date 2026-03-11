@@ -99,8 +99,16 @@ app.post('/ask', checkSession, async (rq, rs) => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(requestBody)
     })
-    const responseText = await response.text()
-    rs.send(responseText)
+    if (requestBody.stream) {
+      rs.writeHead(response.status, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+      })
+      for await (const chunk of response.body) rs.write(chunk)
+      return rs.end()
+    }
+    rs.send(await response.text())
   } catch (error) {
     console.error(`[${new Date().toISOString()}] Widget API error:`, error.message)
     rs.status(500).send('ERROR: response server not available')
