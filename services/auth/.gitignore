@@ -1,0 +1,7 @@
+*
+!.gitignore
+!Dockerfile
+!src/
+!src/server.js
+!src/package.json
+!src/package-lock.json

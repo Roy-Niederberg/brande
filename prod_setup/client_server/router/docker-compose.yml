@@ -6,6 +6,11 @@ services:
     networks: [qabu_network]
     secrets:  [cloudflare_api_token, fb_dispatcher_secret]
 
+  auth-verifier:
+    image:    registry.gitlab.com/rny3/brande/auth_verifier:latest
+    networks: [qabu_network]
+    secrets:  [jwt_signing_key]
+
 volumes:
   router_data:
   router_config:
@@ -16,3 +21,4 @@ networks:
 secrets:
   cloudflare_api_token: {file: ./secrets/cloudflare_api_token.secret}
   fb_dispatcher_secret: {file: ./secrets/fb_dispatcher_secret.secret}
+  jwt_signing_key:      {file: ./secrets/jwt_signing_key.secret}

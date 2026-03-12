@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Qabu - Client Onboarding</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0 }
+body { font-family: system-ui, sans-serif; background: #F8F9FA; color: #0F2C59; padding: 2rem; max-width: 800px; margin: 0 auto }
+h1 { margin-bottom: 1.5rem }
+h2 { font-size: 1.1rem; color: #3276AA; border-bottom: 2px solid #A6D0DD; padding-bottom: .4rem }
+button { cursor: pointer; border: none; border-radius: 6px; padding: .5rem 1.2rem; font-size: .9rem }
+.btn-p { background: #3276AA; color: #fff }
+.btn-p:hover { background: #285d8a }
+.btn-s { background: #A6D0DD; color: #0F2C59 }
+.btn-d { background: #d44; color: #fff }
+.btn-sm { padding: .3rem .8rem; font-size: .8rem }
+.card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem; margin-top: 1rem }
+.card { background: #fff; border: 1px solid #A6D0DD; border-radius: 8px; padding: 1rem; cursor: pointer; transition: box-shadow .2s }
+.card:hover { box-shadow: 0 2px 8px rgba(0,0,0,.1) }
+.card h3 { font-size: 1rem; margin-bottom: .3rem }
+.card .meta { font-size: .8rem; color: #666 }
+fieldset { border: 1px solid #A6D0DD; border-radius: 8px; padding: 1rem; margin-bottom: 1.2rem }
+label { display: block; font-size: .85rem; font-weight: 500; margin: .6rem 0 .3rem }
+input[type="text"], input[type="url"], input[type="number"], textarea, select {
+  width: 100%; padding: .45rem .6rem; border: 1px solid #A6D0DD; border-radius: 4px; font-size: .9rem; background: #fff }
+textarea { resize: vertical; min-height: 60px }
+.radios { display: flex; gap: 1.5rem; margin-top: .3rem }
+.radios label { display: flex; align-items: center; gap: .3rem; margin: 0 }
+.derived { font-size: .8rem; color: #666; margin-top: .3rem }
+.g-row { display: flex; gap: .5rem; align-items: center; margin-bottom: .4rem }
+.g-row input[type="number"] { width: 80px }
+.g-row input[type="text"] { flex: 1 }
+.actions { display: flex; gap: 1rem; margin-top: 1.5rem }
+.top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem }
+.preview { max-width: 120px; max-height: 80px; border-radius: 4px; margin-top: .3rem }
+.hidden { display: none }
+</style>
+</head><body>
+<h1>Qabu Client Onboarding</h1>
+
+<div id="list-view">
+  <div class="top">
+    <span id="count"></span>
+    <button class="btn-p" onclick="showForm()">+ New Client</button>
+  </div>
+  <div id="cards" class="card-grid"></div>
+</div>
+
+<div id="form-view" class="hidden">
+  <div class="top">
+    <h2 id="form-title" style="border:none;margin:0;padding:0">New Client</h2>
+    <button class="btn-s" onclick="showList()">&#8592; Back</button>
+  </div>
+  <form id="form" onsubmit="return submit(event)">
+    <fieldset><legend>Identity</legend>
+      <label>Subdomain <small>(lowercase letters &amp; numbers only)</small></label>
+      <input type="text" name="subdomain" id="f-sub" required pattern="[a-z0-9]+" placeholder="clientname">
+      <label>Display Name</label>
+      <input type="text" name="displayName" id="f-name" required placeholder="Client Name">
+    </fieldset>
+
+    <fieldset><legend>Language</legend>
+      <div class="radios">
+        <label><input type="radio" name="lang" value="en" checked onchange="updLang()"> English</label>
+        <label><input type="radio" name="lang" value="he" onchange="updLang()"> &#1506;&#1489;&#1512;&#1497;&#1514;</label>
+      </div>
+      <div class="derived" id="lang-info">Direction: ltr | Font: Inter | Locale: en_US</div>
+    </fieldset>
+
+    <fieldset><legend>Social Links</legend>
+      <label>Facebook</label>  <input type="url" name="social.facebook" placeholder="https://facebook.com/...">
+      <label>Instagram</label> <input type="url" name="social.instagram" placeholder="https://instagram.com/...">
+      <label>YouTube</label>   <input type="url" name="social.youtube" placeholder="https://youtube.com/...">
+    </fieldset>
+
+    <fieldset><legend>OG Meta</legend>
+      <label>Title</label>
+      <input type="text" name="og.title" placeholder="Page title">
+      <label>Description</label>
+      <textarea name="og.description" placeholder="Page description"></textarea>
+    </fieldset>
+
+    <fieldset><legend>Greeting Messages</legend>
+      <div id="g-rows"></div>
+      <button type="button" class="btn-s btn-sm" onclick="addRow()">+ Add Row</button>
+    </fieldset>
+
+    <fieldset><legend>Mock Facebook</legend>
+      <label>Page Name</label>
+      <input type="text" name="mock.pageName" placeholder="Business Page Name">
+      <label>Category</label>
+      <input type="text" name="mock.pageCategory" placeholder="e.g. Medical Clinic">
+      <label>Post Text</label>
+      <textarea name="mock.postText" placeholder="Sample post text..."></textarea>
+    </fieldset>
+
+    <fieldset><legend>Uploads</legend>
+      <label>Background Image <small>(required for new clients)</small></label>
+      <input type="file" name="backgroundImage" id="f-bg" accept="image/*">
+      <img id="prev-bg" class="preview hidden">
+      <label>Profile Picture <small>(optional)</small></label>
+      <input type="file" name="profilePic" accept="image/*">
+      <img id="prev-pp" class="preview hidden">
+      <label>Post Image <small>(optional)</small></label>
+      <input type="file" name="postImage" accept="image/*">
+      <img id="prev-pi" class="preview hidden">
+    </fieldset>
+
+    <div class="actions">
+      <button type="submit" class="btn-p">Save Configuration</button>
+      <button type="button" class="btn-s" onclick="showList()">Cancel</button>
+    </div>
+  </form>
+</div>
+
+<script>
+const L = { en: { dir:'ltr', font:'Inter', locale:'en_US' }, he: { dir:'rtl', font:'Rubik', locale:'he_IL' } }
+let editing = null
+
+async function load() {
+  const cfgs = await (await fetch('/api/configs')).json()
+  document.getElementById('count').textContent = `${cfgs.length} client${cfgs.length !== 1 ? 's' : ''}`
+  document.getElementById('cards').innerHTML = cfgs.map(c => `
+    <div class="card" onclick="edit('${c.subdomain}')">
+      <h3>${esc(c.displayName || c.subdomain)}</h3>
+      <div class="meta">${esc(c.subdomain)}.qabu.net</div>
+      <div class="meta">${c.lang === 'he' ? 'עברית' : 'English'} · ${new Date(c.createdAt).toLocaleDateString()}</div>
+    </div>`).join('')
+}
+
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML }
+
+function showList() {
+  document.getElementById('list-view').classList.remove('hidden')
+  document.getElementById('form-view').classList.add('hidden')
+  editing = null; load()
+}
+
+function showForm(c) {
+  document.getElementById('list-view').classList.add('hidden')
+  document.getElementById('form-view').classList.remove('hidden')
+  document.getElementById('form').reset()
+  document.getElementById('form-title').textContent = c ? `Edit: ${c.displayName}` : 'New Client'
+  document.querySelectorAll('.preview').forEach(el => el.classList.add('hidden'))
+  document.getElementById('g-rows').innerHTML = ''
+
+  const subIn = document.getElementById('f-sub')
+  subIn.disabled = !!c
+  editing = c?.subdomain || null
+
+  if (c) {
+    subIn.value = c.subdomain
+    document.getElementById('f-name').value = c.displayName
+    document.querySelector(`input[name="lang"][value="${c.lang}"]`).checked = true
+    for (const k of ['facebook','instagram','youtube'])
+      document.querySelector(`input[name="social.${k}"]`).value = c.socialLinks?.[k] || ''
+    document.querySelector('input[name="og.title"]').value = c.ogMeta?.title || ''
+    document.querySelector('textarea[name="og.description"]').value = c.ogMeta?.description || ''
+    document.querySelector('input[name="mock.pageName"]').value = c.mockFacebook?.pageName || ''
+    document.querySelector('input[name="mock.pageCategory"]').value = c.mockFacebook?.pageCategory || ''
+    document.querySelector('textarea[name="mock.postText"]').value = c.mockFacebook?.postText || ''
+    ;(c.greeting || []).forEach(g => addRow(g.delay, g.text))
+    if (c.backgroundImage) prev('prev-bg', `/api/configs/${c.subdomain}/${c.backgroundImage}`)
+    if (c.profilePic) prev('prev-pp', `/api/configs/${c.subdomain}/${c.profilePic}`)
+    if (c.postImage) prev('prev-pi', `/api/configs/${c.subdomain}/${c.postImage}`)
+  } else { addRow(1000,''); addRow(4000,''); addRow(200,'') }
+  updLang()
+}
+
+function prev(id, src) { const el = document.getElementById(id); el.src = src; el.classList.remove('hidden') }
+
+function addRow(delay = 1000, text = '') {
+  const row = document.createElement('div'); row.className = 'g-row'
+  row.innerHTML = `<input type="number" class="gd" value="${delay}" min="0" step="100" placeholder="ms">
+    <input type="text" class="gt" value="${esc(text)}" placeholder="Message text...">
+    <button type="button" class="btn-d btn-sm" onclick="this.parentElement.remove()">&#215;</button>`
+  document.getElementById('g-rows').appendChild(row)
+}
+
+function updLang() {
+  const v = document.querySelector('input[name="lang"]:checked').value, i = L[v]
+  document.getElementById('lang-info').textContent = `Direction: ${i.dir} | Font: ${i.font} | Locale: ${i.locale}`
+}
+
+async function edit(sub) { showForm(await (await fetch(`/api/configs/${sub}`)).json()) }
+
+async function submit(e) {
+  e.preventDefault()
+  const fd = new FormData(document.getElementById('form'))
+  const greeting = [...document.querySelectorAll('.g-row')].map(r => ({
+    delay: parseInt(r.querySelector('.gd').value) || 0,
+    text: r.querySelector('.gt').value
+  }))
+  fd.set('greeting', JSON.stringify(greeting))
+  if (editing) fd.set('subdomain', editing)
+  for (const n of ['backgroundImage','profilePic','postImage']) { if (fd.get(n)?.size === 0) fd.delete(n) }
+  if (!editing && !fd.has('backgroundImage')) { alert('Background image is required for new clients'); return false }
+  try {
+    const r = await fetch('/api/configs', { method: 'POST', body: fd })
+    if (!r.ok) throw new Error((await r.json()).error)
+    showList()
+  } catch (err) { alert('Error: ' + err.message) }
+  return false
+}
+
+document.querySelectorAll('input[type="file"]').forEach(inp => {
+  const id = { backgroundImage:'prev-bg', profilePic:'prev-pp', postImage:'prev-pi' }[inp.name]
+  if (id) inp.addEventListener('change', () => {
+    const el = document.getElementById(id)
+    if (inp.files[0]) { el.src = URL.createObjectURL(inp.files[0]); el.classList.remove('hidden') }
+    else el.classList.add('hidden')
+  })
+})
+
+load()
+</script>
+</body></html>

@@ -167,10 +167,13 @@ Three Caddyfiles handle routing across the two VMs:
 
 **Main router** (`services/main_router/src/Caddyfile`) — on main VM:
 - `qabu.net/facebook*` → facebook-dispatcher (port 3210), prefix stripped
+- `qabu.net/auth/*` → auth service (port 3456), prefix stripped
+- `qabu.net/onboarding*` → client-onboarding (port 8559), prefix stripped, `forward_auth` via auth service
 - `qabu.net` (everything else) → static site files
 
 **Client router** (`services/router/src/Caddyfile`) — on client VM:
 - `*.qabu.net` → `{subdomain}-site-1:80` (client sites)
+- `/admin/*` — `forward_auth` via auth-verifier sidecar, redirects to Google login on 401
 - `/facebook/*` — validates `X-Dispatcher-Secret` header, rejects 403 if missing
 
 **Site Caddyfile** (`services/site/src/Caddyfile`) — per client container:
@@ -233,8 +236,23 @@ All three editors (KB, SP, greeting) use localStorage drafts and a publish flow.
 `greetingOverride` is called by `widget.js` `playGreeting()` instead of fetching
 `/greeting` from the server, so greeting draft changes are also testable before publishing.
 
+### Authentication
+
+Centralized Google OAuth via `services/auth/` on the main server (`qabu.net/auth/*`).
+One GCP OAuth app, one callback URL. JWT cookie (`qabu_token`) on `.qabu.net` works
+for all subdomains.
+
+- **auth** (main server) — Google OAuth flow + JWT issuance + verify endpoint
+- **auth-verifier** (client VM) — JWT signature check sidecar (~30 lines)
+- Admin: Caddy `forward_auth` → auth-verifier → `X-Auth-Email` header → admin checks per-client allowlist
+- Onboarding: Caddy `forward_auth` → auth service → `X-Auth-Email` header → service checks email allowlist
+- Dev mode: no auth (admin/onboarding skip email check when `NODE_ENV=development`)
+
+JWT: HMAC-SHA256, 24h expiry, claims `{ email, name, picture, iat, exp }`.
+Signing key shared between main server and client router (`jwt_signing_key` secret).
+
 Request flow:
-- Admin chat: browser → Caddy `/admin/*` → admin BE `/ask` (auth) → prompt-composer
+- Admin chat: browser → Caddy `/admin/*` → forward_auth → admin BE `/ask` → prompt-composer
 - Site chat: browser → Caddy `/site/*` → prompt-composer `/ask`
 - Initial load: admin BE `/api/initial-content` → prompt-composer `/knowledge-base` + `/prompt-instructions`
 - KB publish: admin BE `/api/knowledge-base` → prompt-composer `/knowledge-base`
@@ -337,6 +355,21 @@ Config options: `targetElement` (selector or element, defaults to `document.body
   widget lived at `services/router/public/widget.js`) had minimize/maximize with a
   floating reopen bubble — essential for embedding on existing pages. This was lost
   in the "big rewrite" (`6cdf7d5`). Should be restored for embed use cases.
+
+## Client Onboarding
+
+Internal tool at `qabu.net/onboarding` for collecting new client info before
+scaffolding their directory. Express app (port 8559) on the main server.
+
+- Single HTML page: list of existing configs + form to create/edit
+- Multipart upload via `busboy` for background image, profile pic, post image
+- Data stored in a **named Docker volume** (`onboarding_data`) — not in
+  `prod_setup/`, so `deploy.sh --delete` rsync won't wipe uploaded images
+- Auth: Google OAuth via centralized auth service + email allowlist in service
+- Auto-derives `direction`, `font`, and `locale` from `lang` (en/he)
+- Saves `config.json` + images per subdomain in `/app/data/<subdomain>/`
+
+Dev: `cd dev_setup/main_server && docker compose up client-onboarding` → `localhost:8559`
 
 ## Facebook Integration
 

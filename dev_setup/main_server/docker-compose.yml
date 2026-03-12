@@ -12,7 +12,27 @@ services:
       - ../../services/facebook_dispatcher/src/:/app/src/
       - ../../prod_setup/main_server/data/page_routes.json:/app/data/page_routes.json:ro
 
+  client-onboarding:
+    build:   {context: ../../services/client_onboarding/, target: development}
+    ports:   ["8559:8559"]
+    volumes:
+      - ../../services/client_onboarding/src/:/app/src/
+      - ../../services/client_onboarding/src/public/:/app/public/
+      - onboarding_data:/app/data
+
+  auth:
+    build:   {context: ../../services/auth/, target: development}
+    ports:   ["9100:3456"]
+    secrets: [jwt_signing_key, google_oauth]
+    volumes:
+      - ../../services/auth/src/:/app/src/
+
+volumes:
+  onboarding_data:
+
 secrets:
   fb_webhook_verify_token: {file: ./secrets/fb_webhook_verify_token.secret}
   fb_app_secret:           {file: ./secrets/fb_app_secret.secret}
   fb_dispatcher_secret:    {file: ./secrets/fb_dispatcher_secret.secret}
+  jwt_signing_key:         {file: ../../prod_setup/main_server/secrets/jwt_signing_key.secret}
+  google_oauth:            {file: ../../prod_setup/main_server/secrets/google_oauth.secret}

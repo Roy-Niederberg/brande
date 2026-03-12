@@ -395,7 +395,8 @@
   siteSection.appendChild(adminBtns)
 
   document.getElementById('logout-btn').addEventListener('click', () => {
-    if (confirm('Log out?')) window.location.href = '/admin/logout'
+    if (confirm('Log out?')) window.location.href =
+      'https://qabu.net/auth/logout?return_to=' + encodeURIComponent(location.origin)
   })
 
   const openPanel = (panel) => {

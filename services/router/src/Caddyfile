@@ -15,6 +15,19 @@
 	}
 	respond @facebook_noauth 403
 
+	@admin path /admin/*
+	handle @admin {
+		forward_auth auth-verifier:3456 {
+			uri /
+			copy_headers X-Auth-Email X-Auth-Name
+			@unauth status 401
+			handle_response @unauth {
+				redir https://qabu.net/auth/login?return_to={scheme}://{host}{uri} 302
+			}
+		}
+		reverse_proxy {labels.2}-site-1:80
+	}
+
 	reverse_proxy {labels.2}-site-1:80
 	handle_errors {
 		header Content-Type text/html

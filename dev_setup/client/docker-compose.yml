@@ -17,13 +17,11 @@ services:
       - ../../prod_setup/client_server/${CLIENT}/data/:/app/data
 
   admin:
-    build: {context: ../../services/admin/, target: development }
-    secrets: [google_strategy, session_config, authorized_emails]
+    build: {context: ../../services/admin/, target: development}
     depends_on: [prompt-composer]
     volumes:
       - ../../services/admin/src/:/app/src/
       - ../../services/admin/src/views:/app/views
-      - admin_sessions:/app/sessions
 
   mock-facebook:
     build: {context: ../../services/mock_facebook/, target: development}
@@ -75,19 +73,11 @@ services:
   #         - api.groq.com
 
 volumes:
-  admin_sessions:
   caddy_data:
   caddy_config:
   ollama_models:
 
 secrets:
-  # for services
-  google_strategy:
-    file: ../../prod_setup/client_server/${CLIENT}/secrets/google_strategy.secret
-  session_config:
-    file: ../../prod_setup/client_server/${CLIENT}/secrets/session_config.secret
-  authorized_emails:
-    file: ../../prod_setup/client_server/${CLIENT}/secrets/authorized_emails.json
   gemini_1:
     file: ../../prod_setup/client_server/${CLIENT}/secrets/gemini_1.secret
   gemini_2:
