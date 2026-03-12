@@ -91,7 +91,7 @@ services/           - Service source code (site, prompt_composer, admin, etc.)
 The client dev setup uses a single `docker-compose.yml` parameterized with env files.
 Each client has its own `.env` file in `dev_setup/client/`:
 
-- `craftkidstoys.env` - English client (ports 3000/3443)
+- `dradamblack.env` - English client (ports 3000/3443)
 - `drlipokatz.env` - Hebrew client (ports 3001/4443)
 
 Env vars: `CLIENT` (client dir name), `HTTP_PORT`, `HTTPS_PORT`.
@@ -100,10 +100,10 @@ Env vars: `CLIENT` (client dir name), `HTTP_PORT`, `HTTPS_PORT`.
 cd dev_setup/client
 
 # Run a single client
-docker compose --env-file craftkidstoys.env up
+docker compose --env-file dradamblack.env up
 
 # Run both clients simultaneously (use -p for separate project names)
-docker compose --env-file craftkidstoys.env -p craftkidstoys up
+docker compose --env-file dradamblack.env -p dradamblack up
 docker compose --env-file drlipokatz.env -p drlipokatz up
 ```
 
@@ -143,7 +143,10 @@ testing interface. Missing images fall back to defaults (SVG avatar, site backgr
 
 ## Client Profiles
 
-**craftkidstoys** — English demo client. Generic toy shop.
+**dradamblack** — English demo client. Cataract surgery clinic (Dr. Adam Black).
+English translation of `drlipokatz` with US medical context (insurance instead of
+HMO, USD instead of ILS, NY address). Same prompt design patterns, same KB
+structure, male doctor.
 
 **drlipokatz** — Hebrew demo client. Cataract surgery clinic (ד"ר ליפו כץ).
 Modeled after Nevo's master spec (`Nevo.txt`) with 15 consolidated intents
@@ -354,7 +357,7 @@ Facebook webhook → https://qabu.net/facebook
 ### Page Routing
 
 `prod_setup/main_server/data/page_routes.json` maps Facebook page IDs to client
-hostnames: `{ "808626769002262": "craftkidstoys.qabu.net" }`. The dispatcher
+hostnames: `{ "808626769002262": "dradamblack.qabu.net" }`. The dispatcher
 loads this at startup.
 
 ### Authentication

@@ -1,11 +1,8 @@
 export default {
 
-
   CONTACT_FORM: {
-    description: 'Open a UI dialog with a contact details form for the user to fill in. The fields are name, email, and phone. Before using this capability, tell the user you are opening a form and ask them to provide their contact information. Give them time to read your message (proportional to its length) — use "|| SLEEP" before calling this capability.',
+    description: 'Open a UI dialog with a contact details form for the user to fill in. The fields are first name, last name, and phone. Before using this capability, tell the user you are opening a form and ask them to leave their details. Give them time to read your message — use "|| SLEEP" before calling this capability.',
     run: (args, canvas) => new Promise(resolve => {
-      const dir = document.documentElement.dir || 'ltr'
-
       const overlay = document.createElement('div')
       Object.assign(overlay.style, {
         position: 'absolute', inset: '0', zIndex: '100',
@@ -16,7 +13,7 @@ export default {
       requestAnimationFrame(() => overlay.style.background = 'rgba(0,0,0,0.5)')
 
       const card = document.createElement('form')
-      card.dir = dir
+      card.dir = 'ltr'
       Object.assign(card.style, {
         background: '#fff', borderRadius: '16px', padding: '32px',
         width: '85%', maxWidth: '400px', fontFamily: 'inherit',
@@ -33,13 +30,13 @@ export default {
       Object.assign(title.style, {
         margin: '0', fontSize: '22px', color: '#0F2C59', textAlign: 'center'
       })
-      title.textContent = 'Contact Details'
+      title.textContent = 'Leave Your Details'
       card.appendChild(title)
 
       const fields = [
-        { name: 'name',  label: 'Full Name', type: 'text',  required: true },
-        { name: 'email', label: 'Email',     type: 'email', required: true },
-        { name: 'phone', label: 'Phone',     type: 'tel' }
+        { name: 'first_name', label: 'First Name',  type: 'text', required: true },
+        { name: 'last_name',  label: 'Last Name', type: 'text', required: true },
+        { name: 'phone',      label: 'Phone',     type: 'tel',  required: true }
       ]
       const inputs = {}
 
@@ -72,7 +69,7 @@ export default {
           transition: 'border-color 0.2s', fontFamily: 'inherit'
         })
         inp.onfocus = () => inp.style.borderColor = '#3276AA'
-        inp.onblur = () => inp.style.borderColor = '#ddd'
+        inp.onblur  = () => inp.style.borderColor = '#ddd'
 
         inputs[f.name] = inp
         wrap.append(label, inp)
@@ -101,10 +98,10 @@ export default {
         return b
       }
 
-      const submitBtn = mkBtn('Send', true)
+      const submitBtn = mkBtn('Submit', true)
       const cancelBtn = mkBtn('Cancel', false)
-      if (dir === 'rtl') btnRow.append(cancelBtn, submitBtn)
-      else btnRow.append(submitBtn, cancelBtn)
+      // LTR: submit on left visually = first in DOM
+      btnRow.append(submitBtn, cancelBtn)
       card.appendChild(btnRow)
       overlay.appendChild(card)
 
@@ -120,14 +117,14 @@ export default {
         if (!card.reportValidity()) return
         const d = {}
         for (const [k, inp] of Object.entries(inputs)) d[k] = inp.value.trim()
-        close(`User submitted contact form — Name: ${d.name}, Email: ${d.email}, Phone: ${d.phone || 'not provided'}`, false)
+        close(`The user left their details — Name: ${d.first_name} ${d.last_name}, Phone: ${d.phone}`, false)
       }
-      cancelBtn.onclick = () => close('User declined to fill the contact form', false)
+      cancelBtn.onclick = () => close('The user cancelled the form', false)
     })
   },
 
   SLEEP: {
     description: 'Wait for a specified duration before continuing. The duration is in milliseconds. Example:\n|| ACTIONS\n|| SLEEP 2500\nWill wait 2.5 seconds.',
-    run: (ms) => new Promise(r => setTimeout(r, +ms, {result: '', continue: true}))
+    run: (ms) => new Promise(r => setTimeout(r, +ms, { result: '', continue: true }))
   }
 }
