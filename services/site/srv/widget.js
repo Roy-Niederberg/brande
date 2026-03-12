@@ -132,7 +132,6 @@
     #chat-messages {
       display: flex;
       flex-direction: column;
-      gap: 8px;
       flex: 1;
       overflow-y: auto;
       overflow-x: hidden;
@@ -153,14 +152,15 @@
     .msg-row { display: flex; align-items: flex-start; width: 100%; }
     .msg-row.bot { flex-direction: row; padding-right: 4px; }
     .msg-row.user { flex-direction: row-reverse; padding-left: 4px; }
-    .msg-row.grouped { margin-top: -5px; }
+    .msg-row ~ .msg-row { margin-top: 8px; }
+    .msg-row.grouped { margin-top: 2px; }
 
     .chat-msg {
       padding: 10px 14px;
       border-radius: 12px;
-      width: 80%;
+      width: 88%;
       word-wrap: break-word;
-      font-size: 20px;
+      font-size: 18px;
       line-height: 1.5;
       pointer-events: auto;
       opacity: 0;
@@ -252,7 +252,7 @@
       border: 2px solid #A6D0DD;
       border-radius: 24px;
       outline: none;
-      font-size: 21px;
+      font-size: 19px;
       background: #ffffff;
       box-shadow: 0 2px 8px rgba(0,0,0,0.04);
       pointer-events: auto;
@@ -323,8 +323,9 @@
     }
 
     @media (max-width: 600px) {
-      .chat-msg { font-size: 13px; }
-      #chat-input { font-size: 14px; }
+      .chat-msg { font-size: 15px; }
+      .msg-row ~ .msg-row { margin-top: 6px; }
+      .msg-row.grouped { margin-top: 2px; }
     }
   `
 
@@ -628,7 +629,7 @@
     }
     send.disabled = false
     input.disabled = false
-    input.focus()
+    if (!('ontouchstart' in window)) input.focus()
     sendAbort = null
   }
 
