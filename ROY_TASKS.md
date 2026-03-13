@@ -1,7 +1,9 @@
 # Roy's Tasks
 
+ - [ ] Need to review the ./deploy.sh. I dosn't make sense.
  - [ ] See the Gemini report - add 'docs' and add the report there. What else need to go to docs?
  - [ ] Why do we need the /admin/chatQA ? it can just be /admin ? 
+ - [ ] Why do we need prod_setup/client_server/dradamblack/data/services.json ? The single point of truth should be the docker-compose
  - [ ] Create a Facebook page for Dr Adam Black.
  - [ ] For the onbording site - add config for the rates (of using LLM)
  - [ ] Finish skills - UI skill with colors
