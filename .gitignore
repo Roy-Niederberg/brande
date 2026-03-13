@@ -10,7 +10,7 @@
 # and for claude
 !README.md
 !CLAUDE.md
-!TASKS.md
+!*TASKS.md
 
 # don't ignore .gitignore and gitlab-ci
 !.gitignore

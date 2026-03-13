@@ -40,6 +40,43 @@ Before responding to any request, check the available skills list. If there is
 even a 1% chance a skill applies, invoke it with the Skill tool before doing
 anything else.
 
+## Communication Style
+
+Be brutally honest — push back when ideas seem wrong. Don't be a yes-man,
+challenge decisions that seem off. When discussing changes, always remind Roy to
+consider all channels (EN + HE clients, Facebook comment/DM flows, embedded
+widget on external sites).
+
+## Portability
+
+Roy doesn't want to be dependent on any specific machine. Everything should be
+backed up in git and project-scoped. Avoid globals (stuff in `~/.claude/` or
+other home directory paths) when possible — prefer repo-checked-in files like
+`CLAUDE.md`, `ROY_TASKS.md`, `CLAUDE_TASKS.md`, etc. If something must live
+outside the repo, mention it so Roy can back it up.
+
+## Task Management
+
+When a new task comes up during conversation, add it to the correct file:
+- **Roy's tasks** → `ROY_TASKS.md`
+- **Claude's tasks** → `CLAUDE_TASKS.md`
+- **Unsure** → ask Roy which file
+
+Each task must be **very detailed** with full context so Roy can recall what it's
+about later. Include:
+1. The conversation context that led to the task (e.g. "While discussing X, we
+   realized Y because...")
+2. Why it matters / what problem it solves
+3. Date of creation in parentheses at the end, e.g. `(added 2026-03-13)`
+
+Roy uses these files as a backlog across conversations. Without context, tasks
+become cryptic reminders that are hard to act on weeks later.
+
+Whenever a conversation surfaces something that should be done later (Roy says
+"I need to...", "we should...", "add a task for...", or a TODO naturally emerges
+from the discussion), proactively write it to the correct file. Don't wait to be
+asked — just add it and mention that you did.
+
 ## Dev Philosophy
 
 - Short, simple code. Aim for ~80 line files, ~100 char lines.
@@ -407,3 +444,14 @@ loads this at startup.
 - **facebook-comments** (per client) — handles comment threads, traverses tree
 - **mock-facebook** (per client, dev only) — mock Facebook post UI for admin testing
 - **facebook-signup** (main server, standalone) — OAuth flow for page tokens
+
+## Gotchas
+
+- YAML flow mappings `{file: ...}` break with `${VAR}` inside — use block style
+  instead.
+- `client-config.json` in assets controls `backgroundImage` — must match actual
+  filename.
+- Panels hidden with `display:none` break `scrollHeight` — run `autoResize` on
+  open.
+- `.prompt` has `overflow-y:auto` which scrolls padding (was an issue when log
+  panel used flex layout).
