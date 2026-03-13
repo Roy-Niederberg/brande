@@ -1,5 +1,7 @@
 # Roy's Tasks
 
+ - [ ] See the Gemini report - add 'docs' and add the report there. What else need to go to docs?
+ - [ ] Why do we need the /admin/chatQA ? it can just be /admin ? 
  - [ ] Create a Facebook page for Dr Adam Black.
  - [ ] For the onbording site - add config for the rates (of using LLM)
  - [ ] Finish skills - UI skill with colors

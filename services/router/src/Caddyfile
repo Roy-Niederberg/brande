@@ -8,7 +8,7 @@
 		header X-Dispatcher-Secret {env.FB_DISPATCHER_SECRET}
 	}
 	handle @facebook_auth {
-		reverse_proxy {labels.2}-site-1:80
+		reverse_proxy {labels.2}-gateway-1:80
 	}
 	@facebook_noauth {
 		path /facebook/*
@@ -25,10 +25,10 @@
 				redir https://qabu.net/auth/login?return_to={scheme}://{host}{uri} 302
 			}
 		}
-		reverse_proxy {labels.2}-site-1:80
+		reverse_proxy {labels.2}-gateway-1:80
 	}
 
-	reverse_proxy {labels.2}-site-1:80
+	reverse_proxy {labels.2}-gateway-1:80
 	handle_errors {
 		header Content-Type text/html
 		respond <<HTML

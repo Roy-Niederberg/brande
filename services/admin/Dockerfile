@@ -15,6 +15,7 @@ RUN npm install -g npm@latest
 RUN npm ci --production
 COPY ./src/views ./views
 COPY ./src/server.js ./src/server.js
+RUN mkdir -p ./public
 ENV NODE_ENV=production
 RUN rm package*.json
 CMD ["node", "src/server.js"]

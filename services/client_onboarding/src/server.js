@@ -81,4 +81,113 @@ app.post('/api/configs', (req, res) => {
   req.pipe(bb)
 })
 
+const REGISTRY = 'registry.gitlab.com/rny3/brande'
+
+app.post('/api/scaffold/:sub', express.json(), (req, res) => {
+  const sub = req.params.sub
+  const cfgPath = join(DATA, sub, 'config.json')
+  if (!fs.existsSync(cfgPath)) return res.status(404).json({ error: 'config not found — create via onboarding first' })
+
+  const config = JSON.parse(fs.readFileSync(cfgPath, 'utf-8'))
+  const base = join(DATA, sub)
+  const lang = LANGS[config.lang] || LANGS.en
+
+  // gateway/Caddyfile — minimal: admin + prompt-composer only
+  fs.mkdirSync(join(base, 'gateway'), { recursive: true })
+  fs.writeFileSync(join(base, 'gateway', 'Caddyfile'), `:80 {
+\thandle_path /admin/* {
+\t\treverse_proxy admin:9876 {
+\t\t\theader_up X-Forwarded-Proto {header.X-Forwarded-Proto}
+\t\t}
+\t}
+
+\thandle /site/* {
+\t\turi strip_prefix /site
+\t\treverse_proxy prompt-composer:4321
+\t}
+}
+`)
+
+  // assets/
+  fs.mkdirSync(join(base, 'assets', 'mock_facebook'), { recursive: true })
+  const clientConfig = {
+    lang: config.lang, direction: lang.dir, title: config.displayName,
+    backgroundImage: config.backgroundImage || 'background.png',
+    font: { family: lang.font, url: lang.fontUrl },
+    widget: { fontFamily: `'${lang.font}', sans-serif`, googleFontsUrl: lang.fontUrl }
+  }
+  if (config.socialLinks) {
+    const links = []
+    for (const [icon, url] of Object.entries(config.socialLinks)) {
+      if (url) links.push({ icon, url })
+    }
+    if (links.length) clientConfig.socialLinks = links
+  }
+  if (config.displayName) clientConfig.overlayTitle = config.displayName
+  fs.writeFileSync(join(base, 'assets', 'client-config.json'), JSON.stringify(clientConfig, null, 2))
+
+  // Copy background image if it exists in onboarding data
+  const bgSrc = join(base, config.backgroundImage || 'background.png')
+  const bgDst = join(base, 'assets', config.backgroundImage || 'background.png')
+  if (fs.existsSync(bgSrc) && bgSrc !== bgDst) fs.copyFileSync(bgSrc, bgDst)
+
+  // data/
+  fs.mkdirSync(join(base, 'data'), { recursive: true })
+  fs.writeFileSync(join(base, 'data', 'knowledge_base.json'), '[]')
+  fs.writeFileSync(join(base, 'data', 'capabilities.js'), 'export default {}\n')
+  fs.writeFileSync(join(base, 'data', 'services.json'), JSON.stringify({
+    site: false, 'facebook-comments': false, 'facebook-dm': false, 'mock-facebook': false
+  }, null, 2))
+
+  const greeting = { widget: { messages: (config.greeting || []).map(g => ({ delay: g.delay || 1000, text: g.text || '' })) } }
+  fs.writeFileSync(join(base, 'data', 'greeting.json'), JSON.stringify(greeting, null, 2))
+
+  const spTemplate = {
+    widget: { gatekeeper: '', main: '', capabilities: '' },
+    facebook_comments: { gatekeeper: '', main: '' }
+  }
+  fs.writeFileSync(join(base, 'data', 'system_prompts.json'), JSON.stringify(spTemplate, null, 2))
+
+  // secrets/
+  fs.mkdirSync(join(base, 'secrets'), { recursive: true })
+  const emails = config.authorizedEmails || [req.headers['x-auth-email']].filter(Boolean)
+  fs.writeFileSync(join(base, 'secrets', 'authorized_emails.json'), JSON.stringify({ emails }, null, 2))
+
+  // docker-compose.yml — minimal stack
+  fs.writeFileSync(join(base, 'docker-compose.yml'), `services:
+
+  gateway:
+    image: caddy:2.10.2-alpine
+    networks: [client_network, qabu_network]
+    volumes: [./gateway/Caddyfile:/etc/caddy/Caddyfile:ro]
+
+  prompt-composer:
+    image: ${REGISTRY}/prompt_composer:latest
+    networks: [client_network]
+    secrets: [gemini_1, gemini_2, groq_1, groq_2]
+    volumes: [./data/:/app/data]
+
+  admin:
+    image: ${REGISTRY}/admin:latest
+    networks: [client_network]
+    secrets: [authorized_emails]
+    volumes:
+      - ./assets:/app/assets:ro
+      - ../shared/widget/widget.js:/app/public/widget.js:ro
+
+networks:
+  client_network:
+  qabu_network: {external: true}
+
+secrets:
+  authorized_emails: {file: ./secrets/authorized_emails.json}
+  gemini_1:          {file: ./secrets/gemini_1.secret}
+  gemini_2:          {file: ./secrets/gemini_2.secret}
+  groq_1:            {file: ./secrets/groq_1.secret}
+  groq_2:            {file: ./secrets/groq_2.secret}
+`)
+
+  res.json({ scaffolded: sub, path: base })
+})
+
 app.listen(8559, () => console.log('Client Onboarding Service Started'))

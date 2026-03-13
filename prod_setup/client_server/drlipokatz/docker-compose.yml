@@ -1,9 +1,16 @@
 services:
 
+  gateway:
+    image: caddy:2.10.2-alpine
+    networks: [client_network, qabu_network]
+    volumes: [./gateway/Caddyfile:/etc/caddy/Caddyfile:ro]
+
   site:
     image: registry.gitlab.com/rny3/brande/site:latest
-    networks: [client_network, qabu_network]
-    volumes: [./assets:/site/assets]
+    networks: [client_network]
+    volumes:
+      - ./assets:/site/assets
+      - ../shared/widget/widget.js:/site/widget.js:ro
 
   prompt-composer:
     image: registry.gitlab.com/rny3/brande/prompt_composer:latest
@@ -15,6 +22,9 @@ services:
     image: registry.gitlab.com/rny3/brande/admin:latest
     networks: [client_network]
     secrets: [authorized_emails]
+    volumes:
+      - ./assets:/app/assets:ro
+      - ../shared/widget/widget.js:/app/public/widget.js:ro
 
   mock-facebook:
     image: registry.gitlab.com/rny3/brande/mock_facebook:latest

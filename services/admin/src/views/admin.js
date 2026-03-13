@@ -59,6 +59,21 @@
     #open-log-btn:hover { background: #6a978f; }
     #open-fb-btn { background: #5b7bbf; box-shadow: 0 4px 12px rgba(91,123,191,0.3); }
     #open-fb-btn:hover { background: #4a6aae; }
+    #open-svc-btn { background: #6b8e7b; box-shadow: 0 4px 12px rgba(107,142,123,0.3); }
+    #open-svc-btn:hover { background: #5a7d6a; }
+    .svc-list { display: flex; flex-direction: column; gap: 16px; padding-top: 48px; padding-bottom: 20px; }
+    .svc-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: #f8f9fa; border: 1px solid #e1e4e8; border-radius: 8px; }
+    .svc-label { font-size: 15px; font-weight: 500; }
+    .svc-toggle { position: relative; width: 44px; height: 24px; }
+    .svc-toggle input { opacity: 0; width: 0; height: 0; }
+    .svc-slider { position: absolute; inset: 0; background: #ccc; border-radius: 24px; cursor: pointer; transition: 0.3s; }
+    .svc-slider::before { content: ''; position: absolute; width: 18px; height: 18px; left: 3px; bottom: 3px; background: white; border-radius: 50%; transition: 0.3s; }
+    .svc-toggle input:checked + .svc-slider { background: #28a745; }
+    .svc-toggle input:checked + .svc-slider::before { transform: translateX(20px); }
+    .svc-save-btn { padding: 10px 24px; background: #28a745; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; align-self: center; }
+    .svc-save-btn:hover { background: #218838; }
+    .svc-save-btn:disabled { background: #ccc; cursor: not-allowed; }
+    .svc-note { text-align: center; color: #6c757d; font-size: 13px; padding: 8px; }
     .chat-section { position: relative; }
     .fb-panel {
       position: absolute; inset: 0; z-index: 100; background: #f0f2f5;
@@ -383,6 +398,48 @@
     <iframe class="fb-iframe" src="/mock-facebook/"></iframe>`
   document.querySelector('.chat-section').appendChild(fbPanel)
 
+  const svcPanel = document.createElement('div')
+  svcPanel.className = 'prompt'
+  svcPanel.innerHTML = `
+    <div class="top-buttons">
+      <button class="close-panel-btn" title="Close">&times;</button>
+    </div>
+    <div class="svc-list">Loading...</div>`
+  siteSection.appendChild(svcPanel)
+
+  const SVC_NAMES = { site: 'Site (Widget)', 'facebook-comments': 'Facebook Comments', 'facebook-dm': 'Facebook DM', 'mock-facebook': 'Mock Facebook' }
+  let svcData = null
+
+  async function loadServices() {
+    const list = svcPanel.querySelector('.svc-list')
+    try {
+      svcData = await fetch('/admin/api/services').then(r => r.json())
+      list.innerHTML = Object.entries(SVC_NAMES).map(([k, label]) => `
+        <div class="svc-row">
+          <span class="svc-label">${label}</span>
+          <label class="svc-toggle"><input type="checkbox" data-svc="${k}" ${svcData[k] ? 'checked' : ''}><span class="svc-slider"></span></label>
+        </div>`).join('') +
+        '<button class="svc-save-btn">Save Changes</button>' +
+        '<div class="svc-note">Service changes require a deploy to take effect.</div>'
+      list.querySelector('.svc-save-btn').addEventListener('click', saveServices)
+    } catch { list.innerHTML = '<div class="empty-state" style="color:#e74c3c">Error loading services</div>' }
+  }
+
+  async function saveServices() {
+    const btn = svcPanel.querySelector('.svc-save-btn')
+    const services = {}
+    svcPanel.querySelectorAll('[data-svc]').forEach(cb => { services[cb.dataset.svc] = cb.checked })
+    btn.disabled = true
+    try {
+      await fetch('/admin/api/services', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ services })
+      })
+      alert('Service changes saved. Contact admin to apply.')
+    } catch { alert('Error saving services') }
+    btn.disabled = false
+  }
+
   const adminBtns = document.createElement('div')
   adminBtns.id = 'admin-buttons'
   adminBtns.innerHTML = `
@@ -391,6 +448,7 @@
     <button id="open-gr-btn" class="admin-open-btn">Edit Greeting</button>
     <button id="open-log-btn" class="admin-open-btn">See Prompt</button>
     <button id="open-fb-btn" class="admin-open-btn">Test Facebook Comments</button>
+    <button id="open-svc-btn" class="admin-open-btn">Manage Services</button>
     <button id="logout-btn">Logout</button>`
   siteSection.appendChild(adminBtns)
 
@@ -409,6 +467,7 @@
   document.getElementById('open-sp-btn').addEventListener('click', () => openPanel(spPanel))
   document.getElementById('open-gr-btn').addEventListener('click', () => openPanel(grPanel))
   document.getElementById('open-fb-btn').addEventListener('click', () => fbPanel.classList.toggle('visible'))
+  document.getElementById('open-svc-btn').addEventListener('click', () => { openPanel(svcPanel); loadServices() })
   document.getElementById('open-log-btn').addEventListener('click', () => {
     openPanel(logPanel); loadLastPrompt()
   })
@@ -417,6 +476,7 @@
   grPanel.querySelector('.close-panel-btn').addEventListener('click', () => closePanel(grPanel))
   logPanel.querySelector('.close-panel-btn').addEventListener('click', () => closePanel(logPanel))
   fbPanel.querySelector('.close-panel-btn').addEventListener('click', () => fbPanel.classList.remove('visible'))
+  svcPanel.querySelector('.close-panel-btn').addEventListener('click', () => closePanel(svcPanel))
 
   kbEditor = createEditor(kbPanel, {
     draftKey: 'kb_draft', canModify: true, openBtn: document.getElementById('open-kb-btn'),

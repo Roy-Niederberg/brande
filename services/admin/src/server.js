@@ -18,13 +18,11 @@ app.use((rq, rs, nx) => {
 
 app.get('/', (_, rs) => rs.redirect('/admin/chatQA'))
 
-app.get('/chatQA', async (_, rs) => {
-  try {
-    const html = await fetch('http://site:80/index.html').then(r => r.text())
-    rs.send(html.replace('<script src="/loader.js">', '<script src="/admin/admin.js"></script>\n<script src="/loader.js">'))
-  } catch (e) { console.error('Failed to load site HTML:', e.message); rs.status(500).send('Site unavailable') }
-})
+app.get('/chatQA', (_, rs) => rs.sendFile('/app/views/index.html'))
+app.get('/loader.js', (_, rs) => rs.sendFile('/app/views/loader.js'))
 app.get('/admin.js', (_, rs) => rs.sendFile('/app/views/admin.js'))
+app.get('/widget.js', (_, rs) => rs.sendFile('/app/public/widget.js'))
+app.use('/assets', express.static('/app/assets'))
 
 app.get('/api/user', (rq, rs) =>
   rs.json({ email: rq.headers['x-auth-email'] || '', name: rq.headers['x-auth-name'] || '' }))
@@ -76,6 +74,21 @@ app.r('post', '/api/knowledge_base', async (rq, rs) => {
   await fetch(`${PROMPT_COMPOSER_URL}/knowledge_base`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(knowledgeBase)
+  })
+  rs.json({ success: true })
+})
+
+app.r('get', '/api/services', async (_, rs) => {
+  const response = await fetch(`${PROMPT_COMPOSER_URL}/services`)
+  rs.json(JSON.parse(await response.text()))
+})
+
+app.r('post', '/api/services', async (rq, rs) => {
+  const { services } = rq.body
+  if (!services) return rs.status(400).json({ error: 'Services required' })
+  await fetch(`${PROMPT_COMPOSER_URL}/services`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(services)
   })
   rs.json({ success: true })
 })
