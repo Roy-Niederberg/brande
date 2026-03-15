@@ -38,7 +38,7 @@ const ask = async (llm, content, msgs, re='low') => {
 }
 
 // =============== Endpoints ====================================================================//
-const files = ['knowledge_base.json', 'system_prompts.json', 'greeting.json', 'capabilities.js', 'services.json']
+const files = ['knowledge_base.json', 'system_prompts.json', 'greeting.json', 'capabilities.js']
 const $ = {}
 for (const f of files) {
   const [name, ext] = f.split('.')
