@@ -24,6 +24,7 @@ services:
     secrets: [authorized_emails]
     volumes:
       - ./assets:/app/assets:ro
+      - ./data:/app/data
       - ../shared/widget/widget.js:/app/public/widget.js:ro
 
   mock-facebook:

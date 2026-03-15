@@ -78,18 +78,12 @@ app.r('post', '/api/knowledge_base', async (rq, rs) => {
   rs.json({ success: true })
 })
 
-app.r('get', '/api/services', async (_, rs) => {
-  const response = await fetch(`${PROMPT_COMPOSER_URL}/services`)
-  rs.json(JSON.parse(await response.text()))
-})
+app.r('get', '/api/services', (_, rs) => rs.sendFile('/app/data/services.json'))
 
-app.r('post', '/api/services', async (rq, rs) => {
+app.r('post', '/api/services', (rq, rs) => {
   const { services } = rq.body
   if (!services) return rs.status(400).json({ error: 'Services required' })
-  await fetch(`${PROMPT_COMPOSER_URL}/services`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(services)
-  })
+  fs.writeFileSync('/app/data/services.json', JSON.stringify(services))
   rs.json({ success: true })
 })
 

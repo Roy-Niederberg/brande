@@ -29,6 +29,7 @@ services:
       - ../../services/admin/src/:/app/src/
       - ../../services/admin/src/views:/app/views
       - ../../prod_setup/client_server/${CLIENT}/assets/:/app/assets:ro
+      - ../../prod_setup/client_server/${CLIENT}/data/:/app/data
       - ../../prod_setup/client_server/shared/widget/widget.js:/app/public/widget.js:ro
 
   mock-facebook:
