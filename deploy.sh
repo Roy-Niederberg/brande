@@ -73,59 +73,6 @@ for DIR in prod_setup/client_server/*/data; do
     "$CLIENT_VM:$CLIENT_VM_PATH/$CLIENT/data/" "$DIR/"
 done
 
-# ── Generate service-aware compose/Caddyfile per client ──
-for DIR in prod_setup/client_server/*/data; do
-  [ -d "$DIR" ] || continue
-  CLIENT_DIR=$(dirname "$DIR")
-  CLIENT=$(basename "$CLIENT_DIR")
-  [ "$CLIENT" = "router" ] || [ "$CLIENT" = "shared" ] && continue
-  SVC_FILE="$DIR/services.json"
-  [ -f "$SVC_FILE" ] || continue
-
-  if [ -z "$DRY_RUN" ]; then
-    echo "-- Regenerating compose/Caddyfile: $CLIENT --"
-    node -e "
-      const fs = require('fs')
-      const svc = JSON.parse(fs.readFileSync('$SVC_FILE', 'utf-8'))
-      const REG = '$REGISTRY'
-      const base = '$CLIENT_DIR'
-
-      // Regenerate gateway/Caddyfile
-      let caddyfile = ':80 {\n'
-      caddyfile += '\thandle_path /admin/* {\n\t\treverse_proxy admin:9876 {\n\t\t\theader_up X-Forwarded-Proto {header.X-Forwarded-Proto}\n\t\t}\n\t}\n\n'
-      caddyfile += '\thandle /site/* {\n\t\turi strip_prefix /site\n\t\treverse_proxy prompt-composer:4321\n\t}\n\n'
-      if (svc['facebook-dm']) caddyfile += '\thandle_path /facebook/dm {\n\t\treverse_proxy facebook-dm:3210\n\t}\n\n'
-      if (svc['facebook-comments']) caddyfile += '\thandle_path /facebook/comments {\n\t\treverse_proxy facebook-comments:3210\n\t}\n\n'
-      if (svc['mock-facebook']) caddyfile += '\thandle_path /mock-facebook/* {\n\t\treverse_proxy mock-facebook:3210\n\t}\n\n'
-      if (svc.site) caddyfile += '\thandle {\n\t\treverse_proxy site:80\n\t}\n'
-      caddyfile += '}\n'
-      fs.writeFileSync(base + '/gateway/Caddyfile', caddyfile)
-
-      // Regenerate docker-compose.yml
-      let compose = 'services:\n\n'
-      compose += '  gateway:\n    image: caddy:2.10.2-alpine\n    networks: [client_network, qabu_network]\n    volumes: [./gateway/Caddyfile:/etc/caddy/Caddyfile:ro]\n\n'
-      if (svc.site) compose += '  site:\n    image: ' + REG + '/site:latest\n    networks: [client_network]\n    volumes:\n      - ./assets:/site/assets\n      - ../shared/widget/widget.js:/site/widget.js:ro\n\n'
-      compose += '  prompt-composer:\n    image: ' + REG + '/prompt_composer:latest\n    networks: [client_network]\n    secrets: [gemini_1, gemini_2, groq_1, groq_2]\n    volumes: [./data/:/app/data]\n\n'
-      compose += '  admin:\n    image: ' + REG + '/admin:latest\n    networks: [client_network]\n    secrets: [authorized_emails]\n    volumes:\n      - ./assets:/app/assets:ro\n      - ../shared/widget/widget.js:/app/public/widget.js:ro\n\n'
-      if (svc['mock-facebook']) compose += '  mock-facebook:\n    image: ' + REG + '/mock_facebook:latest\n    networks: [client_network]\n    volumes: [./assets/mock_facebook/:/app/data/]\n\n'
-      if (svc['facebook-comments']) compose += '  facebook-comments:\n    image: ' + REG + '/facebook_comments:latest\n    networks: [client_network]\n    secrets: [fb_page_access_token]\n    environment: [FACEBOOK_API_URL=https://graph.facebook.com/v24.0/]\n\n'
-      if (svc['facebook-dm']) compose += '  facebook-dm:\n    image: ' + REG + '/facebook_dm:latest\n    networks: [client_network]\n    secrets: [fb_page_access_token]\n    environment: [FACEBOOK_API_URL=https://graph.facebook.com/v24.0/]\n\n'
-
-      compose += 'networks:\n  client_network:\n  qabu_network: {external: true}\n\n'
-      compose += 'secrets:\n  authorized_emails: {file: ./secrets/authorized_emails.json}\n'
-      compose += '  gemini_1:          {file: ./secrets/gemini_1.secret}\n'
-      compose += '  gemini_2:          {file: ./secrets/gemini_2.secret}\n'
-      compose += '  groq_1:            {file: ./secrets/groq_1.secret}\n'
-      compose += '  groq_2:            {file: ./secrets/groq_2.secret}\n'
-      const needsFb = svc['facebook-comments'] || svc['facebook-dm']
-      if (needsFb) compose += '  fb_page_access_token: {file: ./secrets/fb_page_access_token.secret}\n'
-      fs.writeFileSync(base + '/docker-compose.yml', compose)
-    "
-  else
-    echo "-- Would regenerate compose/Caddyfile: $CLIENT --"
-  fi
-done
-
 # ── Sync prod directories ──
 echo "-- Syncing client server --"
 rsync -avz --delete ${DRY_RUN:+--dry-run} \
@@ -138,7 +85,7 @@ rsync -avz --delete ${DRY_RUN:+--dry-run} \
 if [ -z "$DRY_RUN" ]; then
   for DIR in prod_setup/client_server/*/; do
     NAME=$(basename "$DIR")
-    [ "$NAME" = "router" ] || [ "$NAME" = "shared" ] && continue
+    [ "$NAME" = "shared" ] && continue
     echo "-- $NAME: pull + up --"
     ssh "$CLIENT_VM" \
       "cd $CLIENT_VM_PATH/$NAME && docker compose pull && docker compose up -d"
