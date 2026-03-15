@@ -47,6 +47,20 @@
   }
 
   const css = `
+    @keyframes typingDot {
+      0%, 20% { opacity: 0; }
+      30%, 70% { opacity: 1; }
+      80%, 100% { opacity: 0; }
+    }
+    .typing-dots span {
+      opacity: 0;
+      animation: typingDot 1.2s infinite;
+      font-size: 1.2em;
+      letter-spacing: 2px;
+    }
+    .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+
     @keyframes slideInUp {
       from {
         opacity: 0;
@@ -57,17 +71,6 @@
         transform: translateY(0);
       }
     }
-    @keyframes bounce {
-      0%, 100% {
-        opacity: 0.5;
-        transform: translateY(0);
-      }
-      50% {
-        opacity: 1;
-        transform: translateY(-6px);
-      }
-    }
-
     #chat-widget {
       position: relative;
       width: 100%;
@@ -81,53 +84,60 @@
       display: flex;
       flex-direction: column;
       gap: 0;
-      backdrop-filter: blur(10px) saturate(180%);
-      -webkit-backdrop-filter: blur(10px) saturate(180%);
-      background-color: rgba(0, 0, 0, 0.2);
+      background-color: #F8F9FA;
       padding: 0;
       box-shadow: -4px 0 20px rgba(0, 0, 0, 0.03);
       height: 100%;
     }
 
     #chat-header {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      display: flex;
-      justify-content: flex-start;
-      gap: 10px;
-      margin: 0;
-      padding: 10px 20px 0;
-      z-index: 10;
-      pointer-events: none;
-      box-sizing: border-box;
-    }
-
-    .chat-header-btn {
-      position: relative;
-      background: rgba(50, 118, 170, 0.85);
-      border: none;
-      width: 32px;
-      height: 32px;
-      border-radius: 50%;
-      cursor: pointer;
       display: flex;
       align-items: center;
-      justify-content: center;
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      color: white;
-      font-size: 23px;
-      overflow: hidden;
-      pointer-events: auto;
+      padding: 15px 16px;
+      background: #FFFFFF;
+      color: #0F2C59;
+      flex-shrink: 0;
+      position: relative;
+      z-index: 10;
+      gap: 12px;
+      box-sizing: border-box;
+      border-bottom: 1px solid rgba(0,0,0,0.05);
     }
-    .chat-header-btn:hover {
-      background: rgba(0,0,0,0.08);
-      transform: scale(1.15) rotate(5deg);
+
+    .chat-header-avatar {
+      width: 52px; height: 52px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
     }
-    .chat-header-btn:active {
-      transform: scale(0.9);
+    .chat-header-name {
+      font-size: 23px; font-weight: 700; flex: 1;
+      display: flex; flex-direction: column; gap: 4px; justify-content: center;
     }
+    .chat-header-subtitle {
+      font-size: 12px; font-weight: 400; color: #3276AA;
+    }
+    .chat-header-menu-btn {
+      width: 32px; height: 32px; border-radius: 50%;
+      background: transparent; border: none; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      color: #3276AA;
+      transition: background 0.2s;
+    }
+    .chat-header-menu-btn:hover { background: rgba(0,0,0,0.05); }
+    .chat-header-dropdown {
+      display: none; position: absolute;
+      top: 100%; right: 12px;
+      background: #ffffff; border-radius: 8px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+      min-width: 180px; overflow: hidden; z-index: 20;
+    }
+    .chat-header-dropdown-item {
+      padding: 12px 16px; color: #0F2C59;
+      font-size: 14px; cursor: pointer;
+      transition: background 0.15s;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .chat-header-dropdown-item:hover { background: #f0f0f0; }
 
     #chat-messages {
       display: flex;
@@ -153,7 +163,7 @@
     .msg-row.bot { flex-direction: row; padding-right: 4px; }
     .msg-row.user { flex-direction: row-reverse; padding-left: 4px; }
     .msg-row ~ .msg-row { margin-top: 8px; }
-    .msg-row.grouped { margin-top: 2px; }
+    .msg-row.grouped { margin-top: 1px; }
 
     .chat-msg {
       padding: 10px 14px;
@@ -184,179 +194,103 @@
     }
 
     .chat-msg.user {
-      background: #0F2C59;
-      color: #ffffff;
+      background: #A6D0DD;
+      color: #0F2C59;
       text-align: start;
       border: none;
       margin-right: -12px;
       padding-right: 24px;
       border-radius: 12px 0 0 12px;
-      box-shadow: -4px 4px 12px rgba(15,44,89,0.35), -2px 2px 4px rgba(0,0,0,0.2);
+      box-shadow: -4px 4px 12px rgba(166,208,221,0.3), -2px 2px 4px rgba(0,0,0,0.1);
+      transition: background 0.35s ease, border 0.35s ease, box-shadow 0.35s ease;
     }
 
     .chat-msg.bot {
-      background: #A6D0DD;
+      background: #FFFFFF;
       color: #0F2C59;
       border: 1px solid rgba(0,0,0,0.06);
       margin-left: -12px;
       padding-left: 24px;
       border-radius: 0 12px 12px 0;
-      box-shadow: 4px 4px 12px rgba(15,44,89,0.25), 2px 2px 4px rgba(0,0,0,0.15);
+      box-shadow: 4px 4px 12px rgba(0,0,0,0.08), 2px 2px 4px rgba(0,0,0,0.04);
     }
 
-    #typing-indicator {
-      padding: 14px 20px;
-      padding-left: 24px;
-      border-radius: 0 12px 12px 0;
-      background: #A6D0DD;
-      margin-left: -12px;
-      width: auto;
-      align-self: flex-start;
-      display: none;
-      border: 1px solid rgba(0,0,0,0.06);
-      box-shadow: 3px 3px 8px rgba(15,44,89,0.15), 1px 1px 3px rgba(0,0,0,0.1);
-      animation: slideInUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    }
+    .msg-row.ghost-row { flex-direction: column; align-items: flex-end; }
 
-    .typing-dots {
-      display: flex;
-      gap: 5px;
-      align-items: center;
-      justify-content: center;
-      height: 20px;
-    }
-
-    .typing-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: #0F2C59;
-      animation: bounce 1.4s infinite ease-in-out;
-    }
-    .typing-dot:nth-child(1) { animation-delay: -0.32s; }
-    .typing-dot:nth-child(2) { animation-delay: -0.16s; }
-    .typing-dot:nth-child(3) { animation-delay: 0s; }
-
-    #chat-input-area {
-      display: flex;
-      gap: 10px;
-      position: relative;
-      padding: 20px;
-      flex-shrink: 0;
-      align-items: flex-end; /* Align bottom so input grows up */
-    }
-
-    #chat-input {
-      flex: 1;
-      padding: 16px 22px;
-      border: 2px solid #A6D0DD;
-      border-radius: 24px;
+    .chat-msg.ghost-input {
+      animation: none;
+      opacity: 1;
+      background: rgba(166, 208, 221, 0.1);
+      border: 1px solid rgba(166, 208, 221, 0.35);
+      min-height: 1.5em;
       outline: none;
-      font-size: 19px;
-      background: #ffffff;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-      pointer-events: auto;
-      user-select: text;
-      -webkit-user-select: text;
-      transition: border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      font-family: inherit;
-      resize: none; /* Disable manual resize */
-      overflow-y: hidden; /* Hide scrollbar initially */
-      min-height: 32px; /* Approximate height for 1 line */
-      line-height: 1.5;
-      box-sizing: border-box;
-    }
-    #chat-input:focus {
-      border-color: #3276AA;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.08), 0 0 0 3px rgba(50, 118, 170, 0.3);
-    }
-    #chat-input::placeholder {
-      color: #94a3b8;
+      cursor: text;
+      white-space: pre-wrap;
     }
 
-    #chat-send {
-      background: #3276AA;
-      color: white;
-      border: none;
-      height: 68px;
-      width: 68px;
-      border-radius: 34px; /* Half of height for perfect circle */
+    .ghost-send-btn {
+      background: #0F2C59;
+      border: 1.5px solid #0F2C59;
       cursor: pointer;
-      font-weight: 600;
-      font-size: 19px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15), 0 2px 4px rgba(0,0,0,0.1);
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      position: relative;
-      overflow: hidden;
-      display: flex; /* Use flex to center SVG */
+      color: #F8F9FA;
+      transition: opacity 0.3s ease;
+      padding: 6px 14px;
+      margin: 10px 16px 0 0;
+      display: flex;
       align-items: center;
-      justify-content: center;
-      padding: 0; /* Remove padding as width/height are explicit */
+      gap: 6px;
+      flex-shrink: 0;
+      font-size: 15px;
+      font-family: inherit;
+      border-radius: 16px;
+      transition: background 0.2s;
     }
-    #chat-send::before {
-      content: '';
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      width: 0;
-      height: 0;
-      border-radius: 50%;
-      background: rgba(255,255,255,0.2);
-      transform: translate(-50%, -50%);
-      transition: width 0.6s, height 0.6s;
-    }
-    #chat-send:hover {
-      transform: translateY(-2px) scale(1.02);
-      box-shadow: 0 8px 20px rgba(0,0,0,0.2), 0 4px 8px rgba(0,0,0,0.15);
-    }
-    #chat-send:active {
-      transform: translateY(0) scale(0.98);
-      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-    }
-    #chat-send:active::before {
-      width: 300px;
-      height: 300px;
-      transition: width 0s, height 0s;
-    }
-    #chat-send:disabled {
-      cursor: not-allowed;
-    }
+    .ghost-send-btn:hover { background: #1a3d6e; }
+
+    #chat-widget.left-handed .ghost-send-btn { align-self: flex-start; margin: 10px 0 0 16px; }
+    #chat-hand-item svg { transform: scaleX(-1); }
+    #chat-widget.left-handed #chat-hand-item svg { transform: scaleX(1); }
 
     @media (max-width: 600px) {
       .chat-msg { font-size: 15px; }
       .msg-row ~ .msg-row { margin-top: 6px; }
-      .msg-row.grouped { margin-top: 2px; }
+      .msg-row.grouped { margin-top: 1px; }
+      .chat-header-avatar { width: 46px; height: 46px; }
+      .chat-header-avatar svg { width: 26px; height: 26px; }
+      .chat-header-name { font-size: 15px; }
+      #chat-header { padding: 12px 12px; gap: 10px; }
     }
   `
 
   const html = `
     <div id="chat-box">
       <div id="chat-header">
-        <button class="chat-header-btn" id="chat-close" title="Clear History">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="3 6 5 6 21 6"></polyline>
-            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-            <line x1="10" y1="11" x2="10" y2="17"></line>
-            <line x1="14" y1="11" x2="14" y2="17"></line>
+        <div class="chat-header-avatar">
+          <svg width="48" height="48" viewBox="-603 -603 1206 1206">
+            <path transform="rotate(135) scale(1)" fill="#0F2C59" d="M -43.934 -600L -43.934 0C -102.948 -160.66 -102.944 -248.528 -175.736 -175.736A 248.528 248.528 0 1 0 43.934 -244.614L 43.934 -804.594C 87.868 -512.132 248.528 -600 424.264 -424.264A 600 600 0 1 1 -43.934 -600"></path>
+          </svg>
+        </div>
+        <div class="chat-header-name">
+          <span>${config.clientName || 'Qab\u00fb'}</span>
+          <span class="chat-header-subtitle">Qab\u00fb AI assistance</span>
+        </div>
+        <button class="chat-header-menu-btn" id="chat-menu-btn">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+            <circle cx="10" cy="4" r="2"/><circle cx="10" cy="10" r="2"/><circle cx="10" cy="16" r="2"/>
           </svg>
         </button>
-      </div>
-      <div id="chat-messages">
-        <div id="typing-indicator">
-          <div class="typing-dots">
-            <div class="typing-dot"></div>
-            <div class="typing-dot"></div>
-            <div class="typing-dot"></div>
+        <div class="chat-header-dropdown" id="chat-dropdown">
+          <div class="chat-header-dropdown-item" id="chat-clear-item">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+            Clear conversation
+          </div>
+          <div class="chat-header-dropdown-item" id="chat-hand-item">
+            <svg width="16" height="16" viewBox="0 0 64 64" fill="currentColor" style="flex-shrink:0"><path d="M61.529 29.137c-.856-1.662-2.515-2.615-4.55-2.615c-3.247 0-6.296 2.957-8.987 5.566c-1.245 1.207-2.52 2.443-3.569 3.113l4.447-22.527c.425-1.82.103-3.523-.905-4.793c-.953-1.201-2.461-1.918-4.034-1.918c-2.006 0-4.568 1.252-5.182 4.723l-2.055 8.553V8.715C36.694 4.307 33.751 2 30.843 2c-2.906 0-5.85 2.307-5.85 6.715V19.58l-2.79-10.238c-.705-3.039-3.054-4.123-5.017-4.123c-1.733 0-3.372.785-4.386 2.1c-.978 1.27-1.266 2.914-.822 4.59l1.94 8.861l-2.444-4.797c-1.025-2.014-2.709-3.168-4.62-3.168c-1.667 0-3.253.898-4.14 2.346c-.939 1.531-.956 3.434-.026 5.26c2.807 4.949 7.26 13.484 7.26 15.32c0 .529-.054 1.279-.116 2.148c-.267 3.734-.714 9.984 1.752 15.514c2.261 5.066 9.051 8.605 16.512 8.607c8.69 0 15.945-4.697 19.903-12.887c1.76-3.641 5.697-8.412 9.575-11.604c1.736-1.427 5.801-4.777 3.955-8.372m-50.113 6.584c0-2.898-6.268-14.117-7.501-16.291c-1.897-3.727 3.356-6.385 5.334-2.5L16.5 31.012l.615-2.457l-3.719-17.094c-1.051-3.973 5.469-6.266 6.521-1.74l5.418 20l1.047-2.291V8.742c0-6.24 8.036-6.26 8.036-.021v21.416l1.699-1.895l4-17.25c.928-5.227 7.225-3.074 6.261 1.063l-4.541 23.963c-6.729-.238-16.119 4.293-15.054 14.359c.857-9.309 9.397-12.416 15.199-12.416c2.209 0 2.949-.25 7.324-4.938c7.415-7.943 10.309-4.027 10.221-2.344c-.301 5.76-10.154 7.695-14.606 17.416c-5.846 12.762-22.854 13.279-29.961 7.146c-5.266-4.544-3.544-18.919-3.544-19.52"/></svg>
+            Left-handed mode
           </div>
         </div>
       </div>
-      <div id="chat-input-area">
-        <textarea id="chat-input" rows="1" placeholder="Type your message..."></textarea>
-        <button id="chat-send">
-          <svg width="48" height="48" viewBox="-603 -603 1206 1206">
-            <path transform="rotate(135) scale(1)" fill="#ffff" d="M -43.934 -600L -43.934 0C -102.948 -160.66 -102.944 -248.528 -175.736 -175.736A 248.528 248.528 0 1 0 43.934 -244.614L 43.934 -804.594C 87.868 -512.132 248.528 -600 424.264 -424.264A 600 600 0 1 1 -43.934 -600"/>
-          </svg>
-        </button>
+      <div id="chat-messages">
       </div>
     </div>
   `
@@ -376,12 +310,29 @@
 
   targetElement.appendChild(widget)
 
-  const input = document.getElementById('chat-input')
-  const send = document.getElementById('chat-send')
   const messages = document.getElementById('chat-messages')
-  const closeBtn = document.getElementById('chat-close')
-  const typingIndicator = document.getElementById('typing-indicator')
-  const chatBox = document.getElementById('chat-box')
+  const menuBtn = document.getElementById('chat-menu-btn')
+  const dropdown = document.getElementById('chat-dropdown')
+  const clearItem = document.getElementById('chat-clear-item')
+
+  let menuOpen = false
+  menuBtn.onclick = (e) => { e.stopPropagation(); menuOpen = !menuOpen; dropdown.style.display = menuOpen ? 'block' : 'none' }
+  document.addEventListener('click', () => { if (menuOpen) { menuOpen = false; dropdown.style.display = 'none' } })
+
+  const handItem = document.getElementById('chat-hand-item')
+  const HAND_KEY = 'chat_left_handed'
+  const applyHand = (left) => {
+    widget.classList.toggle('left-handed', left)
+    handItem.childNodes[handItem.childNodes.length - 1].textContent =
+      left ? ' Right-handed mode' : ' Left-handed mode'
+  }
+  applyHand(localStorage.getItem(HAND_KEY) === '1')
+  handItem.onclick = () => {
+    const left = !widget.classList.contains('left-handed')
+    localStorage.setItem(HAND_KEY, left ? '1' : '0')
+    applyHand(left)
+    menuOpen = false; dropdown.style.display = 'none'
+  }
 
   const parseMarkdown = (text) => {
     let html = text
@@ -455,19 +406,86 @@
     }, 100)
   }
 
-  const showTyping = () => {
-    messages.appendChild(typingIndicator)
-    typingIndicator.style.display = 'flex'
-    setTimeout(() => {
-      messages.scrollTo({
-        top: messages.scrollHeight,
-        behavior: 'smooth'
-      })
-    }, 100)
+  const addPendingBubble = (delay = 500) => {
+    let timeoutId
+    const promise = new Promise(resolve => {
+      timeoutId = setTimeout(() => {
+        const row = document.createElement('div')
+        row.className = `msg-row bot${lastMsgRole === 'bot' ? ' grouped' : ''}`
+        const msg = document.createElement('div')
+        msg.className = 'chat-msg bot'
+        msg.innerHTML = '<span class="typing-dots"><span>.</span><span>.</span><span>.</span></span>'
+        msg._showTime = Date.now()
+        const d = new Date()
+        const minuteKey = `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`
+        row.appendChild(msg)
+        if (lastMsgRole !== 'bot' || minuteKey !== lastMsgMinute) {
+          const timestamp = document.createElement('span')
+          timestamp.className = 'chat-timestamp'
+          timestamp.textContent = minuteKey
+          row.appendChild(timestamp)
+        }
+        lastMsgRole = 'bot'
+        lastMsgMinute = minuteKey
+        messages.appendChild(row)
+        setTimeout(() => messages.scrollTo({ top: messages.scrollHeight, behavior: 'smooth' }), 100)
+        resolve(msg)
+      }, delay)
+    })
+    promise.cancel = () => clearTimeout(timeoutId)
+    return promise
   }
 
-  const hideTyping = () => {
-    typingIndicator.style.display = 'none'
+  const tokenizeHTML = (html) => {
+    const tokens = []
+    let i = 0
+    while (i < html.length) {
+      if (html[i] === '<') {
+        const end = html.indexOf('>', i)
+        if (end === -1) { tokens.push({ value: html[i], visible: true }); i++; continue }
+        tokens.push({ value: html.slice(i, end + 1), visible: false })
+        i = end + 1
+      } else if (html[i] === '&') {
+        const end = html.indexOf(';', i)
+        if (end === -1) { tokens.push({ value: html[i], visible: true }); i++; continue }
+        tokens.push({ value: html.slice(i, end + 1), visible: true })
+        i = end + 1
+      } else {
+        tokens.push({ value: html[i], visible: true })
+        i++
+      }
+    }
+    return tokens
+  }
+
+  const typewriteInBubble = async (bubble, text, abort) => {
+    const segments = text.split(/\n\n+/)
+    for (let s = 0; s < segments.length; s++) {
+      if (abort.stopped) { bubble.innerHTML = parseMarkdown(segments[s]); return }
+      if (s > 0) {
+        bubble = await addPendingBubble(0)
+        await new Promise(r => setTimeout(r, 500))
+      }
+      if (abort.stopped) { bubble.innerHTML = parseMarkdown(segments[s]); return }
+      const html = parseMarkdown(segments[s])
+      bubble.dir = getTextDirection(segments[s])
+      const tokens = tokenizeHTML(html)
+      let rendered = ''
+      for (const token of tokens) {
+        if (abort.stopped) { bubble.innerHTML = html; return }
+        rendered += token.value
+        bubble.innerHTML = rendered
+        const d = token.value === '<br>' ? 180
+          : !token.visible ? 0
+          : token.value === ' ' ? 30
+          : token.value === ',' ? 100
+          : token.value === '.' ? 180
+          : 10
+        if (d) await new Promise(r => setTimeout(r, d))
+        if (token.value === '<br>') messages.scrollTo({ top: messages.scrollHeight, behavior: 'smooth' })
+      }
+      messages.scrollTo({ top: messages.scrollHeight, behavior: 'smooth' })
+    }
   }
 
   const saveHistory = () => {
@@ -509,36 +527,15 @@
         if (abort.stopped) break
         await new Promise(r => setTimeout(r, msg.delay || 1000))
         if (abort.stopped) break
-        showTyping()
-        await new Promise(r => setTimeout(r, 200 + (msg.text.length * 20)))
-        if (abort.stopped) { hideTyping(); break }
-        hideTyping()
-        addMsg(msg.text, 'bot')
+        const bubble = await addPendingBubble(0)
+        await typewriteInBubble(bubble, msg.text, abort)
+        if (abort.stopped) break
         history.push({ role: 'assistant', content: msg.text, time: Date.now() })
         saveHistory()
       }
     } catch { /* greeting failed — widget still works */ }
     if (!abort.stopped) greetingAbort = null
   }
-
-  // Auto-resize textarea
-  const adjustHeight = () => {
-    input.style.height = 'auto'
-    const maxHeight = chatBox.clientHeight * 0.7
-    // scrollHeight includes padding but not border. box-sizing is border-box.
-    // We need to add total border width (2px top + 2px bottom = 4px)
-    const borderHeight = 4
-    const newHeight = Math.min(input.scrollHeight + borderHeight, maxHeight)
-    input.style.height = newHeight + 'px'
-    input.style.overflowY = input.scrollHeight + borderHeight > maxHeight ? 'auto' : 'hidden'
-  }
-
-  input.addEventListener('input', () => {
-    adjustHeight()
-    input.dir = getTextDirection(input.value)
-  })
-  // Initial adjustment
-  adjustHeight()
 
   const callLLM = async (abort, skipGk) => {
     const chat = history.map(h => ({
@@ -572,50 +569,114 @@
     const content = msgs.join('\n')
     history.push({ role: 'user', content, hidden: true, time: Date.now() })
     saveHistory()
-    showTyping()
+    const bubblePromise = addPendingBubble(500)
     const raw = await callLLM(abort, true)
-    if (raw === null) return
+    if (raw === null) { bubblePromise.cancel(); return }
+    const bubble = await bubblePromise
     const parsed = parseActions(raw)
-    hideTyping()
-    addMsg(parsed.text, 'bot')
+    await typewriteInBubble(bubble, parsed.text, abort)
     history.push({ role: 'assistant', content: parsed.text, time: Date.now() })
     saveHistory()
     if (parsed.actions.length) await runActions(parsed.actions, abort)
   }
 
   const askAndProcess = async (abort) => {
-    showTyping()
-    const raw = await callLLM(abort, false)
-    if (raw === null) return
-    const parsed = parseActions(raw)
-    hideTyping()
-    addMsg(parsed.text, 'bot')
-    history.push({ role: 'assistant', content: parsed.text, time: Date.now() })
-    saveHistory()
-    if (parsed.actions.length) await runActions(parsed.actions, abort)
+    const bubblePromise = addPendingBubble(1800)
+    try {
+      const raw = await callLLM(abort, false)
+      if (raw === null) { bubblePromise.cancel(); return }
+      const bubble = await bubblePromise
+      const dotsElapsed = Date.now() - bubble._showTime
+      const dotsRemaining = Math.max(0, 3000 - dotsElapsed)
+      if (!abort.stopped && dotsRemaining) await new Promise(r => setTimeout(r, dotsRemaining))
+      const parsed = parseActions(raw)
+      await typewriteInBubble(bubble, parsed.text, abort)
+      history.push({ role: 'assistant', content: parsed.text, time: Date.now() })
+      saveHistory()
+      if (parsed.actions.length) await runActions(parsed.actions, abort)
+    } catch (e) {
+      bubblePromise.cancel()
+      throw e
+    }
   }
 
   let sendAbort = null
 
+  const addGhostBubble = () => {
+    const row = document.createElement('div')
+    row.id = 'ghost-row'
+    row.className = `msg-row user ghost-row${lastMsgRole === 'user' ? ' grouped' : ''}`
+
+    const bubble = document.createElement('div')
+    bubble.id = 'ghost-bubble'
+    bubble.className = 'chat-msg user ghost-input'
+    bubble.contentEditable = 'true'
+
+    const btn = document.createElement('button')
+    btn.id = 'ghost-send'
+    btn.className = 'ghost-send-btn'
+    btn.innerHTML = `Send <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="22" y1="2" x2="11" y2="13"/>
+      <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+    </svg>`
+
+    row.appendChild(bubble)
+    row.appendChild(btn)
+    messages.appendChild(row)
+
+    bubble.addEventListener('input', () => {
+      bubble.dir = getTextDirection(bubble.innerText)
+      messages.scrollTo({ top: messages.scrollHeight, behavior: 'smooth' })
+    })
+    bubble.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMsg() }
+    })
+    btn.onclick = sendMsg
+
+    setTimeout(() => messages.scrollTo({ top: messages.scrollHeight, behavior: 'smooth' }), 100)
+    if (!('ontouchstart' in window)) bubble.focus()
+  }
+
   const sendMsg = async () => {
-    const text = input.value.trim()
+    const ghostRow = document.getElementById('ghost-row')
+    const ghostBubble = document.getElementById('ghost-bubble')
+    if (!ghostBubble) return
+    const text = ghostBubble.innerText.trim()
     if (!text) return
 
-    // Stop greeting if still playing
-    if (greetingAbort) {
-      greetingAbort.stopped = true
-      greetingAbort = null
-      hideTyping()
-    }
+    if (greetingAbort) { greetingAbort.stopped = true; greetingAbort = null }
 
-    addMsg(text, 'user')
+    // Transform ghost → opaque sent message
+    ghostBubble.contentEditable = 'false'
+    ghostBubble.innerHTML = parseMarkdown(text)
+    ghostBubble.dir = getTextDirection(text)
+    ghostBubble.classList.remove('ghost-input')
+    ghostBubble.style.animation = 'none'
+    ghostBubble.style.opacity = '1'
+
+    // Fade out send button, replace with timestamp
+    const sendBtn = document.getElementById('ghost-send')
+    sendBtn.style.opacity = '0'
+    const d = new Date()
+    const minuteKey = `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`
+    setTimeout(() => {
+      const ts = document.createElement('span')
+      ts.className = 'chat-timestamp'
+      ts.textContent = minuteKey
+      ts.style.opacity = '0'
+      ts.style.transition = 'opacity 0.3s ease'
+      sendBtn.replaceWith(ts)
+      requestAnimationFrame(() => ts.style.opacity = '')
+    }, 300)
+    ghostRow.classList.remove('ghost-row')
+    ghostRow.id = ''
+    ghostBubble.id = ''
+
+    lastMsgRole = 'user'
+    lastMsgMinute = minuteKey
     history.push({ role: 'user', content: text, time: Date.now() })
     saveHistory()
-    input.value = ''
-    input.dir = 'ltr'
-    adjustHeight() // Reset height correctly
-    send.disabled = true
-    input.disabled = true
 
     const abort = { stopped: false }
     sendAbort = abort
@@ -624,53 +685,29 @@
       await askAndProcess(abort)
     } catch (e) {
       if (abort.stopped) return
-      hideTyping()
       addMsg('Unable to connect to service', 'bot')
     }
-    send.disabled = false
-    input.disabled = false
-    if (!('ontouchstart' in window)) input.focus()
+
     sendAbort = null
+    if (!abort.stopped) addGhostBubble()
   }
 
-  send.onclick = sendMsg
-
-  // Handle Enter vs Shift+Enter
-  input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      if (!e.shiftKey) {
-        e.preventDefault()
-        if (!input.disabled) sendMsg()
-      }
-      // Shift+Enter allows default behavior (new line)
-    }
-  })
-
-  closeBtn.onclick = () => {
-    // Abort greeting if playing
-    if (greetingAbort) {
-      greetingAbort.stopped = true
-      greetingAbort = null
-    }
-    // Abort pending LLM response
-    if (sendAbort) {
-      sendAbort.stopped = true
-      sendAbort = null
-    }
-    // Clear the chat
-    hideTyping()
+  clearItem.onclick = async () => {
+    menuOpen = false; dropdown.style.display = 'none'
+    if (greetingAbort) { greetingAbort.stopped = true; greetingAbort = null }
+    if (sendAbort) { sendAbort.stopped = true; sendAbort = null }
     messages.innerHTML = ''
-    messages.appendChild(typingIndicator)
     history.length = 0
-    lastMsgRole = null
-    lastMsgMinute = null
-    send.disabled = false
-    input.disabled = false
+    lastMsgRole = null; lastMsgMinute = null
     sessionStorage.removeItem(STORAGE_KEY)
-    playGreeting()
+    await playGreeting()
+    addGhostBubble()
   }
 
-  // Initial visibility
   widget.style.display = 'block'
-  if (!restoreHistory()) playGreeting()
+  if (!restoreHistory()) {
+    playGreeting().then(() => addGhostBubble())
+  } else {
+    addGhostBubble()
+  }
 })()
