@@ -159,6 +159,21 @@
     #chat-messages::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 10px; }
     #chat-messages::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.2); }
 
+    #chat-footer {
+      font-size: 10px;
+      color: rgba(15, 44, 89, 0.45);
+      text-align: center;
+      padding: 6px 12px 8px;
+      line-height: 1.6;
+      flex-shrink: 0;
+      border-top: 1px solid rgba(0,0,0,0.05);
+    }
+    #chat-footer a {
+      color: rgba(50, 118, 170, 0.65);
+      text-decoration: underline;
+    }
+    #chat-footer a:hover { color: #3276AA; }
+
     .msg-row { display: flex; align-items: flex-start; width: 100%; }
     .msg-row.bot { flex-direction: row; padding-right: 4px; }
     .msg-row.user { flex-direction: row-reverse; padding-left: 4px; }
@@ -291,6 +306,11 @@
         </div>
       </div>
       <div id="chat-messages">
+      </div>
+      <div id="chat-footer">
+        Qab\u00fb AI can make mistakes — always verify important information with a qualified professional.
+        <a href="https://qabu.net/privacy" target="_blank" rel="noopener noreferrer">Privacy Policy</a> &middot;
+        By using this chat you agree to our <a href="https://qabu.net/terms" target="_blank" rel="noopener noreferrer">Terms of Service</a>.
       </div>
     </div>
   `
