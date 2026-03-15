@@ -92,6 +92,7 @@
     window.ChatWidgetConfig = {
         targetElement: '#chat-section',
         canvasElement: '.site-section',
+        clientName: config.overlayTitle || '',
         ...(config.widget || {}),
         ...(window.ChatWidgetConfig || {})
     };

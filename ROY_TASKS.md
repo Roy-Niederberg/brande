@@ -1,6 +1,14 @@
 # Roy's Tasks
 
 
+ - [ ] This warning when deploying:
+ ``` 
+ 1 warning found (use docker --debug to expand):
+ - JSONArgsRecommended: JSON arguments recommended for CMD to prevent unintended behavior related to OS signals (line 10)
+ ```
+
+ - [ ] Check if the admin and the site share assets  - like the bg images of the html itslef. if not it will be hard to maintain.
+ - [ ] I don't think I want the widget to be shared. see the production server to understand.
  - [ ] The gatway Caddyfile - can we make it more generic? so we don't need to edit when add/remove services.
  - [ ] What about the 404 page? And what about a page that the name is already taken but site not active? 
  - [ ] Do I want the gatway volume? can we use existing one? 

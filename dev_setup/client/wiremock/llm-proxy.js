@@ -11,6 +11,7 @@ http.createServer((req, res) => {
     try {
       const parsed = JSON.parse(body)
       parsed.model = MODEL
+      delete parsed.reasoning_effort
       const data = JSON.stringify(parsed)
 
       const proxyReq = http.request({
