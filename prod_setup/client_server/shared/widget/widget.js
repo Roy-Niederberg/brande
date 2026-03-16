@@ -275,6 +275,13 @@
       .chat-header-name { font-size: 15px; }
       #chat-header { padding: 12px 12px; gap: 10px; }
     }
+
+    @media (max-aspect-ratio: 1/1) {
+      #chat-box { background: transparent; box-shadow: none; }
+      #chat-header { background: rgba(255,255,255,0.82); backdrop-filter: blur(8px); }
+      #chat-footer { background: rgba(248,249,250,0.82); backdrop-filter: blur(8px); }
+      .chat-msg.ghost-input { background: rgba(166,208,221,0.55); backdrop-filter: blur(6px); }
+    }
   `
 
   const html = `

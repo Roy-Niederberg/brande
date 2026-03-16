@@ -103,8 +103,9 @@
     widgetScript.src = '/widget.js';
     document.body.appendChild(widgetScript);
 
-    // Hide spinner once both widget and background image are ready
-    await Promise.all([widgetReady, bgReady]);
+    // Hide spinner once both widget and background image are ready (min 600ms to avoid flash)
+    const minDelay = new Promise(r => setTimeout(r, 600));
+    await Promise.all([widgetReady, bgReady, minDelay]);
     const loader = document.getElementById('qabu-loader');
     if (loader) {
         loader.classList.add('hide');
