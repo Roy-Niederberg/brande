@@ -29,23 +29,3 @@ qabu.net {
 		file_server
 	}
 }
-
-*.qabu.net {
-	tls {
-		dns cloudflare {env.CLOUDFLARE_API_TOKEN}
-	}
-
-	reverse_proxy {labels.2}-site-1:80
-
-	handle_errors {
-		header Content-Type text/html
-		respond <<HTML
-			<!DOCTYPE html>
-			<html><head><title>404</title></head>
-			<body style="font-family:sans-serif;display:flex;justify-content:center;align-items:center;height:100vh;margin:0">
-			<h1>404 - Service not found</h1>
-			<p><h2>qabu.net</h2></p>
-			</body></html>
-			HTML 404
-	}
-}

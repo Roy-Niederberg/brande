@@ -92,4 +92,4 @@ const process_message = async (psid, message_text, page_id) => {
   console.log('\n')
 }
 
-app.listen(3210, () => console.log('Facebook DM Service Started'))
+app.listen(4321, () => console.log('Facebook DM Service Started'))

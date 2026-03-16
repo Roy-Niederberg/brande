@@ -1,18 +1,22 @@
 # Roy's Tasks
 
+- [ ] **When switching to Anthropic as LLM provider** — update `prod_setup/main_server/srv/privacy/index.html` Third-Party Processors section to add Anthropic, Inc. alongside Google and Groq. One extra `<li>` with a link to their privacy policy. (added 2026-03-15)
 
- - [ ] This warning when deploying:
+- [ ] **When incorporating** — replace "independent service operated by its founders, based in Israel" in both `prod_setup/main_server/srv/privacy/index.html` and `prod_setup/main_server/srv/terms/index.html` with the registered company name. Have a lawyer review both documents at that point. (added 2026-03-15)
+
+
+ - [x] This warning when deploying:
  ``` 
  1 warning found (use docker --debug to expand):
  - JSONArgsRecommended: JSON arguments recommended for CMD to prevent unintended behavior related to OS signals (line 10)
  ```
 
  - [ ] Check if the admin and the site share assets  - like the bg images of the html itslef. if not it will be hard to maintain.
- - [ ] I don't think I want the widget to be shared. see the production server to understand.
- - [ ] The gatway Caddyfile - can we make it more generic? so we don't need to edit when add/remove services.
+ - [ ] I don't think I want the widget to be shared. see the production server to understand. it should have version.
+ - [x] The gatway Caddyfile - can we make it more generic? so we don't need to edit when add/remove services.
  - [ ] What about the 404 page? And what about a page that the name is already taken but site not active? 
  - [ ] Do I want the gatway volume? can we use existing one? 
- - [ ] Need to review the ./deploy.sh. I dosn't make sense.
+ - [x] Need to review the ./deploy.sh. I dosn't make sense.
  - [ ] See the Gemini report - add 'docs' and add the report there. What else need to go to docs?
  - [ ] Why do we need the /admin/chatQA ? it can just be /admin ? 
  - [ ] Why do we need prod_setup/client_server/dradamblack/data/services.json ? The single point of truth should be the docker-compose

@@ -20,7 +20,7 @@ function verify_signature(signature, rawBody) {
 }
 
 const dispatch_to = (target, page_id, events) => {
-  fetch( `https://${page_routes[page_id]}/facebook/${target}`, {
+  fetch( `https://${page_routes[page_id]}/${target}`, {
     method: 'POST',
     headers: {'content-type': 'application/json', 'x-dispatcher-secret': dispatcher_secret},
     body: JSON.stringify({ page_id, events })
@@ -49,8 +49,8 @@ app.post('/', (rq, rs) => {
   send(rs, 200, 'EVENT_RECEIVED', 'Webhook POST received')
 
   ;(rq.body?.entry || []).forEach(entry => {
-    if (entry.changes)   dispatch_to('comments', entry.id, entry.changes)
-    if (entry.messaging) dispatch_to('dm', entry.id, entry.messaging)
+    if (entry.changes)   dispatch_to('facebook-comments', entry.id, entry.changes)
+    if (entry.messaging) dispatch_to('facebook-dm', entry.id, entry.messaging)
   })
 })
 

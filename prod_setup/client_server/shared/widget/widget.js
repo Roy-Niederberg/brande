@@ -12,14 +12,14 @@
         ? document.querySelector(config.canvasElement)
         : config.canvasElement)
     : null
-  const API = config.apiEndpoint || '/site/ask'
+  const API = config.apiEndpoint || '/prompt-composer/ask'
   const STORAGE_KEY = 'chat_history'
   const history = []
   let lastMsgRole = null
   let lastMsgMinute = null
 
   // Load per-client capabilities
-  const capabilities = import('/site/capabilities')
+  const capabilities = import('/prompt-composer/capabilities')
     .then(m => m.default || {}).catch(() => ({}))
 
   const parseActions = (text) => {

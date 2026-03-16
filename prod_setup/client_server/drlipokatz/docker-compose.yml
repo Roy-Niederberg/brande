@@ -3,7 +3,7 @@ services:
   gateway:
     image: caddy:2.10.2-alpine
     networks: [client_network, qabu_network]
-    volumes: [./gateway/Caddyfile:/etc/caddy/Caddyfile:ro]
+    volumes: [../shared/gateway_Caddyfile:/etc/caddy/Caddyfile:ro]
 
   site:
     image: registry.gitlab.com/rny3/brande/site:latest

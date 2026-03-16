@@ -1,20 +1,28 @@
+# Client VM entry point for all *.qabu.net traffic.
+# Terminates TLS and routes to per-client gateways ({subdomain}-gateway-1:80) after auth checks.
 *.qabu.net {
+	# Wildcard TLS cert via Cloudflare DNS challenge
 	tls {
 		dns cloudflare {env.CLOUDFLARE_API_TOKEN}
 	}
 
+	# Facebook webhook forwarding from the dispatcher (main server).
+	# Only the dispatcher knows FB_DISPATCHER_SECRET, so this path is
+	# never reachable by external actors directly.
 	@facebook_auth {
-		path /facebook/*
+		path /facebook-*
 		header X-Dispatcher-Secret {env.FB_DISPATCHER_SECRET}
 	}
 	handle @facebook_auth {
 		reverse_proxy {labels.2}-gateway-1:80
 	}
 	@facebook_noauth {
-		path /facebook/*
+		path /facebook-*
 	}
 	respond @facebook_noauth 403
 
+	# Admin: verify JWT via auth-verifier sidecar; redirect to Google
+	# login on 401. Forwards X-Auth-Email/X-Auth-Name to the gateway.
 	@admin path /admin/*
 	handle @admin {
 		forward_auth auth-verifier:3456 {
@@ -28,6 +36,7 @@
 		reverse_proxy {labels.2}-gateway-1:80
 	}
 
+	# All other traffic → per-client gateway (subdomain derived from {labels.2})
 	reverse_proxy {labels.2}-gateway-1:80
 	handle_errors {
 		header Content-Type text/html
