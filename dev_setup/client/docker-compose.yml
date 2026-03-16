@@ -4,7 +4,7 @@ services:
     image: caddy:2.10.2-alpine
     ports: ["${HTTP_PORT:-3000}:80", "${HTTPS_PORT:-3443}:443", "${HTTPS_PORT:-3443}:443/udp"]
     volumes:
-      - ../../prod_setup/client_server/${CLIENT}/gateway/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ../../prod_setup/client_server/shared/gateway_Caddyfile:/etc/caddy/Caddyfile:ro
 
   site:
     build: {context: ../../services/site/, target: development}
