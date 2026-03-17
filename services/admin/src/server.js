@@ -10,6 +10,9 @@ app.r = (vrb, u, f) => app[vrb](u, async (rq, rs, nxt) => { try { await f(rq, rs
 const emails = process.env.NODE_ENV === 'production'
   ? JSON.parse(fs.readFileSync('/run/secrets/authorized_emails', 'utf-8').trim()).emails
   : null
+const admin_secret = process.env.NODE_ENV === 'production'
+  ? fs.readFileSync('/run/secrets/admin_secret', 'utf-8').trim()
+  : 'dev'
 app.use((rq, rs, nx) => {
   if (!emails) return nx()
   if (!emails.includes(rq.headers['x-auth-email'])) return rs.sendStatus(403)
@@ -52,7 +55,8 @@ app.r('post', '/ask', async (rq, rs) => {
   if (knowledgeBaseOverride) requestBody.kb_override = knowledgeBaseOverride
   if (systemPromptOverride) requestBody.sp_override = systemPromptOverride
   const response = await fetch(`${PROMPT_COMPOSER_URL}/ask`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-admin-secret': admin_secret },
     body: JSON.stringify(requestBody)
   })
   rs.send(await response.text())

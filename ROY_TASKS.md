@@ -11,13 +11,14 @@
  - JSONArgsRecommended: JSON arguments recommended for CMD to prevent unintended behavior related to OS signals (line 10)
  ```
 
+ - [ ] Fix the admin secret read on prompt composr (we don't need the fs.existsSync)
  - [ ] Check if the admin and the site share assets  - like the bg images of the html itslef. if not it will be hard to maintain.
  - [ ] I don't think I want the widget to be shared. see the production server to understand. it should have version.
  - [x] The gatway Caddyfile - can we make it more generic? so we don't need to edit when add/remove services.
  - [ ] What about the 404 page? And what about a page that the name is already taken but site not active? 
  - [ ] Do I want the gatway volume? can we use existing one? 
  - [x] Need to review the ./deploy.sh. I dosn't make sense.
- - [ ] See the Gemini report - add 'docs' and add the report there. What else need to go to docs?
+ - [ ] See the Gemini report - add 'docs' and add the report there. What else need to go to docs? Copy the design directory from rny3_docs
  - [ ] Why do we need the /admin/chatQA ? it can just be /admin ? 
  - [ ] Why do we need prod_setup/client_server/dradamblack/data/services.json ? The single point of truth should be the docker-compose
 

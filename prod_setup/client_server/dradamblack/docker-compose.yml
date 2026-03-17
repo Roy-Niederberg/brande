@@ -15,13 +15,13 @@ services:
   prompt-composer:
     image: registry.gitlab.com/rny3/brande/prompt_composer:latest
     networks: [client_network]
-    secrets: [gemini_1, gemini_2, groq_1, groq_2]
+    secrets: [gemini_1, gemini_2, groq_1, groq_2, admin_secret]
     volumes: [./data/:/app/data]
 
   admin:
     image: registry.gitlab.com/rny3/brande/admin:latest
     networks: [client_network]
-    secrets: [authorized_emails]
+    secrets: [authorized_emails, admin_secret]
     volumes:
       - ./assets:/app/assets:ro
       - ./data:/app/data
@@ -55,3 +55,4 @@ secrets:
   groq_1:               {file: ./secrets/groq_1.secret}
   groq_2:               {file: ./secrets/groq_2.secret}
   fb_page_access_token: {file: ./secrets/fb_page_access_token.secret}
+  admin_secret:         {file: ./secrets/admin_secret.secret}

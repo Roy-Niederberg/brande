@@ -301,6 +301,12 @@ for all subdomains.
 - Onboarding: Caddy `forward_auth` → auth service → `X-Auth-Email` header → service checks email allowlist
 - Dev mode: no auth (admin/onboarding skip email check when `NODE_ENV=development`)
 
+Admin → prompt-composer trust is established via a shared `admin_secret` (per-client
+Docker secret). The admin BE reads it at startup and sends it as `x-admin-secret` on
+every `/ask` forward. The prompt-composer only honours `sp_override`/`kb_override`
+fields if the header matches — requests from the site or Facebook without the header
+have overrides silently stripped. In dev both sides default to `'dev'`.
+
 JWT: HMAC-SHA256, 24h expiry, claims `{ email, name, picture, iat, exp }`.
 Signing key shared between main server and client router (`jwt_signing_key` secret).
 
@@ -314,9 +320,9 @@ Request flow:
 
 ### Prompt Logging
 
-The widget sends its `apiEndpoint` in the request body. The prompt-composer uses
-`apiEndpoint + module` for the log filename (e.g., `admin_ask_widget.txt` vs
-`site_ask_widget.txt`), so admin testing doesn't overwrite production logs.
+After each LLM call, the prompt-composer writes the full request + response to
+`data/last_prompt.json` (overwritten each time). Readable via `GET /last_prompt`
+(proxied through admin as `GET /api/last_prompt`).
 
 ### System Prompts
 

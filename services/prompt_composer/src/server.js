@@ -18,6 +18,9 @@ const GEM_1 = fs.readFileSync('/run/secrets/gemini_1', 'utf-8').trim()
 const GEM_2 = fs.readFileSync('/run/secrets/gemini_2', 'utf-8').trim()
 const GRK_1 = fs.readFileSync('/run/secrets/groq_1'  , 'utf-8').trim()
 const GRK_2 = fs.readFileSync('/run/secrets/groq_2'  , 'utf-8').trim()
+const ADMIN_SECRET = fs.existsSync('/run/secrets/admin_secret')
+  ? fs.readFileSync('/run/secrets/admin_secret', 'utf-8').trim()
+  : 'dev'
 
 const gk = [new OpenAI({apiKey:GRK_2,baseURL:GROQ}),'openai/gpt-oss-120b']
 const m1 = [new OpenAI({apiKey:GEM_2,baseURL:GEMINI}),'gemini-2.5-flash']
@@ -49,12 +52,15 @@ for (const f of files) {
   app.r('post', '/' + name, ({body}, rs) => {$[name] = body; write(f, body); rs.sendStatus(200)})
 }
 
-app.r('post', '/ask', async ({ body }, rs) => {
+app.r('post', '/ask', async ({ body, headers }, rs) => {
   if (!body.mod || !$.system_prompts[body.mod] || !body.chat?.length)
     throw `ASK validation [${body.mod}][${$.system_prompts[body.mod]}][${body.chat?.length}]`
 
-  body.sp_override = body.sp_override || $.system_prompts[body.mod]
-  body.kb_override = body.kb_override || $.knowledge_base
+  const trusted = headers['x-admin-secret'] === ADMIN_SECRET
+  const sp_override = trusted ? body.sp_override : null
+  const kb_override = trusted ? body.kb_override : null
+  body.sp_override = sp_override || $.system_prompts[body.mod]
+  body.kb_override = kb_override || $.knowledge_base
 
   if (!body.skip_gk) {
     try {
