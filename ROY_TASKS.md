@@ -12,6 +12,7 @@
  ```
 
  - [ ] Fix the admin secret read on prompt composr (we don't need the fs.existsSync)
+ - [ ] Review the changes of changing the sp to js from json. I don't think it good. 
  - [ ] Check if the admin and the site share assets  - like the bg images of the html itslef. if not it will be hard to maintain.
  - [ ] I don't think I want the widget to be shared. see the production server to understand. it should have version.
  - [x] The gatway Caddyfile - can we make it more generic? so we don't need to edit when add/remove services.

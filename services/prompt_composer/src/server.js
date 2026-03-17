@@ -10,6 +10,8 @@ app.use('/ask', rateLimit({ windowMs: 20000, max: 5, message: 'Try again later' 
 app.r = (vrb,u,f)=>app[vrb](u,async (rq,rs,nxt)=>{try{await f(rq,rs,nxt)} catch(e) {nxt(e)}})
 const writeFile = (f, d) => fs.writeFileSync(`./data/${f}`, d, 'utf-8')
 const writeJSON = (f, d) => writeFile(f, JSON.stringify(d))
+const toJS = (v,d=0) => typeof v==='string' ? '`'+v.replace(/\\/g,'\\\\').replace(/`/g,'\\`').replace(/\$\{/g,'\\${')+'`' : '{\n'+Object.entries(v).map(([k,w])=>`${'  '.repeat(d+1)}${k}: ${toJS(w,d+1)}`).join(',\n')+'\n'+'  '.repeat(d)+'}'
+const writeJSObj = (f, d) => writeFile(f, `export default ${toJS(d)}\n`)
 
 // =============== Server Loading section =======================================================//
 const GEMINI = 'https://generativelanguage.googleapis.com/v1beta/openai/'
@@ -41,14 +43,14 @@ const ask = async (llm, content, msgs, re='low') => {
 }
 
 // =============== Endpoints ====================================================================//
-const files = ['knowledge_base.json', 'system_prompts.json', 'greeting.json', 'capabilities.js']
+const files = ['knowledge_base.json', 'system_prompts.js', 'greeting.json', 'capabilities.js']
 const $ = {}
 for (const f of files) {
   const [name, ext] = f.split('.')
   let arg = (ext === 'json') ? {with:{type:'json'}} : {}
-  let write = (ext === 'json') ? writeJSON : writeFile
+  let write = ext === 'json' ? writeJSON : f === 'system_prompts.js' ? writeJSObj : writeFile
   $[name] = (await import(`../data/${f}`, arg)).default
-  app.r('get', '/' + name, (_, rs) => {rs.sendFile(`data/${f}`, {root: '.'})})
+  app.r('get', '/' + name, (_, rs) => f === 'system_prompts.js' ? rs.json($[name]) : rs.sendFile(`data/${f}`, {root: '.'}))
   app.r('post', '/' + name, ({body}, rs) => {$[name] = body; write(f, body); rs.sendStatus(200)})
 }
 
@@ -83,7 +85,8 @@ app.r('post', '/ask', async ({ body, headers }, rs) => {
     caps = body.sp_override.capabilities + '\n# CAPABILITIES:\n' + list
   }
 
-  const query = [body.sp_override.main, caps, kb].join('\n\n')
+  const anchor = kb ? 'Based on the knowledge base above, respond to the user\'s latest message.' : ''
+  const query = [body.sp_override.main, caps, kb, anchor].filter(Boolean).join('\n\n')
 
   for (const llm of [m1, m2, m3]) {
     try      {return rs.send(await ask(llm, query, body.chat))}

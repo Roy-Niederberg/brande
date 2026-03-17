@@ -11,6 +11,16 @@
     - **Add a final instruction anchor via prompt-composer.** The composed prompt currently ends with raw KB content — no closing instruction. After the KB section, the prompt-composer should append a one-line anchor like: `Based on the knowledge base above, respond to the user's latest message.` This helps Gemini focus on the task. This requires a small change in `services/prompt_composer/src/server.js` where the prompt is assembled — add the anchor line after the KB block. Check the prompt-composer code to find the exact spot.
     - **[Low priority / future] Move KB before examples in prompt-composer.** The Gemini guideline says context (KB) should come BEFORE examples and task. Currently the prompt-composer appends KB at the very end: `main + capabilities_instructions + #CAPABILITIES + #KNOWLEDGE BASE`. Ideally the order would be: `main_part1 (role+instructions) + #KNOWLEDGE BASE + main_part2 (examples) + capabilities`. This is a bigger architectural change — would require splitting the `main` SP into two parts or having the prompt-composer insert KB at a marked position. Not urgent since the current setup works, but worth considering for a future refactor.
 
+- [ ] **Migrate system_prompts from `.js` module to plain `.txt` files (future LLM-friendliness improvement).** `system_prompts.json` was converted to `system_prompts.js` (ES module with template literals) — this solved the JSON encoding problem (no more `\n` escape sequences, readable git diffs, LLM-editable). However `.js` still has syntax to preserve (backtick delimiters, `export default` wrapper, key names) which adds friction for LLM editing.
+
+    The ideal end state is plain `.txt` files — one file per prompt key, e.g. `data/prompts/widget.gatekeeper.txt`, `data/prompts/widget.main.txt`, etc. An LLM just reads and writes the file directly with no syntax concerns.
+
+    **Loader change needed:** Replace the single `import('system_prompts.js')` with a ~5-line directory scan that builds `$.system_prompts` from filenames (`{module}.{key}.txt`). Adding a new prompt module = add a file, no code change.
+
+    **Write-back change:** `POST /system_prompts` currently receives the full object and calls `writeJSObj`. With `.txt` files it would write each key as a separate `fs.writeFileSync`. The GET handler already returns `rs.json($[name])` (in-memory object), so no change there.
+
+    Not urgent — `.js` is a big improvement over `.json` already. (added 2026-03-17)
+
 - [ ] **Per-client rate limits and token budgets in prompt-composer.** Currently the rate limiter is hardcoded (5 req/20s) and applies the same to all clients. Add per-client configurable limits to support tiered pricing. Implementation:
     - Add a `limits` section to `client-config.json` (or a dedicated `limits.json` in `data/`) with fields like: `requests_per_minute`, `requests_per_day`, `max_input_length` (chars or tokens), `max_output_tokens`, `monthly_token_budget`.
     - In the prompt-composer, read these limits at startup (same `import`-into-`$` pattern). Track cumulative token usage per client (the LLM API response includes token counts) — persist running totals to a JSON file in `data/` (e.g. `usage.json` with daily/monthly counters).
