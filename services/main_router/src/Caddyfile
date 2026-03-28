@@ -23,6 +23,16 @@ qabu.net {
 		reverse_proxy client-onboarding:4321
 	}
 
+	handle /favicon.ico {
+		root * /srv
+		file_server
+	}
+
+	handle /logo_*.svg {
+		root * /srv
+		file_server
+	}
+
 	handle /privacy* {
 		root * /srv
 		try_files {path} {path}/index.html
