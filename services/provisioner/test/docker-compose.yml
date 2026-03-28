@@ -1,0 +1,16 @@
+services:
+  provisioner:
+    build:
+      context: ..
+      target: development
+    volumes:
+      - ../src:/app/src:ro
+      - clients:/clients
+    ports: ["4321:4321"]
+    secrets: [provision_secret]
+
+volumes:
+  clients:
+
+secrets:
+  provision_secret: {file: ./provision_secret.secret}

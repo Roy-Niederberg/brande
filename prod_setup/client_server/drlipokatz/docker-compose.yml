@@ -1,9 +1,10 @@
 services:
 
-  gateway:
-    image: caddy:2.10.2-alpine
+  services-router:
+    image: registry.gitlab.com/rny3/brande/services_router:latest
     networks: [client_network, qabu_network]
-    volumes: [../shared/gateway_Caddyfile:/etc/caddy/Caddyfile:ro]
+    volumes:
+      - ./assets:/srv/assets:ro
 
   site:
     image: registry.gitlab.com/rny3/brande/site:latest

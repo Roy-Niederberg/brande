@@ -13,6 +13,7 @@
         : config.canvasElement)
     : null
   const API = config.apiEndpoint || '/prompt-composer/ask'
+  const ASSETS = API.includes('://') ? new URL(API).origin + '/assets' : '/assets'
   const STORAGE_KEY = 'chat_history'
   const history = []
   let lastMsgRole = null
@@ -107,8 +108,9 @@
     .chat-header-avatar {
       width: 52px; height: 52px; border-radius: 50%;
       display: flex; align-items: center; justify-content: center;
-      flex-shrink: 0;
+      flex-shrink: 0; overflow: hidden;
     }
+    .chat-header-avatar img { width: 100%; height: 100%; object-fit: cover; }
     .chat-header-name {
       font-size: 23px; font-weight: 700; flex: 1;
       display: flex; flex-direction: column; gap: 4px; justify-content: center;
@@ -288,7 +290,8 @@
     <div id="chat-box">
       <div id="chat-header">
         <div class="chat-header-avatar">
-          <svg width="48" height="48" viewBox="-603 -603 1206 1206">
+          <img src="${ASSETS}/profile-pic.jpg" onerror="this.style.display='none';this.nextElementSibling.style.display=''">
+          <svg style="display:none" width="48" height="48" viewBox="-603 -603 1206 1206">
             <path transform="rotate(135) scale(1)" fill="#0F2C59" d="M -43.934 -600L -43.934 0C -102.948 -160.66 -102.944 -248.528 -175.736 -175.736A 248.528 248.528 0 1 0 43.934 -244.614L 43.934 -804.594C 87.868 -512.132 248.528 -600 424.264 -424.264A 600 600 0 1 1 -43.934 -600"></path>
           </svg>
         </div>
@@ -568,7 +571,7 @@
     const chat = history.map(h => ({
       role: h.role === 'user' ? 'user' : 'assistant', content: h.content
     }))
-    let requestBody = { mod: 'widget', chat }
+    let requestBody = { mod: 'widget', chat, local_time: new Date().toLocaleString() }
     if (skipGk) requestBody.skip_gk = true
     if (config.beforeSend && typeof config.beforeSend === 'function')
       requestBody = config.beforeSend(requestBody) || requestBody

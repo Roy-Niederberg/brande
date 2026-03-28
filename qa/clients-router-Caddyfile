@@ -1,0 +1,43 @@
+http://*.qabu.net {
+	# Facebook webhook forwarding from the dispatcher (main server).
+	@facebook_auth {
+		path /facebook-*
+		header X-Dispatcher-Secret {env.FB_DISPATCHER_SECRET}
+	}
+	handle @facebook_auth {
+		reverse_proxy {labels.2}-services-router-1:80
+	}
+	@facebook_noauth {
+		path /facebook-*
+	}
+	respond @facebook_noauth 403
+
+	# Admin: verify JWT via auth-verifier, redirect to login on 401.
+	@admin path /admin/*
+	handle @admin {
+		forward_auth auth-verifier:3456 {
+			uri /
+			copy_headers X-Auth-Email X-Auth-Name
+			@unauth status 401
+			handle_response @unauth {
+				redir http://qabu.net:8080/auth/login?return_to={scheme}://{hostport}{uri} 302
+			}
+		}
+		reverse_proxy {labels.2}-services-router-1:80
+	}
+
+	# All other traffic → per-client services-router
+	reverse_proxy {labels.2}-services-router-1:80
+	handle_errors {
+		header Content-Type text/html
+		header X-Qabu not-found
+		respond <<HTML
+			<!DOCTYPE html>
+			<html><head><title>404</title></head>
+			<body style="font-family:sans-serif;display:flex;justify-content:center;align-items:center;height:100vh;margin:0">
+			<h1>404 - Service not found</h1>
+			<h2>qabu.net</h2>
+			</body></html>
+			HTML 404
+	}
+}

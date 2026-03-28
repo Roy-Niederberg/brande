@@ -1,0 +1,37 @@
+http://qabu.net {
+	handle_path /facebook* {
+		reverse_proxy facebook-dispatcher:3210
+	}
+
+	handle_path /auth/* {
+		reverse_proxy auth:3456
+	}
+
+	handle_path /onboarding* {
+		forward_auth auth:3456 {
+			uri /verify
+			copy_headers X-Auth-Email X-Auth-Name
+			@unauth status 401
+			handle_response @unauth {
+				redir http://qabu.net:8080/auth/login?return_to={scheme}://{hostport}/onboarding{uri} 302
+			}
+		}
+		reverse_proxy client-onboarding:8559
+	}
+
+	handle /privacy* {
+		root * /srv
+		try_files {path} {path}/index.html
+		file_server
+	}
+
+	handle /terms* {
+		root * /srv
+		try_files {path} {path}/index.html
+		file_server
+	}
+
+	handle {
+		reverse_proxy landing-page:80
+	}
+}

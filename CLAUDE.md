@@ -85,6 +85,18 @@ asked — just add it and mention that you did.
 - Minimize third-party dependencies.
 - Whitelist `.gitignore` (not blacklist).
 - Everything runs in Docker - no node/npm/python on the host.
+  To generate/regenerate `package-lock.json` for a service (since npm isn't on
+  the host), run from the repo root:
+  ```sh
+  docker run --rm -v "$(pwd)/services/<service>/src/package.json:/app/package.json" \
+    -w /app node:22-alpine \
+    sh -c "npm install -g npm@latest && npm install && cat package-lock.json" \
+    > services/<service>/src/package-lock.json
+  ```
+  This mounts only `package.json` into the container, runs npm install inside it,
+  and pipes the generated lock file to the host via stdout.
+  **Do NOT mount the entire `src/` directory** (`-v .../src:/app`) — npm will
+  write `node_modules` (root-owned) onto the host through the bind mount.
 - **Multi-channel awareness**: Every change must consider all channels — widget
   (EN + HE), Facebook comments, and Facebook DMs. Prompt-composer serves all of
   them, so changes there affect everything. When discussing features, always verify
@@ -92,10 +104,18 @@ asked — just add it and mention that you did.
 
 ## Brand Colors
 
-- **Primary Light Blue `#A6D0DD`** — brand color (30%), bot bubbles, borders
-- **Dark Navy `#0F2C59`** — text/headers (10%), user bubbles
-- **Background `#F8F9FA`** — base canvas (60%)
-- **Accent Blue `#3276AA`** — highlights, buttons, CTAs
+### Light mode
+- **Primary Light Blue `#85C1E9`** — brand color (30%), bot bubbles, borders
+- **Dark Main `#5D6D7E`** — text/headers (10%), user bubbles
+- **Background `#FAF4E8`** — base canvas (60%)
+- **Accent Blue `#1B4F72`** — highlights, buttons, CTAs
+
+### Dark mode
+* **Primary Light Blue** `#2A4359` Brand Color (30%)
+* **Dark Main** `#FAF4E8` Text / Headers (10%)
+* **Background** `#1C2127 `Base Canvas (60%)
+* **Accent / Alt** `#85C1E9` Highlights / Buttons
+
 
 Use these consistently. The widget and capabilities already follow this palette.
 Admin buttons intentionally use distinct per-button colors (not brand colors).
@@ -171,14 +191,39 @@ Two Oracle Cloud VMs:
 
 These directories mirror what's running in production.
 
+## Landing Page
+
+The landing page (`services/landing_page/`) is a React/Vite/Tailwind app that
+runs as a separate Docker service on the main server. It is **not** managed by
+`deploy.sh` — it has its own build/push/deploy cycle.
+
+Build & push (from local machine, no node needed — Docker handles the build):
+```sh
+docker build --no-cache -t registry.gitlab.com/rny3/brande/landing_page:latest services/landing_page/
+docker push registry.gitlab.com/rny3/brande/landing_page:latest
+```
+
+Deploy (on main server):
+```sh
+ssh brande@129.159.134.3 'cd ~/app && docker compose pull landing-page && docker compose up -d landing-page'
+```
+
+Routing: the main router Caddyfile proxies the catch-all to `landing-page:80`.
+`/privacy` and `/terms` are still served from `/srv` as static files.
+
+Static assets (videos, images) go in `services/landing_page/public/` — Vite
+copies them to `dist/` as-is during build.
+
 ## Client Assets
 
 Each client has a `client-config.json` in its assets directory (`prod_setup/client_server/<client>/assets/`)
 that configures language, direction, title, background image, and social links.
 
-Each client also has a `mock_facebook/` subfolder in assets with `post-data.json`
-(and optionally `profile-pic.jpg`, `post-image.jpg`) for the mock Facebook admin
-testing interface. Missing images fall back to defaults (SVG avatar, site background).
+Each client has a `profile-pic.jpg` in the root of its assets directory (used by
+the mock Facebook testing interface and available for the site/widget). Each client
+also has a `mock_facebook/` subfolder in assets with `post-data.json` (and optionally
+`post-image.jpg`) for the mock Facebook admin testing interface. Missing images
+fall back to defaults (SVG avatar, site background).
 
 ## Client Profiles
 
@@ -207,13 +252,15 @@ Four Caddyfiles handle routing across the two VMs:
 **Main router** (`services/main_router/src/Caddyfile`) — on main VM:
 - `qabu.net/facebook*` → facebook-dispatcher (port 3210), prefix stripped
 - `qabu.net/auth/*` → auth service (port 3456), prefix stripped
-- `qabu.net/onboarding*` → client-onboarding (port 8559), prefix stripped, `forward_auth` via auth service
+- `qabu.net/onboarding*` → client-onboarding (port 4321), prefix stripped, `forward_auth` via auth service
 - `qabu.net` (everything else) → static site files
 
-**Client router** (`services/router/src/Caddyfile`) — on client VM:
-- `*.qabu.net` → `{subdomain}-gateway-1:80` (per-client gateway)
+**Clients router** (`services/clients_router/src/Caddyfile`) — on client VM:
+- `*.qabu.net` → `{subdomain}-services-router-1:80` (per-client services router)
 - `/admin/*` — `forward_auth` via auth-verifier sidecar, redirects to Google login on 401
 - `/facebook-*` — validates `X-Dispatcher-Secret` header, rejects 403 if missing
+- `/scaffold` → provisioner:4321 (authenticated via `X-Provision-Secret`)
+- Unknown subdomains → 404 with `X-Qabu: not-found` header
 
 **Gateway Caddyfile** (`prod_setup/client_server/shared/gateway_Caddyfile`) —
 shared across all clients. Generic routing: `/{service}/...` → `{service}:4321`
@@ -299,7 +346,8 @@ for all subdomains.
 - **auth-verifier** (client VM) — JWT signature check sidecar (~30 lines)
 - Admin: Caddy `forward_auth` → auth-verifier → `X-Auth-Email` header → admin checks per-client allowlist
 - Onboarding: Caddy `forward_auth` → auth service → `X-Auth-Email` header → service checks email allowlist
-- Dev mode: no auth (admin/onboarding skip email check when `NODE_ENV=development`)
+- Dev mode: admin skips email check when `NODE_ENV=development`; onboarding always
+  requires auth (use the dev browser extension to inject `X-Auth-Email`)
 
 Admin → prompt-composer trust is established via a shared `admin_secret` (per-client
 Docker secret). The admin BE reads it at startup and sends it as `x-admin-secret` on
@@ -395,8 +443,6 @@ for (const f of files) {
 ### Request Flags
 
 - `skip_gk: true` — skip gatekeeper (used for capability result follow-ups)
-- `skip_kb: true` — skip knowledge base injection
-- `skip_caps: true` — skip capabilities injection
 
 ## Widget Embeddability
 
@@ -417,23 +463,41 @@ Config options: `targetElement` (selector or element, defaults to `document.body
 
 ## Client Onboarding
 
-Internal tool at `qabu.net/onboarding` for collecting new client info before
-scaffolding their directory. Express app (port 8559) on the main server.
+Internal tool at `qabu.net/onboarding` for creating new client subdomains.
+Express app (port 4321) on the main server.
 
-- Single HTML page: list of existing configs + form to create/edit
-- Multipart upload via `busboy` for background image, profile pic, post image
-- Data stored in a **named Docker volume** (`onboarding_data`) — not in
-  `prod_setup/`, so `deploy.sh --delete` rsync won't wipe uploaded images
-- Auth: Google OAuth via centralized auth service + email allowlist in service
-- Auto-derives `direction`, `font`, and `locale` from `lang` (en/he)
-- Saves `config.json` + images per subdomain in `/app/data/<subdomain>/`
-- **Scaffold endpoint** (`POST /api/scaffold/:sub`): generates a full client
-  directory structure in the Docker volume — gateway/Caddyfile, assets,
-  data (KB, SP, greeting, capabilities, services.json), secrets, and a minimal
-  `docker-compose.yml` (gateway + prompt-composer + admin). Roy/Nevo copy the
-  scaffolded directory from the volume to the repo and deploy.
+- Single HTML page: subdomain input + "Let's Qabu!" button
+- Auth: Google OAuth via centralized auth service + `onboarding_emails` allowlist
+- Subdomain validation: `^[a-z][a-z0-9-]{3,18}[a-z]$` (5–20 chars), regex
+  served via `GET /subdomain-regex` for client-side validation
+- On submit: checks if subdomain is taken (fetches `https://{sub}.qabu.net/taken`),
+  then iterates VMs (`v1.qabu.net`, `v2.qabu.net`, ...) calling `POST /scaffold`
+  on each until one succeeds or a non-existing VM is reached (`X-Qabu: not-found`)
+- On success: form disappears, shows "{sub}.qabu.net is live!" for 5 seconds,
+  then redirects to `https://{sub}.qabu.net/admin`
+- Shared `provision_secret` authenticates requests to the provisioner
 
 Dev: `cd dev_setup/main_server && docker compose up client-onboarding` → `localhost:8559`
+Dev auth: load the browser extension from `dev_setup/header_extension/` (Manifest V3,
+injects `X-Auth-Email` header on localhost requests).
+
+## Provisioner
+
+Runs on each client VM (`services/provisioner/`). Scaffolds new client directories
+when called via `POST /scaffold` (authenticated by `X-Provision-Secret` header).
+
+- Tier-based budget: each VM has capacity of 5 tier points (`max_tier = 5`).
+  Each client costs its tier value (tier 1 = 1 point, tier 5 = 5 points).
+  Returns 507 if adding the client would exceed budget.
+- Creates full directory structure in `/clients/{subdomain}/`: `data/`, `public/`,
+  `public/mock_facebook/`, `secrets/`, `memory/`
+- Template files (`templates.js`): `docker-compose.yml`, `client-config.json`,
+  `system_prompts.js`, `capabilities.js`, `greeting.json`, `services.json`,
+  `knowledge_base.json`
+- Returns 409 if subdomain directory already exists
+- Routed via clients router Caddyfile (`/scaffold` → `provisioner:4321`)
+
+Test suite: `services/provisioner/test/` (docker-compose + test.sh with 16 tests)
 
 ## Facebook Integration
 

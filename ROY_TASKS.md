@@ -1,9 +1,16 @@
 # Roy's Tasks
+ - [ ] Next meeting with Nevo - show the langind page.
 
+- [ ] Finish the client-onboarding
+- [ ] Build a local integration test environment — Docker network with service containers + wiremock (to stub external calls like VM endpoints) + browser container for visual testing. Host uses Wayland so X11 forwarding won't work — use a VNC-based approach instead (e.g. `selenium/standalone-chrome` with noVNC, access via `localhost:7900` in host browser). Keeps coming up: hard to test end-to-end flows (like onboarding success → redirect) locally without real infrastructure. Invest in this once there are enough flows to justify it. (added 2026-03-28)
+- [ ] Finish the file-provide patter in the docker-compose (the widget not in 'share' solution)
+
+_Future_:
 - [ ] **When switching to Anthropic as LLM provider** — update `prod_setup/main_server/srv/privacy/index.html` Third-Party Processors section to add Anthropic, Inc. alongside Google and Groq. One extra `<li>` with a link to their privacy policy. (added 2026-03-15)
-
 - [ ] **When incorporating** — replace "independent service operated by its founders, based in Israel" in both `prod_setup/main_server/srv/privacy/index.html` and `prod_setup/main_server/srv/terms/index.html` with the registered company name. Have a lawyer review both documents at that point. (added 2026-03-15)
 
+- [ ] Check the credit on the langing page. I don't think its correct.
+- [ ] Add availability check in the langind page to see if the .qabu.net page for the wanted subdomain is free. Can improve sales.
 
  - [x] This warning when deploying:
  ``` 
@@ -11,8 +18,9 @@
  - JSONArgsRecommended: JSON arguments recommended for CMD to prevent unintended behavior related to OS signals (line 10)
  ```
 
- - [ ] Fix the admin secret read on prompt composr (we don't need the fs.existsSync)
- - [ ] Review the changes of changing the sp to js from json. I don't think it good. 
+ - [x] Fix the admin secret read on prompt composr (we don't need the fs.existsSync)
+ - [ ] Review the changes of changing the sp to js from json. I don't think it good.
+
  - [ ] Check if the admin and the site share assets  - like the bg images of the html itslef. if not it will be hard to maintain.
  - [ ] I don't think I want the widget to be shared. see the production server to understand. it should have version.
  - [x] The gatway Caddyfile - can we make it more generic? so we don't need to edit when add/remove services.

@@ -14,11 +14,10 @@ services:
 
   client-onboarding:
     build:   {context: ../../services/client_onboarding/, target: development}
-    ports:   ["8559:8559"]
+    ports:   ["8559:4321"]
+    secrets: [provision_secret, onboarding_emails]
     volumes:
       - ../../services/client_onboarding/src/:/app/src/
-      - ../../services/client_onboarding/src/public/:/app/public/
-      - onboarding_data:/app/data
 
   auth:
     build:   {context: ../../services/auth/, target: development}
@@ -36,3 +35,5 @@ secrets:
   fb_dispatcher_secret:    {file: ./secrets/fb_dispatcher_secret.secret}
   jwt_signing_key:         {file: ../../prod_setup/main_server/secrets/jwt_signing_key.secret}
   google_oauth:            {file: ../../prod_setup/main_server/secrets/google_oauth.secret}
+  provision_secret:        {file: ../../prod_setup/client_server/clients_router/secrets/provision_secret.secret}
+  onboarding_emails:       {file: ../../prod_setup/main_server/secrets/onboarding_emails.json}

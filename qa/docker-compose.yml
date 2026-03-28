@@ -1,0 +1,240 @@
+# Full QA environment — simulates both production VMs in one compose.
+#
+# Requires /etc/hosts entries:
+#   127.0.0.1 qabu.net dradamblack.qabu.net drlipokatz.qabu.net
+#
+# Access:
+#   http://qabu.net:8080              — landing page, auth, onboarding
+#   http://dradamblack.qabu.net:8443  — dradamblack client
+#   http://drlipokatz.qabu.net:8443   — drlipokatz client
+#
+# if you want admin login to work,
+# add http://qabu.net:8080/auth/callback as an authorized redirect in GCP.
+#
+# Note: Facebook dispatcher → client forwarding won't work end-to-end
+# (it does external HTTPS in prod). Use mock-facebook for FB testing.
+
+services:
+
+  # ─── Main server (simulates main VM) ───
+
+  main-router:
+    build: {context: ../services/main_router/, target: production}
+    command: caddy run --config /etc/caddy/Caddyfile
+    ports: ["8080:80"]
+    networks: [main-network]
+    volumes:
+      - ./main-router-Caddyfile:/etc/caddy/Caddyfile:ro
+      - ../prod_setup/main_server/srv:/srv:ro
+
+  facebook-dispatcher:
+    build: {context: ../services/facebook_dispatcher/, target: production}
+    networks: [main-network]
+    secrets: [fb_webhook_verify_token, fb_app_secret, fb_dispatcher_secret]
+    volumes:
+      - ../prod_setup/main_server/data/page_routes.json:/app/data/page_routes.json:ro
+
+  auth:
+    build: {context: ../services/auth/, target: production}
+    networks: [main-network]
+    environment:
+      - OAUTH_CALLBACK=http://qabu.net:8080/auth/callback
+      - COOKIE_DOMAIN=qabu.net
+      - COOKIE_SECURE=false
+      - ALLOWED_HOSTS=qabu.net,dradamblack.qabu.net,drlipokatz.qabu.net
+    secrets: [jwt_signing_key, google_oauth]
+
+  landing-page:
+    build: {context: ../services/landing_page/}
+    networks: [main-network]
+
+  client-onboarding:
+    build: {context: ../services/client_onboarding/, target: production}
+    networks: [main-network]
+    secrets: [onboarding_emails]
+    volumes: [onboarding_data:/app/data]
+
+  # ─── Client infra (simulates client VM shared services) ───
+
+  clients-router:
+    build: {context: ../services/clients_router/, target: production}
+    command: >-
+      sh -c 'FB_DISPATCHER_SECRET=$$(cat /run/secrets/fb_dispatcher_secret)
+      caddy run --config /etc/caddy/Caddyfile'
+    ports: ["8443:80"]
+    networks: [qabu-network]
+    secrets: [fb_dispatcher_secret]
+    volumes:
+      - ./clients-router-Caddyfile:/etc/caddy/Caddyfile:ro
+
+  auth-verifier:
+    build: {context: ../services/auth_verifier/, target: production}
+    networks: [qabu-network]
+    secrets: [jwt_signing_key]
+
+  # ─── dradamblack ───
+
+  dradamblack-services-router:
+    build: {context: ../services/services_router/, target: production}
+    networks:
+      qabu-network:
+        aliases: [dradamblack-services-router-1]
+      dradamblack-network:
+    volumes:
+      - ../prod_setup/client_server/dradamblack/assets:/srv/assets:ro
+
+  dradamblack-site:
+    build: {context: ../services/site/, target: production}
+    networks:
+      dradamblack-network:
+        aliases: [site]
+    volumes:
+      - ../prod_setup/client_server/dradamblack/assets:/site/assets:ro
+      - ../prod_setup/client_server/shared/widget/widget.js:/site/widget.js:ro
+
+  dradamblack-prompt-composer:
+    build: {context: ../services/prompt_composer/, target: production}
+    networks:
+      dradamblack-network:
+        aliases: [prompt-composer]
+    secrets:
+      - {source: dradamblack_gemini_1, target: gemini_1}
+      - {source: dradamblack_gemini_2, target: gemini_2}
+      - {source: dradamblack_groq_1, target: groq_1}
+      - {source: dradamblack_groq_2, target: groq_2}
+      - {source: dradamblack_groq_3, target: groq_3}
+      - {source: dradamblack_admin_secret, target: admin_secret}
+    volumes:
+      - ../prod_setup/client_server/dradamblack/data:/app/data
+
+  dradamblack-admin:
+    build: {context: ../services/admin/, target: production}
+    networks:
+      dradamblack-network:
+        aliases: [admin]
+    secrets:
+      - {source: dradamblack_authorized_emails, target: authorized_emails}
+      - {source: dradamblack_admin_secret, target: admin_secret}
+    volumes:
+      - ../prod_setup/client_server/dradamblack/assets:/app/assets:ro
+      - ../prod_setup/client_server/dradamblack/data:/app/data
+      - ../prod_setup/client_server/shared/widget/widget.js:/app/public/widget.js:ro
+
+  dradamblack-mock-facebook:
+    build: {context: ../services/mock_facebook/, target: production}
+    networks:
+      dradamblack-network:
+        aliases: [mock-facebook]
+    volumes:
+      - ../prod_setup/client_server/dradamblack/assets/mock_facebook:/app/data
+
+  dradamblack-facebook-comments:
+    build: {context: ../services/facebook_comments/, target: production}
+    networks:
+      dradamblack-network:
+        aliases: [facebook-comments]
+    secrets:
+      - {source: dradamblack_fb_page_access_token, target: fb_page_access_token}
+    environment: [FACEBOOK_API_URL=https://graph.facebook.com/v24.0/]
+
+  # ─── drlipokatz ───
+
+  drlipokatz-services-router:
+    build: {context: ../services/services_router/, target: production}
+    networks:
+      qabu-network:
+        aliases: [drlipokatz-services-router-1]
+      drlipokatz-network:
+    volumes:
+      - ../prod_setup/client_server/drlipokatz/assets:/srv/assets:ro
+
+  drlipokatz-site:
+    build: {context: ../services/site/, target: production}
+    networks:
+      drlipokatz-network:
+        aliases: [site]
+    volumes:
+      - ../prod_setup/client_server/drlipokatz/assets:/site/assets:ro
+      - ../prod_setup/client_server/shared/widget/widget.js:/site/widget.js:ro
+
+  drlipokatz-prompt-composer:
+    build: {context: ../services/prompt_composer/, target: production}
+    networks:
+      drlipokatz-network:
+        aliases: [prompt-composer]
+    secrets:
+      - {source: drlipokatz_gemini_1, target: gemini_1}
+      - {source: drlipokatz_gemini_2, target: gemini_2}
+      - {source: drlipokatz_groq_1, target: groq_1}
+      - {source: drlipokatz_groq_2, target: groq_2}
+      - {source: drlipokatz_admin_secret, target: admin_secret}
+    volumes:
+      - ../prod_setup/client_server/drlipokatz/data:/app/data
+
+  drlipokatz-admin:
+    build: {context: ../services/admin/, target: production}
+    networks:
+      drlipokatz-network:
+        aliases: [admin]
+    secrets:
+      - {source: drlipokatz_authorized_emails, target: authorized_emails}
+      - {source: drlipokatz_admin_secret, target: admin_secret}
+    volumes:
+      - ../prod_setup/client_server/drlipokatz/assets:/app/assets:ro
+      - ../prod_setup/client_server/drlipokatz/data:/app/data
+      - ../prod_setup/client_server/shared/widget/widget.js:/app/public/widget.js:ro
+
+  drlipokatz-mock-facebook:
+    build: {context: ../services/mock_facebook/, target: production}
+    networks:
+      drlipokatz-network:
+        aliases: [mock-facebook]
+    volumes:
+      - ../prod_setup/client_server/drlipokatz/assets/mock_facebook:/app/data
+
+  drlipokatz-facebook-comments:
+    build: {context: ../services/facebook_comments/, target: production}
+    networks:
+      drlipokatz-network:
+        aliases: [facebook-comments]
+    secrets:
+      - {source: drlipokatz_fb_page_access_token, target: fb_page_access_token}
+    environment: [FACEBOOK_API_URL=https://graph.facebook.com/v24.0/]
+
+networks:
+  main-network:
+  qabu-network:
+  dradamblack-network:
+  drlipokatz-network:
+
+volumes:
+  onboarding_data:
+
+secrets:
+  # Main server
+  jwt_signing_key:          {file: ../prod_setup/main_server/secrets/jwt_signing_key.secret}
+  google_oauth:             {file: ../prod_setup/main_server/secrets/google_oauth.secret}
+  fb_webhook_verify_token:  {file: ../prod_setup/main_server/secrets/fb_webhook_verify_token.secret}
+  fb_app_secret:            {file: ../prod_setup/main_server/secrets/fb_app_secret.secret}
+  fb_dispatcher_secret:     {file: ../prod_setup/main_server/secrets/fb_dispatcher_secret.secret}
+  onboarding_emails:        {file: ../prod_setup/main_server/secrets/onboarding_emails.json}
+
+  # dradamblack
+  dradamblack_gemini_1:             {file: ../prod_setup/client_server/dradamblack/secrets/gemini_1.secret}
+  dradamblack_gemini_2:             {file: ../prod_setup/client_server/dradamblack/secrets/gemini_2.secret}
+  dradamblack_groq_1:               {file: ../prod_setup/client_server/dradamblack/secrets/groq_1.secret}
+  dradamblack_groq_2:               {file: ../prod_setup/client_server/dradamblack/secrets/groq_2.secret}
+  dradamblack_groq_3:               {file: ../prod_setup/client_server/dradamblack/secrets/groq_3.secret}
+  dradamblack_admin_secret:         {file: ../prod_setup/client_server/dradamblack/secrets/admin_secret.secret}
+  dradamblack_authorized_emails:    {file: ../prod_setup/client_server/dradamblack/secrets/authorized_emails.json}
+  dradamblack_fb_page_access_token: {file: ../prod_setup/client_server/dradamblack/secrets/fb_page_access_token.secret}
+
+  # drlipokatz
+  drlipokatz_gemini_1:             {file: ../prod_setup/client_server/drlipokatz/secrets/gemini_1.secret}
+  drlipokatz_gemini_2:             {file: ../prod_setup/client_server/drlipokatz/secrets/gemini_2.secret}
+  drlipokatz_groq_1:               {file: ../prod_setup/client_server/drlipokatz/secrets/groq_1.secret}
+  drlipokatz_groq_2:               {file: ../prod_setup/client_server/drlipokatz/secrets/groq_2.secret}
+  drlipokatz_admin_secret:         {file: ../prod_setup/client_server/drlipokatz/secrets/admin_secret.secret}
+  drlipokatz_authorized_emails:    {file: ../prod_setup/client_server/drlipokatz/secrets/authorized_emails.json}
+  drlipokatz_fb_page_access_token: {file: ../prod_setup/client_server/drlipokatz/secrets/fb_page_access_token.secret}
+

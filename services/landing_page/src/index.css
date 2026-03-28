@@ -1,0 +1,19 @@
+@import "tailwindcss";
+
+:root {
+  --bg:      #FAF4E8;
+  --text:    #5D6D7E;
+  --heading: #1B4F72;
+  --primary: #85C1E9;
+  --accent:  #1B4F72;
+  --border:  rgba(133,193,233,0.2);
+}
+
+.dark {
+  --bg:      #1C2127;
+  --text:    #FAF4E8;
+  --heading: #FAF4E8;
+  --primary: #85C1E9;
+  --accent:  #85C1E9;
+  --border:  rgba(133,193,233,0.15);
+}

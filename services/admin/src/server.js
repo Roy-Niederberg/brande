@@ -7,12 +7,8 @@ app.set('trust proxy', true)
 app.use(express.json())
 app.r = (vrb, u, f) => app[vrb](u, async (rq, rs, nxt) => { try { await f(rq, rs, nxt) } catch (e) { nxt(e) } })
 
-const emails = process.env.NODE_ENV === 'production'
-  ? JSON.parse(fs.readFileSync('/run/secrets/authorized_emails', 'utf-8').trim()).emails
-  : null
-const admin_secret = process.env.NODE_ENV === 'production'
-  ? fs.readFileSync('/run/secrets/admin_secret', 'utf-8').trim()
-  : 'dev'
+const emails = JSON.parse(fs.readFileSync('/run/secrets/authorized_emails', 'utf-8').trim()).emails
+const admin_secret = fs.readFileSync('/run/secrets/admin_secret', 'utf-8').trim()
 app.use((rq, rs, nx) => {
   if (!emails) return nx()
   if (!emails.includes(rq.headers['x-auth-email'])) return rs.sendStatus(403)
@@ -24,7 +20,7 @@ app.get('/', (_, rs) => rs.redirect('/admin/chatQA'))
 app.get('/chatQA', (_, rs) => rs.sendFile('/app/views/index.html'))
 app.get('/loader.js', (_, rs) => rs.sendFile('/app/views/loader.js'))
 app.get('/admin.js', (_, rs) => rs.sendFile('/app/views/admin.js'))
-app.get('/widget.js', (_, rs) => rs.sendFile('/app/public/widget.js'))
+app.get('/widget.js', (_, rs) => { rs.set('Cache-Control', 'no-cache'); rs.sendFile('/app/public/widget.js') })
 app.use('/assets', express.static('/app/assets'))
 
 app.get('/api/user', (rq, rs) =>
@@ -52,8 +48,8 @@ app.r('get', '/greeting', async (_, rs) => {
 app.r('post', '/ask', async (rq, rs) => {
   console.log(`[${new Date().toISOString()}] Widget chat request from admin`)
   const { knowledgeBaseOverride, systemPromptOverride, ...requestBody } = rq.body
-  if (knowledgeBaseOverride) requestBody.kb_override = knowledgeBaseOverride
-  if (systemPromptOverride) requestBody.sp_override = systemPromptOverride
+  requestBody.kb_override = knowledgeBaseOverride
+  requestBody.sp_override = systemPromptOverride
   const response = await fetch(`${PROMPT_COMPOSER_URL}/ask`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-admin-secret': admin_secret },

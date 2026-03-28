@@ -20,27 +20,35 @@ const GEM_1 = fs.readFileSync('/run/secrets/gemini_1', 'utf-8').trim()
 const GEM_2 = fs.readFileSync('/run/secrets/gemini_2', 'utf-8').trim()
 const GRK_1 = fs.readFileSync('/run/secrets/groq_1'  , 'utf-8').trim()
 const GRK_2 = fs.readFileSync('/run/secrets/groq_2'  , 'utf-8').trim()
-const ADMIN_SECRET = fs.existsSync('/run/secrets/admin_secret')
-  ? fs.readFileSync('/run/secrets/admin_secret', 'utf-8').trim()
-  : 'dev'
+// const GRK_3 = fs.readFileSync('/run/secrets/groq_3'  , 'utf-8').trim()
+// const GRK_4 = fs.readFileSync('/run/secrets/groq_4'  , 'utf-8').trim()
+const ADMIN_SECRET = fs.readFileSync('/run/secrets/admin_secret', 'utf-8').trim()
 
-const gk = [new OpenAI({apiKey:GRK_2,baseURL:GROQ}),'openai/gpt-oss-120b']
-const m1 = [new OpenAI({apiKey:GEM_2,baseURL:GEMINI}),'gemini-2.5-flash']
+const gk1 = [new OpenAI({apiKey:GRK_1,baseURL:GROQ}),'openai/gpt-oss-120b']
+const gk2 = [new OpenAI({apiKey:GRK_2,baseURL:GROQ}),'groq/compound-mini']
+// const gk3 = [new OpenAI({apiKey:GRK_3,baseURL:GROQ}),'openai/gpt-oss-120b']
+// const gk4 = [new OpenAI({apiKey:GRK_4,baseURL:GROQ}),'groq/compound-mini']
+const m1 = [new OpenAI({apiKey:GEM_2,baseURL:GEMINI}),'gemini-2.5-flash-lite']
 const m2 = [new OpenAI({apiKey:GEM_1,baseURL:GEMINI}),'gemini-2.5-flash-lite']
-const m3 = [new OpenAI({apiKey:GRK_1,baseURL:GROQ}),'openai/gpt-oss-120b']
 
-const ask = async (llm, content, msgs, re='low') => {
-  const ask_obj = {
-    model: llm[1],
-    messages: [{ role: 'system', content }, ...msgs],
-    reasoning_effort: re,
-  }
-  const r = await llm[0].chat.completions.create(ask_obj)
-  const response = r.choices[0]?.message?.content || ''
-  writeJSON('last_prompt.json', { ...ask_obj, response })
-  console.log(response)
-  return response
+const ask = async (llm, content, msgs) => {
+  const ask_obj = {model: llm[1], messages: [{ role: 'system', content }, ...msgs]}
+  try {
+    const r = await llm[0].chat.completions.create(ask_obj)
+    const response = r.choices[0]?.message?.content || ''
+    writeJSON('last_prompt.json', { ...ask_obj, response })
+    return response
+  } catch (e) {console.error(`🚩 failed [${llm[1]}]:`, e.message)}
 }
+
+const parse = (template, local_time) =>  {
+const data = { date: local_time || new Date().toString('en-IL', { timeZone: 'Asia/Jerusalem' }) }
+  return template.replace(/\{\{(.*?)\}\}/g, (match, key) => {
+    const value = key.trim().split('.').reduce((obj, i) => obj?.[i], data);
+    return value !== undefined ? value : match;
+  });
+}
+
 
 // =============== Endpoints ====================================================================//
 const files = ['knowledge_base.json', 'system_prompts.js', 'greeting.json', 'capabilities.js']
@@ -59,47 +67,80 @@ app.r('post', '/ask', async ({ body, headers }, rs) => {
     throw `ASK validation [${body.mod}][${$.system_prompts[body.mod]}][${body.chat?.length}]`
 
   const trusted = headers['x-admin-secret'] === ADMIN_SECRET
-  const sp_override = trusted ? body.sp_override : null
-  const kb_override = trusted ? body.kb_override : null
-  body.sp_override = sp_override || $.system_prompts[body.mod]
-  body.kb_override = kb_override || $.knowledge_base
 
-  if (!body.skip_gk) {
-    try {
-      const gk_answer = await ask(gk, body.sp_override.gatekeeper, body.chat)
-      console.log(gk_answer)
-      if (gk_answer === 'IGNORE')    return rs.send('')
-      if (gk_answer !== 'ESCALATE')  return rs.send(gk_answer)
-    } catch(e) {console.error(`🚩 gatekeeper failed: `, e.message)}
-  }
+  const sp = trusted ? body.sp_override : $.system_prompts[body.mod]
+  const kb_obj = (trusted && body.kb_override) || $.knowledge_base
 
-  const kb = !body.skip_kb ?
-    '# KNOWLEDGE BASE:\n' +
-      body.kb_override.map(e => `## ${e.key}\n${e.content}`).join('\n\n')
-    : ''
+  console.log(headers['x-admin-secret'])
+  console.log(trusted)
+  console.log(sp.gatekeeper)
+  console.log(body.chat)
 
-  let caps = ''
-  if (!body.skip_caps && body.sp_override.capabilities && Object.keys($.capabilities).length) {
-    const list = Object.entries($.capabilities)
+  let answer = undefined
+
+  for (let i = 0; i < 3; ++i) { // 3 tries
+    if (!body.skip_gk) answer = await ask(gk1, parse(sp.gatekeeper, body.local_time), body.chat)
+    if (answer !== 'ESCALATE') return rs.send(answer)
+
+    const kb = '# KNOWLEDGE BASE:\n' +
+      kb_obj.map(e => `## ${e.key}\n${e.content}`).join('\n\n')
+
+    let caps = ''
+    if (sp.capabilities && Object.keys($.capabilities).length) {
+      const list = Object.entries($.capabilities)
       .map(([k, v]) => `- ${k}: ${v.description}`).join('\n')
-    caps = body.sp_override.capabilities + '\n# CAPABILITIES:\n' + list
+      caps = sp.capabilities + '\n\n# CAPABILITIES:\n' + list
+    }
+    console.log(caps)
+
+    const query = [sp.main, caps, kb].join('\n\n')
+
+    const [m1_ans, m2_ans] = await Promise.allSettled([
+      ask(m1, query, body.chat),
+      ask(m2, query, body.chat),
+    ])
+
+    const m1_ans_f = m1_ans.status === 'fulfilled' ?
+      m1_ans.value : (console.error(`🚩 m2 failed:`, m1_ans.reason.message), undefined)
+    const m2_ans_f = m2_ans.status === 'fulfilled' ? 
+      m2_ans.value : (console.error(`🚩 m2 failed:`, m2_ans.reason.message), undefined)
+
+    const p = `
+This is a conversation history between a user and a AI assistance: 
+${JSON.stringify(body.chat, null, 2)}
+
+And these are two possible assistance replays answers:
+
+* OPTION 1:
+${m1_ans_f}
+
+* OPTION 2:
+${m2_ans_f}
+
+Please assest both answers and choose which one is better.
+Replay with a single word:
+"OPTION1" - if you think option 1 is better
+"OPTION2" - if you think option 2 is better
+"NONE" - if both are not good.
+`
+    const verdict = await ask(gk2, p, [{role: "user", content: "What is your call?"}])
+    if      (verdict === "OPTION1") {answer = m1_ans_f }
+    else if (verdict === "OPTION2") {answer = m2_ans_f }
+    else if (verdict === "NONE")    {answer = undefined}
+    else {answer = undefined}
+
+    if (answer !== undefined) { break }
+    console.log(`Try ${i} failed. something went wronge.`)
   }
 
-  const anchor = kb ? 'Based on the knowledge base above, respond to the user\'s latest message.' : ''
-  const query = [body.sp_override.main, caps, kb, anchor].filter(Boolean).join('\n\n')
-
-  for (const llm of [m1, m2, m3]) {
-    try      {return rs.send(await ask(llm, query, body.chat))}
-    catch(e) {console.error(`🚩 ${llm[1]} failed:`, e.message)}
-  }
-  rs.send("The assistance is not available at the moment. Please try again later.")
+  rs.send(answer ?? "The assistance is unavailable at the moment. Please try again later.")
 })
 
 app.r('get', '/last_prompt', (_, rs) => {rs.sendFile('data/last_prompt.json', {root: '.'})})
 
 // =============== Error handling middleware ====================================================//
 app.use((e, _, rs, _n) => {
-  console.error(`🚩 MSSG: ${e.response?.data || e.message}\nSTACK: ${e.stack}\nERR: ${e}`)
+  console.error(`🚩 ${e.response?.data || e.message}\nSTACK: ${e.stack}\nERR: ${e}`)
   rs.sendStatus(500)
 })
 app.use('*', (_, rs) => rs.sendStatus(404))

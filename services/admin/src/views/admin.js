@@ -6,11 +6,9 @@
     greetingOverride: () => ({ messages: grEditor.getDraft().map(e => ({ delay: parseInt(e.key) || 0, text: e.content })) }),
     beforeSend: (body) => {
       body.knowledgeBaseOverride = kbEditor.getDraft()
-      const spDraft = spEditor.getDraft().filter(e => e.key.startsWith(body.mod + '/'))
-      if (spDraft.length) {
-        body.systemPromptOverride = {}
-        for (const e of spDraft) body.systemPromptOverride[e.key.split('/')[1]] = e.content
-      }
+      body.systemPromptOverride = {}
+      for (const e of spEditor.getDraft())
+        if (e.key.startsWith(body.mod + '/')) body.systemPromptOverride[e.key.split('/')[1]] = e.content
       return body
     }
   }

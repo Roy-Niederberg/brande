@@ -20,12 +20,22 @@ qabu.net {
 				redir https://qabu.net/auth/login?return_to={scheme}://{host}/onboarding{uri} 302
 			}
 		}
-		reverse_proxy client-onboarding:8559
+		reverse_proxy client-onboarding:4321
 	}
 
-	handle {
+	handle /privacy* {
 		root * /srv
 		try_files {path} {path}/index.html
 		file_server
+	}
+
+	handle /terms* {
+		root * /srv
+		try_files {path} {path}/index.html
+		file_server
+	}
+
+	handle {
+		reverse_proxy landing-page:80
 	}
 }

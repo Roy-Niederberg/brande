@@ -19,7 +19,7 @@ app.get('/', (_, res) => {
         postText: 'Welcome to our page!' }
   const dir = d.direction || 'ltr'
   const align = dir === 'rtl' ? 'right' : 'left'
-  const pic = '/mock-facebook/assets/profile-pic.jpg'
+  const pic = '/assets/profile-pic.jpg'
   const postImg = '/mock-facebook/assets/post-image.jpg'
   res.send(/*html*/`<!DOCTYPE html>
 <html lang="${dir === 'rtl' ? 'he' : 'en'}" dir="${dir}">

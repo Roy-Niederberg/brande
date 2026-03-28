@@ -1,0 +1,67 @@
+:80 {
+    # -------------------------------------------------------------------------
+    # 1. For the client onboarding, to check if the subdomain is taken.
+    # -------------------------------------------------------------------------
+    handle /taken {
+        respond "true" 200
+    }
+
+    # -------------------------------------------------------------------------
+    # 2. Static Assets (The "First Priority" Block)
+    # -------------------------------------------------------------------------
+    # We handle assets first. Because Caddy 'handle' blocks are mutually exclusive,
+    # if a request matches /assets/*, it stops here and doesn't look at the 
+    # @svc logic below.
+    handle /assets/* {
+        root * /srv
+        file_server
+    }
+
+    # -------------------------------------------------------------------------
+    # 3. Dynamic Service Routing (@svc)
+    # -------------------------------------------------------------------------
+
+    # THE MATCHER: This is the "Security Guard."
+    # It defines the criteria for what counts as a "microservice request."
+    @svc {
+        # Regular Expression Breakdown:
+        # ^/        -> Starts with a forward slash
+        # ([^/]+)   -> Group 1: Capture until the next slash (the service name)
+        # (/.*)$    -> Group 2: Capture the rest (the internal route)
+        path_regexp svc ^/([^/]+)(/.*)$
+
+        # The Guardrail:
+        # We add 'not path /assets/*' here as "insurance." 
+        # Even though there is a handle block for assets above, this ensures 
+        # that the @svc logic explicitly ignores anything in the assets folder, 
+        # preventing the RegEx from accidentally "claiming" an asset request.
+        not path /assets/*
+    }
+
+    # THE HANDLER: This is the "Concierge."
+    # This block only runs if the @svc matcher above returns "True."
+    handle @svc {
+        # STEP A: Rewrite the internal path.
+        # It takes Group 2 from our RegEx (e.g., /ask) and makes that the 
+        # new path, effectively stripping the service name (e.g., /admin)
+        # from the URL before it hits the backend.
+        rewrite * {http.regexp.svc.2}
+
+        # STEP B: Proxy to the container.
+        # It takes Group 1 from our RegEx (the service name) and uses it 
+        # as the hostname. It assumes all these containers are on the 
+        # same Docker network and listening on port 4321.
+        # e.g. /admin/ask → admin:4321/ask
+        #      /prompt-composer/ask → prompt-composer:4321/ask
+        reverse_proxy {http.regexp.svc.1}:4321
+    }
+
+    # -------------------------------------------------------------------------
+    # 4. Catch-all (The "Safety Net")
+    # -------------------------------------------------------------------------
+    # If a request didn't match /taken, /assets/, or the @svc pattern,
+    # it ends up here. This usually serves your main frontend site.
+    handle {
+        reverse_proxy site:80
+    }
+}

@@ -1,0 +1,16 @@
+{
+    "lang": "en",
+    "direction": "ltr",
+    "title": "Dr. Adam Black @ Qabu",
+    "backgroundImage": "background.png",
+    "overlayTitle": "Dr. Adam Black",
+    "font": {
+        "family": "Inter",
+        "url": "https://fonts.googleapis.com/css2?family=Inter:wght@700&display=swap"
+    },
+    "socialLinks": [
+        { "icon": "facebook", "url": "" },
+        { "icon": "instagram", "url": "" },
+        { "icon": "youtube", "url": "" }
+    ]
+}

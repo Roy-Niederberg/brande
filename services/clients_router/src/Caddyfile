@@ -1,5 +1,5 @@
 # Client VM entry point for all *.qabu.net traffic.
-# Terminates TLS and routes to per-client gateways ({subdomain}-gateway-1:80) after auth checks.
+# Terminates TLS and routes to per-client services-routers ({subdomain}-services-router-1:80) after auth checks.
 *.qabu.net {
 	# Wildcard TLS cert via Cloudflare DNS challenge
 	tls {
@@ -14,7 +14,7 @@
 		header X-Dispatcher-Secret {env.FB_DISPATCHER_SECRET}
 	}
 	handle @facebook_auth {
-		reverse_proxy {labels.2}-gateway-1:80
+		reverse_proxy {labels.2}-services-router-1:80
 	}
 	@facebook_noauth {
 		path /facebook-*
@@ -22,7 +22,7 @@
 	respond @facebook_noauth 403
 
 	# Admin: verify JWT via auth-verifier sidecar; redirect to Google
-	# login on 401. Forwards X-Auth-Email/X-Auth-Name to the gateway.
+	# login on 401. Forwards X-Auth-Email/X-Auth-Name to the services-router.
 	@admin path /admin/*
 	handle @admin {
 		forward_auth auth-verifier:3456 {
@@ -33,13 +33,20 @@
 				redir https://qabu.net/auth/login?return_to={scheme}://{host}{uri} 302
 			}
 		}
-		reverse_proxy {labels.2}-gateway-1:80
+		reverse_proxy {labels.2}-services-router-1:80
 	}
 
-	# All other traffic → per-client gateway (subdomain derived from {labels.2})
-	reverse_proxy {labels.2}-gateway-1:80
+	# Provisioner: scaffolds new client directories
+	@provision path /scaffold
+	handle @provision {
+		reverse_proxy provisioner:4321
+	}
+
+	# All other traffic → per-client services-router (subdomain derived from {labels.2})
+	reverse_proxy {labels.2}-services-router-1:80
 	handle_errors {
 		header Content-Type text/html
+		header X-Qabu not-found
 		respond <<HTML
 			<!DOCTYPE html>
 			<html><head><title>404</title></head>
