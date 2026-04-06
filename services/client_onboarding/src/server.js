@@ -12,6 +12,8 @@ app.use((rq, rs, nx) => {
 })
 app.use(express.json())
 
+// Subdomain rule: 5-20 chars, lowercase letters/digits/hyphens, start+end with letter.
+// MUST stay in sync with valid_sub() in services/conductor/src/main.cpp.
 const SUBDOMAIN_RE = /^[a-z][a-z0-9-]{3,18}[a-z]$/
 app.r('get', '/', (_, rs) => rs.sendFile('views/index.html', {root: './src'}))
 app.r('get', '/subdomain-regex', (_, rs) => rs.json({pattern: SUBDOMAIN_RE.source}))
@@ -19,14 +21,21 @@ app.r('get', '/subdomain-regex', (_, rs) => rs.json({pattern: SUBDOMAIN_RE.sourc
 async function scaffold(s, tier) {
   for (let i = 1; ; i++) {
     const host = `v${i}.qabu.net`
+
     const resp = await fetch(`https://${host}/scaffold`, {
       method: 'POST', signal: AbortSignal.timeout(10000),
       headers: { 'Content-Type': 'application/json', 'X-Provision-Secret': secret },
       body: JSON.stringify({ subdomain: s, tier })
     })
-    if (resp.headers.get('x-qabu') === 'not-found') return
+
+    // try v1, v2, v3 ... till non-existin server
+    if (resp.headers.get('x-qabu') === 'not-found') return 
+
+    // 507 means the server is running but doesn't have the resources. Other error, we stop
+    if (resp.status !== 507) return 
+
+    // found verver with sufficient resources - return it
     if (resp.ok) return host
-    if (resp.status !== 507) return
   }
 }
 
@@ -44,6 +53,8 @@ app.r('post', '/create-client', async (rq, rs) => {
 
   const vm = await scaffold(s, tier)
   if (!vm) return rs.sendStatus(507)
+
+  // we should wait and check if the client is up and running and only then return it.
   rs.json({ subdomain: s, vm })
 })
 

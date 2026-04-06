@@ -1,9 +1,22 @@
 # Roy's Tasks
+ - [ ] Delete the `router` image in GitLab
  - [ ] Next meeting with Nevo - show the langind page.
 
 - [ ] Finish the client-onboarding
 - [ ] Build a local integration test environment — Docker network with service containers + wiremock (to stub external calls like VM endpoints) + browser container for visual testing. Host uses Wayland so X11 forwarding won't work — use a VNC-based approach instead (e.g. `selenium/standalone-chrome` with noVNC, access via `localhost:7900` in host browser). Keeps coming up: hard to test end-to-end flows (like onboarding success → redirect) locally without real infrastructure. Invest in this once there are enough flows to justify it. (added 2026-03-28)
 - [ ] Finish the file-provide patter in the docker-compose (the widget not in 'share' solution)
+
+- [ ] **Update provisioner to use conductor socket** — now that conductor handles client creation (filesystem + docker), the provisioner (`services/provisioner/src/server.js`) needs to be rewritten to: validate the secret + subdomain, then forward to conductor via Unix socket at `/run/qabu/conductor.sock` (mount it in the provisioner container). The provisioner keeps HTTP, auth, and validation; conductor does everything else. (added 2026-03-30)
+
+- [ ] **Delete `prod_setup/`** — deprecated now that clients live under `~/app/clients/` on the server directly. Roy confirmed the production server has already been migrated. Remove the directory and update CLAUDE.md accordingly. (added 2026-03-30)
+
+- [ ] **Write a "New Server Setup" guide** — document the full steps to provision a new Oracle Cloud VM for Qabu: install Docker, build + install the conductor binary, install `qabu-conductor.service`, set up Caddy TLS, etc. Replace references to `deploy.sh` and `prod_setup/`. Lives in `docs/` or a `SETUP.md`. (added 2026-03-30)
+
+- [ ] **Rebuild and redeploy conductor binary** — three fixes pending in source: (1) `setbuf(stdout, NULL)` so logs show in journalctl instead of being buffered, (2) removed `2>/dev/null` from `start_stack` and `stack_running` so docker compose errors are visible in logs, (3) `RuntimeDirectory=qabu` in systemd service file (already deployed to server, but binary needs rebuild). Rebuild with `docker run --rm -v $(pwd)/clients_server_automation/conductor/src:/src -w /src gcc:latest g++ -std=c++20 -O2 -static -s -o /src/conductor main.cpp` then scp + restart. (added 2026-04-06)
+
+- [ ] **Conductor doesn't copy secrets to new clients** — `create_client()` copies the config template to the client dir, but the template has no `secrets/` directory. Currently secrets must be manually copied to each new client (`~/app/clients/<sub>/secrets/`). Will be resolved when Infisical is set up — secrets will be pulled at runtime instead of living on disk. (added 2026-04-06)
+
+- [ ] **Migrate secrets to Infisical** — currently secrets are rsynced to VMs manually. Replace with Infisical so secrets are pulled at runtime (no rsync needed, no machine dependency). Part of the new deploy flow that replaces `deploy.sh`. (added 2026-03-28)
 
 _Future_:
 - [ ] **When switching to Anthropic as LLM provider** — update `prod_setup/main_server/srv/privacy/index.html` Third-Party Processors section to add Anthropic, Inc. alongside Google and Groq. One extra `<li>` with a link to their privacy policy. (added 2026-03-15)

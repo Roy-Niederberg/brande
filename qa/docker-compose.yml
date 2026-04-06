@@ -51,7 +51,7 @@ services:
   client-onboarding:
     build: {context: ../services/client_onboarding/, target: production}
     networks: [main-network]
-    secrets: [onboarding_emails]
+    secrets: [onboarding_emails, provision_secret]
     volumes: [onboarding_data:/app/data]
 
   # ─── Client infra (simulates client VM shared services) ───
@@ -83,6 +83,12 @@ services:
     volumes:
       - ../prod_setup/client_server/dradamblack/assets:/srv/assets:ro
 
+  dradamblack-widget:
+    build: {context: ../services/widget/}
+    networks:
+      dradamblack-network:
+        aliases: [widget]
+
   dradamblack-site:
     build: {context: ../services/site/, target: production}
     networks:
@@ -90,7 +96,6 @@ services:
         aliases: [site]
     volumes:
       - ../prod_setup/client_server/dradamblack/assets:/site/assets:ro
-      - ../prod_setup/client_server/shared/widget/widget.js:/site/widget.js:ro
 
   dradamblack-prompt-composer:
     build: {context: ../services/prompt_composer/, target: production}
@@ -118,7 +123,6 @@ services:
     volumes:
       - ../prod_setup/client_server/dradamblack/assets:/app/assets:ro
       - ../prod_setup/client_server/dradamblack/data:/app/data
-      - ../prod_setup/client_server/shared/widget/widget.js:/app/public/widget.js:ro
 
   dradamblack-mock-facebook:
     build: {context: ../services/mock_facebook/, target: production}
@@ -148,6 +152,12 @@ services:
     volumes:
       - ../prod_setup/client_server/drlipokatz/assets:/srv/assets:ro
 
+  drlipokatz-widget:
+    build: {context: ../services/widget/}
+    networks:
+      drlipokatz-network:
+        aliases: [widget]
+
   drlipokatz-site:
     build: {context: ../services/site/, target: production}
     networks:
@@ -155,7 +165,6 @@ services:
         aliases: [site]
     volumes:
       - ../prod_setup/client_server/drlipokatz/assets:/site/assets:ro
-      - ../prod_setup/client_server/shared/widget/widget.js:/site/widget.js:ro
 
   drlipokatz-prompt-composer:
     build: {context: ../services/prompt_composer/, target: production}
@@ -182,7 +191,6 @@ services:
     volumes:
       - ../prod_setup/client_server/drlipokatz/assets:/app/assets:ro
       - ../prod_setup/client_server/drlipokatz/data:/app/data
-      - ../prod_setup/client_server/shared/widget/widget.js:/app/public/widget.js:ro
 
   drlipokatz-mock-facebook:
     build: {context: ../services/mock_facebook/, target: production}
@@ -218,6 +226,7 @@ secrets:
   fb_app_secret:            {file: ../prod_setup/main_server/secrets/fb_app_secret.secret}
   fb_dispatcher_secret:     {file: ../prod_setup/main_server/secrets/fb_dispatcher_secret.secret}
   onboarding_emails:        {file: ../prod_setup/main_server/secrets/onboarding_emails.json}
+  provision_secret:         {file: ../prod_setup/main_server/secrets/provision_secret.secret}
 
   # dradamblack
   dradamblack_gemini_1:             {file: ../prod_setup/client_server/dradamblack/secrets/gemini_1.secret}

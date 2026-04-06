@@ -17,6 +17,10 @@
         file_server
     }
 
+    handle /widget.js {
+        reverse_proxy widget:4321
+    }
+
     # -------------------------------------------------------------------------
     # 3. Dynamic Service Routing (@svc)
     # -------------------------------------------------------------------------
@@ -31,11 +35,12 @@
         path_regexp svc ^/([^/]+)(/.*)$
 
         # The Guardrail:
-        # We add 'not path /assets/*' here as "insurance." 
-        # Even though there is a handle block for assets above, this ensures 
-        # that the @svc logic explicitly ignores anything in the assets folder, 
+        # We add 'not path /assets/*' here as "insurance."
+        # Even though there is a handle block for assets above, this ensures
+        # that the @svc logic explicitly ignores anything in the assets folder,
         # preventing the RegEx from accidentally "claiming" an asset request.
         not path /assets/*
+        not path /page/*
     }
 
     # THE HANDLER: This is the "Concierge."

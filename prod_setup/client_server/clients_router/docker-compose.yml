@@ -15,7 +15,7 @@ services:
     image:    registry.gitlab.com/rny3/brande/provisioner:latest
     networks: [qabu_network]
     secrets:  [provision_secret]
-    volumes:  [./clients:/clients]
+    volumes:  [/run/qabu/conductor.sock:/run/qabu/conductor.sock]
 
 volumes:
   router_data:

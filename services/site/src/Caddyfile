@@ -3,6 +3,5 @@
 	templates {
 		mime text/html
 	}
-	header /widget.js Cache-Control no-cache
 	file_server
 }

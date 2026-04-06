@@ -1,16 +1,24 @@
 services:
+  mock-conductor:
+    image: node:22-alpine
+    volumes:
+      - ./mock-conductor.js:/app/mock-conductor.js
+      - conductor_sock:/run/qabu
+    command: node /app/mock-conductor.js
+
   provisioner:
     build:
       context: ..
       target: development
     volumes:
       - ../src:/app/src:ro
-      - clients:/clients
+      - conductor_sock:/run/qabu
     ports: ["4321:4321"]
     secrets: [provision_secret]
+    depends_on: [mock-conductor]
 
 volumes:
-  clients:
+  conductor_sock:
 
 secrets:
   provision_secret: {file: ./provision_secret.secret}

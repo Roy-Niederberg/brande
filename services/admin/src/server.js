@@ -20,7 +20,6 @@ app.get('/', (_, rs) => rs.redirect('/admin/chatQA'))
 app.get('/chatQA', (_, rs) => rs.sendFile('/app/views/index.html'))
 app.get('/loader.js', (_, rs) => rs.sendFile('/app/views/loader.js'))
 app.get('/admin.js', (_, rs) => rs.sendFile('/app/views/admin.js'))
-app.get('/widget.js', (_, rs) => { rs.set('Cache-Control', 'no-cache'); rs.sendFile('/app/public/widget.js') })
 app.use('/assets', express.static('/app/assets'))
 
 app.get('/api/user', (rq, rs) =>
@@ -78,12 +77,17 @@ app.r('post', '/api/knowledge_base', async (rq, rs) => {
   rs.json({ success: true })
 })
 
-app.r('get', '/api/services', (_, rs) => rs.sendFile('/app/data/services.json'))
+app.r('get', '/api/services', (_, rs) => {
+  const env = fs.readFileSync('/app/data/config.env', 'utf-8')
+  const match = env.match(/^COMPOSE_PROFILES=(.*)$/m)
+  const profiles = match ? match[1].split(',').filter(Boolean) : []
+  rs.json({ profiles })
+})
 
 app.r('post', '/api/services', (rq, rs) => {
-  const { services } = rq.body
-  if (!services) return rs.status(400).json({ error: 'Services required' })
-  fs.writeFileSync('/app/data/services.json', JSON.stringify(services))
+  const { profiles } = rq.body
+  if (!Array.isArray(profiles)) return rs.status(400).json({ error: 'Profiles array required' })
+  fs.writeFileSync('/app/data/config.env', `COMPOSE_PROFILES=${profiles.join(',')}\n`)
   rs.json({ success: true })
 })
 

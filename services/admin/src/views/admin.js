@@ -405,35 +405,33 @@
     <div class="svc-list">Loading...</div>`
   siteSection.appendChild(svcPanel)
 
-  const SVC_NAMES = { site: 'Site (Widget)', 'facebook-comments': 'Facebook Comments', 'facebook-dm': 'Facebook DM', 'mock-facebook': 'Mock Facebook' }
-  let svcData = null
+  const PROFILES = { site: 'Site', facebook: 'Facebook (Comments, DM & Mock)' }
 
   async function loadServices() {
     const list = svcPanel.querySelector('.svc-list')
     try {
-      svcData = await fetch('/admin/api/services').then(r => r.json())
-      list.innerHTML = Object.entries(SVC_NAMES).map(([k, label]) => `
+      const { profiles } = await fetch('/admin/api/services').then(r => r.json())
+      list.innerHTML = Object.entries(PROFILES).map(([k, label]) => `
         <div class="svc-row">
           <span class="svc-label">${label}</span>
-          <label class="svc-toggle"><input type="checkbox" data-svc="${k}" ${svcData[k] ? 'checked' : ''}><span class="svc-slider"></span></label>
+          <label class="svc-toggle"><input type="checkbox" data-profile="${k}" ${profiles.includes(k) ? 'checked' : ''}><span class="svc-slider"></span></label>
         </div>`).join('') +
-        '<button class="svc-save-btn">Save Changes</button>' +
-        '<div class="svc-note">Service changes require a deploy to take effect.</div>'
+        '<button class="svc-save-btn">Save & Apply</button>'
       list.querySelector('.svc-save-btn').addEventListener('click', saveServices)
     } catch { list.innerHTML = '<div class="empty-state" style="color:#e74c3c">Error loading services</div>' }
   }
 
   async function saveServices() {
     const btn = svcPanel.querySelector('.svc-save-btn')
-    const services = {}
-    svcPanel.querySelectorAll('[data-svc]').forEach(cb => { services[cb.dataset.svc] = cb.checked })
+    const profiles = []
+    svcPanel.querySelectorAll('[data-profile]').forEach(cb => { if (cb.checked) profiles.push(cb.dataset.profile) })
     btn.disabled = true
     try {
       await fetch('/admin/api/services', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ services })
+        body: JSON.stringify({ profiles })
       })
-      alert('Service changes saved. Contact admin to apply.')
+      alert('Services updated! Changes will apply shortly.')
     } catch { alert('Error saving services') }
     btn.disabled = false
   }

@@ -53,7 +53,7 @@
     // Load widget script
     const widgetScript = document.createElement('script')
     const widgetReady = new Promise(r => { widgetScript.onload = r })
-    widgetScript.src = '/admin/widget.js'
+    widgetScript.src = '/widget.js'
     document.body.appendChild(widgetScript)
 
     // Hide spinner once ready

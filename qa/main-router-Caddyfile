@@ -16,7 +16,7 @@ http://qabu.net {
 				redir http://qabu.net:8080/auth/login?return_to={scheme}://{hostport}/onboarding{uri} 302
 			}
 		}
-		reverse_proxy client-onboarding:8559
+		reverse_proxy client-onboarding:4321
 	}
 
 	handle /privacy* {

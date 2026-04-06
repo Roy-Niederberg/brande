@@ -135,14 +135,20 @@ Thrown errors hit the error middleware at the bottom of the file (logs + 500).
 ## Project Structure
 
 ```
-dev_setup/          - Docker Compose configs for local development
-  client/           - Unified client dev environment (parameterized per client)
-  main_server/      - Main server dev environment
-prod_setup/         - Production deployment configs
-  client_server/    - Per-client configs (assets, data, secrets, gateway)
-    shared/         - Shared resources (widget.js) mounted into multiple services
-  main_server/      - Main server production config
-services/           - Service source code (site, prompt_composer, admin, etc.)
+dev_setup/                  - Docker Compose configs for local development
+  client/                   - Unified client dev environment (parameterized per client)
+  main_server/              - Main server dev environment
+prod_setup/                 - Production deployment configs (being retired)
+  client_server/            - Per-client configs (assets, data, secrets)
+  main_server/              - Main server production config
+prod/                       - Production docker-compose files
+  main-server-docker-compose.yml
+  client-server-clients-router-docker-compose.yml
+services/                   - Dockerized service source code (site, prompt_composer, admin, etc.)
+  config/                   - Client template (deployed as init container, copied by conductor)
+    files/                  - Mirror of what a new client directory looks like
+clients_server_automation/  - Host-level automation on the client VM (not Docker services)
+  conductor/                - systemd daemon that manages client lifecycle
 ```
 
 ## Running Clients in Dev Mode
@@ -262,15 +268,14 @@ Four Caddyfiles handle routing across the two VMs:
 - `/scaffold` → provisioner:4321 (authenticated via `X-Provision-Secret`)
 - Unknown subdomains → 404 with `X-Qabu: not-found` header
 
-**Gateway Caddyfile** (`prod_setup/client_server/shared/gateway_Caddyfile`) —
-shared across all clients. Generic routing: `/{service}/...` → `{service}:4321`
-(prefix stripped). All services listen on port **4321**. `/assets/*` is excluded
-from service routing and falls through to the site catch-all.
-- `/admin/*` → admin (port 4321)
-- `/prompt-composer/*` → prompt-composer (port 4321)
-- `/facebook-dm/*` → facebook-dm (port 4321)
-- `/facebook-comments/*` → facebook-comments (port 4321)
-- `/mock-facebook/*` → mock-facebook (port 4321)
+**Services router** (`services/services_router/src/Caddyfile`) — per-client
+gateway. Generic routing: `/{service}/...` → `{service}:4321` (prefix stripped).
+All services listen on port **4321**. `/assets/*` and `/widget.js` are excluded
+from the generic routing.
+- `/taken` → responds "true" (for onboarding subdomain-taken check)
+- `/assets/*` → static file server from `/srv/assets`
+- `/widget.js` → widget:4321 (dedicated widget service)
+- `/{service}/*` → `{service}:4321` (generic: admin, prompt-composer, facebook-dm, etc.)
 - Everything else → site:80 (static file server)
 
 **Site Caddyfile** (`services/site/src/Caddyfile`) — pure static file server:
@@ -283,9 +288,15 @@ flex `.container`:
 
 - **`.chat-section`** (`#chat-section`) — holds the chat widget. In admin mode,
   the Facebook test panel overlays this section.
-- **`.site-section`** — holds the background image, branding overlay, and in admin
-  mode the editor panels and admin buttons. Capabilities render their UI here
-  (passed as `canvasElement` to the widget).
+- **`.site-section`** — contains an `<iframe>` showing either the built-in visual
+  page (`/page/`) or an external client site (`config.siteUrl`). In admin mode,
+  editor panels and admin buttons overlay this section. Capabilities render their
+  UI here (passed as `canvasElement` to the widget), overlaying on top of the iframe.
+
+The built-in visual page (`services/site/srv/page/`) has its own `loader.js` that
+reads `client-config.json` and renders: background image, overlay title, social
+links, and custom font. This separation means the visual page can be developed
+independently or swapped for any external URL.
 
 In portrait mode (`max-aspect-ratio: 1/1`), both sections stack as absolute
 overlays — the chat section sits on top of the site section.
@@ -299,14 +310,12 @@ capability UI).
 
 The admin is fully independent of the site service. It has its own HTML shell
 (`services/admin/src/views/index.html`), its own loader
-(`services/admin/src/views/loader.js`), and serves the shared widget from a
-volume mount. The admin can run standalone with just gateway + prompt-composer +
-admin — no site service required.
+(`services/admin/src/views/loader.js`), and loads the widget from the widget
+service (via `/widget.js`). The admin can run standalone with just gateway +
+prompt-composer + admin + widget — no site service required.
 
-Admin assets (client-config, background image) are volume-mounted from
-`prod_setup/client_server/<client>/assets/` into `/app/assets`. The widget is
-mounted from `prod_setup/client_server/shared/widget/widget.js` into
-`/app/public/widget.js`.
+Admin assets (client-config, background image) are volume-mounted from the
+client's `assets/` directory into `/app/assets`.
 
 `admin.js` pre-sets `window.ChatWidgetConfig` (apiEndpoint, beforeSend, greetingOverride) —
 `loader.js` merges it via `...(window.ChatWidgetConfig || {})`. It uses a factory
@@ -422,7 +431,7 @@ Each client has a `capabilities.js` in its `data/` directory — an ES module
 ### Files
 
 - `prod_setup/client_server/<client>/data/capabilities.js` — per-client capabilities
-- `prod_setup/client_server/shared/widget/widget.js` — shared widget, action parsing + execution loop
+- `services/widget/widget.js` — shared widget, action parsing + execution loop
 - `services/prompt_composer/src/server.js` — loads capabilities, injects into prompt
 
 ### Prompt-Composer Data Loading
@@ -444,10 +453,21 @@ for (const f of files) {
 
 - `skip_gk: true` — skip gatekeeper (used for capability result follow-ups)
 
-## Widget Embeddability
+## Widget Service
 
-The widget (`widget.js`) is designed to be embeddable on any external site with
-a config object and a script tag. It loads per-client capabilities via dynamic
+The widget (`services/widget/`) is a dedicated Caddy service that serves
+`widget.js` on port 4321. It is routed via the services-router at `/widget.js`.
+All three consumers get the widget from the same URL:
+
+- **Site** — `loader.js` loads `<script src="/widget.js">`
+- **Admin** — `loader.js` loads `<script src="/widget.js">`
+- **External embed** — `<script src="https://clientname.qabu.net/widget.js">`
+
+The widget is a core service — if a client exists, the widget is accessible. It
+talks directly to the prompt-composer (via `/prompt-composer/ask`). Version
+management is via Docker image tags, no file copying or volume mounts needed.
+
+Source: `services/widget/widget.js`. It loads per-client capabilities via dynamic
 `import('/site/capabilities.js')`.
 
 Config options: `targetElement` (selector or element, defaults to `document.body`),
@@ -481,21 +501,25 @@ Dev: `cd dev_setup/main_server && docker compose up client-onboarding` → `loca
 Dev auth: load the browser extension from `dev_setup/header_extension/` (Manifest V3,
 injects `X-Auth-Email` header on localhost requests).
 
+## Conductor
+
+Host systemd daemon (C++20) on the client VM that owns all client lifecycle:
+file watching, reconciliation, and client creation. See `clients_server_automation/conductor/README.md`
+for full details, build instructions, and socket protocol.
+
 ## Provisioner
 
-Runs on each client VM (`services/provisioner/`). Scaffolds new client directories
-when called via `POST /scaffold` (authenticated by `X-Provision-Secret` header).
+Thin proxy on the client VM (`services/provisioner/`). Receives `POST /scaffold`
+(authenticated by `X-Provision-Secret` header) and delegates to the conductor
+via Unix socket at `/run/qabu/conductor.sock`.
 
-- Tier-based budget: each VM has capacity of 5 tier points (`max_tier = 5`).
-  Each client costs its tier value (tier 1 = 1 point, tier 5 = 5 points).
-  Returns 507 if adding the client would exceed budget.
-- Creates full directory structure in `/clients/{subdomain}/`: `data/`, `public/`,
-  `public/mock_facebook/`, `secrets/`, `memory/`
-- Template files (`templates.js`): `docker-compose.yml`, `client-config.json`,
-  `system_prompts.js`, `capabilities.js`, `greeting.json`, `services.json`,
-  `knowledge_base.json`
-- Returns 409 if subdomain directory already exists
+- Validates the secret header, then forwards `subdomain` and `tier` to conductor
+- Conductor handles all file creation, budget checks, and stack startup
+- Returns conductor's response: 201 (created), 400 (invalid subdomain),
+  409 (exists), 507 (over budget), 503 (health check failed)
 - Routed via clients router Caddyfile (`/scaffold` → `provisioner:4321`)
+- Subdomain validation exists in both onboarding (`SUBDOMAIN_RE`) and conductor
+  (`valid_sub()`) — these MUST stay in sync (see comments in both files)
 
 Test suite: `services/provisioner/test/` (docker-compose + test.sh with 16 tests)
 
