@@ -18,24 +18,28 @@ const GEMINI = 'https://generativelanguage.googleapis.com/v1beta/openai/'
 const GROQ = 'https://api.groq.com/openai/v1'
 const GEM_1 = fs.readFileSync('/run/secrets/gemini_1', 'utf-8').trim()
 const GEM_2 = fs.readFileSync('/run/secrets/gemini_2', 'utf-8').trim()
+const GEM_3 = fs.readFileSync('/run/secrets/gemini_3', 'utf-8').trim()
+const GEM_4 = fs.readFileSync('/run/secrets/gemini_4', 'utf-8').trim()
 const GRK_1 = fs.readFileSync('/run/secrets/groq_1'  , 'utf-8').trim()
 const GRK_2 = fs.readFileSync('/run/secrets/groq_2'  , 'utf-8').trim()
-// const GRK_3 = fs.readFileSync('/run/secrets/groq_3'  , 'utf-8').trim()
-// const GRK_4 = fs.readFileSync('/run/secrets/groq_4'  , 'utf-8').trim()
+const GRK_3 = fs.readFileSync('/run/secrets/groq_3'  , 'utf-8').trim()
+const GRK_4 = fs.readFileSync('/run/secrets/groq_4'  , 'utf-8').trim()
 const ADMIN_SECRET = fs.readFileSync('/run/secrets/admin_secret', 'utf-8').trim()
 
 const gk1 = [new OpenAI({apiKey:GRK_1,baseURL:GROQ}),'openai/gpt-oss-120b']
-const gk2 = [new OpenAI({apiKey:GRK_2,baseURL:GROQ}),'groq/compound-mini']
-// const gk3 = [new OpenAI({apiKey:GRK_3,baseURL:GROQ}),'openai/gpt-oss-120b']
-// const gk4 = [new OpenAI({apiKey:GRK_4,baseURL:GROQ}),'groq/compound-mini']
-const m1 = [new OpenAI({apiKey:GEM_2,baseURL:GEMINI}),'gemini-2.5-flash-lite']
-const m2 = [new OpenAI({apiKey:GEM_1,baseURL:GEMINI}),'gemini-2.5-flash-lite']
+const gk2 = [new OpenAI({apiKey:GRK_2,baseURL:GROQ}),'qwen/qwen3-32b']
+const gk3 = [new OpenAI({apiKey:GRK_3,baseURL:GROQ}),'openai/gpt-oss-120b']
+const gk4 = [new OpenAI({apiKey:GRK_4,baseURL:GROQ}),'qwen/qwen3-32b']
+const m1 = [new OpenAI({apiKey:GEM_1,baseURL:GEMINI}),'gemini-2.5-flash']
+const m2 = [new OpenAI({apiKey:GEM_2,baseURL:GEMINI}),'gemini-2.5-flash']
+const m3 = [new OpenAI({apiKey:GEM_3,baseURL:GEMINI}),'gemini-2.5-flash']
+const m4 = [new OpenAI({apiKey:GEM_4,baseURL:GEMINI}),'gemini-2.5-flash']
 
 const ask = async (llm, content, msgs) => {
   const ask_obj = {model: llm[1], messages: [{ role: 'system', content }, ...msgs]}
   try {
     const r = await llm[0].chat.completions.create(ask_obj)
-    const response = r.choices[0]?.message?.content || ''
+    const response = (r.choices[0]?.message?.content || '').replace(/<think>[\s\S]*?<\/think>\s*/g, '')
     writeJSON('last_prompt.json', { ...ask_obj, response })
     return response
   } catch (e) {console.error(`🚩 failed [${llm[1]}]:`, e.message)}
@@ -71,69 +75,86 @@ app.r('post', '/ask', async ({ body, headers }, rs) => {
   const sp = trusted ? body.sp_override : $.system_prompts[body.mod]
   const kb_obj = (trusted && body.kb_override) || $.knowledge_base
 
-  console.log(headers['x-admin-secret'])
-  console.log(trusted)
-  console.log(sp.gatekeeper)
-  console.log(body.chat)
+  let [ans_1, ans_2] = [undefined, undefined]
 
-  let answer = undefined
+  console.log("\n\n===============================================================\n\n")
 
   for (let i = 0; i < 3; ++i) { // 3 tries
-    if (!body.skip_gk) answer = await ask(gk1, parse(sp.gatekeeper, body.local_time), body.chat)
-    if (answer !== 'ESCALATE') return rs.send(answer)
 
-    const kb = '# KNOWLEDGE BASE:\n' +
-      kb_obj.map(e => `## ${e.key}\n${e.content}`).join('\n\n')
-
-    let caps = ''
-    if (sp.capabilities && Object.keys($.capabilities).length) {
-      const list = Object.entries($.capabilities)
-      .map(([k, v]) => `- ${k}: ${v.description}`).join('\n')
-      caps = sp.capabilities + '\n\n# CAPABILITIES:\n' + list
+    if (!body.skip_gk) {
+      [ans_1, ans_2] = await Promise.all([
+        ask(gk1, parse(sp.gatekeeper, body.local_time), body.chat),
+        ask(gk2, parse(sp.gatekeeper, body.local_time), body.chat),
+      ])
     }
-    console.log(caps)
+    if (ans_1 == "IGNORE" && ans_2 == "IGNORE") return rs.send("...")
 
-    const query = [sp.main, caps, kb].join('\n\n')
+    console.log(ans_1)
+    console.log('--------------------------------------------------')
+    console.log(ans_2)
+    console.log('--------------------------------------------------')
 
-    const [m1_ans, m2_ans] = await Promise.allSettled([
-      ask(m1, query, body.chat),
-      ask(m2, query, body.chat),
-    ])
+    if (!ans_1 || !ans_2 || ans_1 === 'ESCALATE' || ans_2 === 'ESCALATE') {
+      const kb = '# KNOWLEDGE BASE:\n' +
+        kb_obj.map(e => `## ${e.key}\n${e.content}`).join('\n\n')
 
-    const m1_ans_f = m1_ans.status === 'fulfilled' ?
-      m1_ans.value : (console.error(`🚩 m2 failed:`, m1_ans.reason.message), undefined)
-    const m2_ans_f = m2_ans.status === 'fulfilled' ? 
-      m2_ans.value : (console.error(`🚩 m2 failed:`, m2_ans.reason.message), undefined)
+      let caps = ''
+      if (sp.capabilities && Object.keys($.capabilities).length) {
+        const list = Object.entries($.capabilities)
+        .map(([k, v]) => `- ${k}: ${v.description}`).join('\n')
+        caps = sp.capabilities + '\n\n# CAPABILITIES:\n' + list
+      }
+
+      const query = [sp.main, caps, kb].join('\n\n')
+
+      ;[ans_1, ans_2] = await Promise.all([
+        ask(m1, query, body.chat),
+        ask(m2, query, body.chat),
+      ])
+    }
+
+    console.log(ans_1)
+    console.log('--------------------------------------------------')
+    console.log(ans_2)
+    console.log('--------------------------------------------------')
 
     const p = `
-This is a conversation history between a user and a AI assistance: 
+This is a conversation history between a user and an AI assistant:
 ${JSON.stringify(body.chat, null, 2)}
 
-And these are two possible assistance replays answers:
+And these are two possible assistant replies:
 
 * OPTION 1:
-${m1_ans_f}
+${ans_1}
 
 * OPTION 2:
-${m2_ans_f}
+${ans_2}
 
-Please assest both answers and choose which one is better.
-Replay with a single word:
+Please assess both answers and choose which one is better.
+If they're pretty much the same, favor the shorter one.
+Reply with a single word:
 "OPTION1" - if you think option 1 is better
 "OPTION2" - if you think option 2 is better
 "NONE" - if both are not good.
 `
-    const verdict = await ask(gk2, p, [{role: "user", content: "What is your call?"}])
-    if      (verdict === "OPTION1") {answer = m1_ans_f }
-    else if (verdict === "OPTION2") {answer = m2_ans_f }
-    else if (verdict === "NONE")    {answer = undefined}
-    else {answer = undefined}
+    const [verdict_1, verdict_2] = (await Promise.all([
+      ask(gk3, p, [{role: "user", content: "What is your verdict?"}]),
+      ask(gk4, p, [{role: "user", content: "What is your verdict?"}]),
+    ])).map(v => v?.match(/OPTION[12]|NONE/)?.[0])
 
-    if (answer !== undefined) { break }
-    console.log(`Try ${i} failed. something went wronge.`)
+    console.log(verdict_1)
+    console.log('--------------------------------------------------')
+    console.log(verdict_2)
+    console.log('--------------------------------------------------')
+
+    if      (verdict_1 === verdict_2 && verdict_1 === "OPTION1") {return rs.send(ans_1)}
+    else if (verdict_1 === verdict_2 && verdict_1 === "OPTION2") {return rs.send(ans_2)}
+    else if (verdict_1 === "OPTION2" || verdict_2 === "OPTION2") {return rs.send(ans_2)}
+
+    console.log(`Try ${i} failed. something went wrong.`)
   }
 
-  rs.send(answer ?? "The assistance is unavailable at the moment. Please try again later.")
+  rs.send("The assistant is unavailable at the moment. Please try again later.")
 })
 
 app.r('get', '/last_prompt', (_, rs) => {rs.sendFile('data/last_prompt.json', {root: '.'})})

@@ -4,36 +4,7 @@ Welcome to the Qabu Landing Page project! This is a modern, responsive React app
 
 ## Running Locally
 
-To build and view this project on your local machine, follow these steps:
-
-### Prerequisites
-Make sure you have [Node.js](https://nodejs.org/) installed on your computer.
-
-### 1. Install Dependencies
-Open your terminal, navigate to the project folder, and run:
-```bash
-npm install
-```
-
-### 2. Start the Development Server
-Run the following command to start the local development server:
-```bash
-npm run dev
-```
-Open your browser and navigate to `http://localhost:3000` (or the port specified in your terminal) to view the app.
-
-### 3. Build for Production (Optional)
-To create a production-ready build, run:
-```bash
-npm run build
-```
-
-## Running with Docker
-
 If you prefer using Docker to run the application in an isolated container, a `Dockerfile` has been included for you. Follow these steps:
-
-### Prerequisites
-Make sure you have [Docker](https://www.docker.com/) installed on your computer.
 
 ### 1. Build the Docker Image
 Open your terminal in the project folder and run:

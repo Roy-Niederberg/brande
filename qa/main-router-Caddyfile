@@ -1,4 +1,4 @@
-http://qabu.net {
+http://qa.qabu.net {
 	handle_path /facebook* {
 		reverse_proxy facebook-dispatcher:3210
 	}
@@ -13,7 +13,7 @@ http://qabu.net {
 			copy_headers X-Auth-Email X-Auth-Name
 			@unauth status 401
 			handle_response @unauth {
-				redir http://qabu.net:8080/auth/login?return_to={scheme}://{hostport}/onboarding{uri} 302
+				redir http://qa.qabu.net:8080/auth/login?return_to={scheme}://{hostport}/onboarding{uri} 302
 			}
 		}
 		reverse_proxy client-onboarding:4321

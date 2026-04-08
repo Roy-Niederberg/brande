@@ -1,11 +1,11 @@
-http://*.qabu.net {
+http://*.qa.qabu.net {
 	# Facebook webhook forwarding from the dispatcher (main server).
 	@facebook_auth {
 		path /facebook-*
 		header X-Dispatcher-Secret {env.FB_DISPATCHER_SECRET}
 	}
 	handle @facebook_auth {
-		reverse_proxy {labels.2}-services-router-1:80
+		reverse_proxy {labels.3}-services-router-1:80
 	}
 	@facebook_noauth {
 		path /facebook-*
@@ -20,14 +20,14 @@ http://*.qabu.net {
 			copy_headers X-Auth-Email X-Auth-Name
 			@unauth status 401
 			handle_response @unauth {
-				redir http://qabu.net:8080/auth/login?return_to={scheme}://{hostport}{uri} 302
+				redir http://qa.qabu.net:8080/auth/login?return_to={scheme}://{hostport}{uri} 302
 			}
 		}
-		reverse_proxy {labels.2}-services-router-1:80
+		reverse_proxy {labels.3}-services-router-1:80
 	}
 
 	# All other traffic → per-client services-router
-	reverse_proxy {labels.2}-services-router-1:80
+	reverse_proxy {labels.3}-services-router-1:80
 	handle_errors {
 		header Content-Type text/html
 		header X-Qabu not-found

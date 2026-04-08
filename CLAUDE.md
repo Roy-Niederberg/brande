@@ -135,81 +135,106 @@ Thrown errors hit the error middleware at the bottom of the file (logs + 500).
 ## Project Structure
 
 ```
-dev_setup/                  - Docker Compose configs for local development
-  client/                   - Unified client dev environment (parameterized per client)
-  main_server/              - Main server dev environment
-prod_setup/                 - Production deployment configs (being retired)
-  client_server/            - Per-client configs (assets, data, secrets)
-  main_server/              - Main server production config
-prod/                       - Production docker-compose files
+clients/                    - Per-client data (assets + data), checked into git
+  <subdomain>/
+    assets/                 - Static assets (background, profile-pic, client-config, og-meta)
+    data/                   - Runtime data (system_prompts.js, knowledge_base.json, etc.)
+secrets/                    - Secrets for QA/dev (NOT deployed — VMs have their own copies)
+  client_router_secrets/    - Clients-router VM secrets (TLS, JWT, dispatcher)
+  clients_secrets/          - Shared per-client secrets (LLM keys, admin secret, etc.)
+  main_server_secrets/      - Main server secrets (OAuth, FB app, JWT, dispatcher)
+qa/                         - QA environment (simulates both VMs in one Docker Compose)
+  docker-compose.yml        - Full QA stack
+  docker-compose.dev.yml    - Dev overlay (adds nodemon + source mounts)
+  main-router-Caddyfile     - QA version of main router
+  clients-router-Caddyfile  - QA version of clients router
+prod/                       - Production docker-compose files (deployed to VMs)
   main-server-docker-compose.yml
   client-server-clients-router-docker-compose.yml
-services/                   - Dockerized service source code (site, prompt_composer, admin, etc.)
-  config/                   - Client template (deployed as init container, copied by conductor)
-    files/                  - Mirror of what a new client directory looks like
-clients_server_automation/  - Host-level automation on the client VM (not Docker services)
+services/                   - Dockerized service source code
+  config/                   - Client template (init container, copied by conductor on creation)
+    files/                  - Default files for a new client (assets/, data/, docker-compose.yml)
+docs/                       - Operational guides
+  client-server-setup.md    - How to provision a new client VM from scratch
+clients_server_automation/  - Host-level automation on the client VM
   conductor/                - systemd daemon that manages client lifecycle
 ```
 
-## Running Clients in Dev Mode
+## Running the QA Environment
 
-The client dev setup uses a single `docker-compose.yml` parameterized with env files.
-Each client has its own `.env` file in `dev_setup/client/`:
+The QA environment simulates both production VMs in a single Docker Compose.
+DNS must be configured in Cloudflare (DNS only, grey cloud):
+- `qa.qabu.net` → `127.0.0.1`
+- `*.qa.qabu.net` → `127.0.0.1`
 
-- `dradamblack.env` - English client (ports 3000/3443)
-- `drlipokatz.env` - Hebrew client (ports 3001/4443)
-
-Env vars: `CLIENT` (client dir name), `HTTP_PORT`, `HTTPS_PORT`.
-
-```sh
-cd dev_setup/client
-
-# Run a single client
-docker compose --env-file dradamblack.env up
-
-# Run both clients simultaneously (use -p for separate project names)
-docker compose --env-file dradamblack.env -p dradamblack up
-docker compose --env-file drlipokatz.env -p drlipokatz up
-```
-
-Client-specific assets, data, and secrets are loaded from `prod_setup/client_server/<client>/`.
-
-## Deployment
-
-Run from repo root on the `dev` branch (clean, in sync with origin):
+GCP OAuth: add `http://qa.qabu.net:8080/auth/callback` as redirect URI.
 
 ```sh
-./deploy.sh           # full deploy
-./deploy.sh --dry-run # preview without changes
+cd qa
+
+# Production-like mode
+docker compose up
+
+# Dev mode (nodemon + source mounts for live reload)
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up
 ```
 
-What it does:
-1. Pre-flight: must be on `dev`, clean, and in sync with `origin/dev`
-2. Detects services changed since last `deploy-*` tag → builds + pushes Docker images to GitLab registry
-3. Pulls runtime-edited data from prod VMs back into `prod_setup/*/data/`
-4. Rsyncs `prod_setup/client_server/` → client VM, `prod_setup/main_server/` → main VM
-5. SSH: `docker compose pull && docker compose up -d` on each VM
-6. Commits any synced data changes and tags the deploy (`deploy-YYYY-MM-DD`)
+Access:
+- `http://qa.qabu.net:8080` — landing page, auth, onboarding
+- `http://dradamblack.qa.qabu.net:8443` — dradamblack client
+- `http://drlipokatz.qa.qabu.net:8443` — drlipokatz client
+
+Note: Facebook dispatcher → client forwarding won't work end-to-end in QA
+(it does external HTTPS in prod). Use mock-facebook for FB testing.
+
+## Building & Deploying
+
+### Building images
+
+`build.sh` builds and pushes a single service image to the GitLab registry:
+
+```sh
+./build.sh <service>    # e.g. ./build.sh prompt_composer
+```
+
+This builds with `--target production`, tags as both `v0.1.0` and `latest`,
+and pushes to `registry.gitlab.com/rny3/brande/<service>`.
+
+### Deploying to VMs
+
+After pushing images, SSH into the VM and pull + restart:
+
+```sh
+# Main server
+ssh brande@129.159.134.3 'cd ~/app && docker compose pull && docker compose up -d'
+
+# Client server — shared infra (clients-router, auth-verifier, provisioner)
+ssh brande@129.159.159.251 'cd ~/app && docker compose pull && docker compose up -d'
+
+# Client server — a specific client's services
+ssh brande@129.159.159.251 'cd ~/app/clients/<sub> && docker compose pull && docker compose up -d'
+```
+
+### Server setup
+
+See `docs/client-server-setup.md` for provisioning a new client VM from scratch
+(Docker, conductor, clients-router, secrets, DNS).
 
 Two Oracle Cloud VMs:
 - Client VM (`brande@129.159.159.251`) — hosts client sites + agents
 - Main VM (`brande@129.159.134.3`) — hosts qabu.net + shared services
 
-These directories mirror what's running in production.
-
 ## Landing Page
 
 The landing page (`services/landing_page/`) is a React/Vite/Tailwind app that
-runs as a separate Docker service on the main server. It is **not** managed by
-`deploy.sh` — it has its own build/push/deploy cycle.
+runs as a separate Docker service on the main server. Build & push:
 
-Build & push (from local machine, no node needed — Docker handles the build):
 ```sh
 docker build --no-cache -t registry.gitlab.com/rny3/brande/landing_page:latest services/landing_page/
 docker push registry.gitlab.com/rny3/brande/landing_page:latest
 ```
 
-Deploy (on main server):
+Deploy:
 ```sh
 ssh brande@129.159.134.3 'cd ~/app && docker compose pull landing-page && docker compose up -d landing-page'
 ```
@@ -222,8 +247,9 @@ copies them to `dist/` as-is during build.
 
 ## Client Assets
 
-Each client has a `client-config.json` in its assets directory (`prod_setup/client_server/<client>/assets/`)
-that configures language, direction, title, background image, and social links.
+Each client has a `client-config.json` in its assets directory
+(`clients/<client>/assets/`) that configures language, direction, title,
+background image, and social links.
 
 Each client has a `profile-pic.jpg` in the root of its assets directory (used by
 the mock Facebook testing interface and available for the site/widget). Each client
@@ -259,19 +285,21 @@ Four Caddyfiles handle routing across the two VMs:
 - `qabu.net/facebook*` → facebook-dispatcher (port 3210), prefix stripped
 - `qabu.net/auth/*` → auth service (port 3456), prefix stripped
 - `qabu.net/onboarding*` → client-onboarding (port 4321), prefix stripped, `forward_auth` via auth service
-- `qabu.net` (everything else) → static site files
+- `qabu.net/favicon.ico`, `/logo_*.svg` → static from `/srv`
+- `qabu.net/privacy*`, `/terms*` → static from `/srv`
+- `qabu.net` (everything else) → landing-page
 
 **Clients router** (`services/clients_router/src/Caddyfile`) — on client VM:
 - `*.qabu.net` → `{subdomain}-services-router-1:80` (per-client services router)
 - `/admin/*` — `forward_auth` via auth-verifier sidecar, redirects to Google login on 401
 - `/facebook-*` — validates `X-Dispatcher-Secret` header, rejects 403 if missing
-- `/scaffold` → provisioner:4321 (authenticated via `X-Provision-Secret`)
+- `/scaffold` → provisioner:4321
 - Unknown subdomains → 404 with `X-Qabu: not-found` header
 
 **Services router** (`services/services_router/src/Caddyfile`) — per-client
 gateway. Generic routing: `/{service}/...` → `{service}:4321` (prefix stripped).
-All services listen on port **4321**. `/assets/*` and `/widget.js` are excluded
-from the generic routing.
+All services listen on port **4321**. `/assets/*`, `/widget.js`, and `/page/*`
+are excluded from the generic routing.
 - `/taken` → responds "true" (for onboarding subdomain-taken check)
 - `/assets/*` → static file server from `/srv/assets`
 - `/widget.js` → widget:4321 (dedicated widget service)
@@ -336,9 +364,9 @@ Six buttons on the main screen:
    `facebook_comments` service format, POSTs to `/admin/ask` with `mod:
    'facebook_comments'` + draft overrides from localStorage. Opens independently
    of other panels so admin can edit SP on one side and test on the other.
-6. **Manage Services** — Toggle panel for enabling/disabling optional services
-   (site, facebook-comments, facebook-dm, mock-facebook). Changes are saved to
-   `data/services.json` and take effect on next deploy.
+6. **Manage Services** — Toggle panel for enabling/disabling optional services.
+   Changes are saved to `data/config.env` (sets `COMPOSE_PROFILES=`) and take
+   effect on next `docker compose up`.
 
 All three editors (KB, SP, greeting) use localStorage drafts and a publish flow.
 `beforeSend` sends KB and SP draft overrides on every admin `/ask` request.
@@ -368,8 +396,8 @@ JWT: HMAC-SHA256, 24h expiry, claims `{ email, name, picture, iat, exp }`.
 Signing key shared between main server and client router (`jwt_signing_key` secret).
 
 Request flow:
-- Admin chat: browser → client router → forward_auth → gateway `/admin/*` → admin BE `/ask` → prompt-composer
-- Site chat: browser → client router → gateway `/prompt-composer/*` → prompt-composer `/ask`
+- Admin chat: browser → client router → forward_auth → services-router `/admin/*` → admin BE `/ask` → prompt-composer
+- Site chat: browser → client router → services-router `/prompt-composer/*` → prompt-composer `/ask`
 - Initial load: admin BE `/api/initial-content` → prompt-composer `/knowledge_base` + `/system_prompts` + `/greeting`
 - KB publish: admin BE `/api/knowledge_base` → prompt-composer `/knowledge_base`
 - SP publish: admin BE `/api/system_prompts` → prompt-composer `/system_prompts`
@@ -383,8 +411,8 @@ After each LLM call, the prompt-composer writes the full request + response to
 
 ### System Prompts
 
-Stored in `prod_setup/client_server/<client>/data/system_prompts.json`. Structure:
-`{ "module": { gatekeeper: "...", main: "...", capabilities: "..." } }`.
+Stored in `clients/<client>/data/system_prompts.js`. Structure (ES module):
+`export default { module: { gatekeeper: "...", main: "...", capabilities: "..." } }`.
 The prompt-composer loads them via `import` at startup. `main` and `capabilities`
 are editable in the admin UI. The `capabilities` key is optional — modules without
 it (e.g. `facebook_comments`) don't get capability instructions in their prompt.
@@ -430,7 +458,7 @@ Each client has a `capabilities.js` in its `data/` directory — an ES module
 
 ### Files
 
-- `prod_setup/client_server/<client>/data/capabilities.js` — per-client capabilities
+- `clients/<client>/data/capabilities.js` — per-client capabilities
 - `services/widget/widget.js` — shared widget, action parsing + execution loop
 - `services/prompt_composer/src/server.js` — loads capabilities, injects into prompt
 
@@ -481,47 +509,87 @@ Config options: `targetElement` (selector or element, defaults to `document.body
   floating reopen bubble — essential for embedding on existing pages. This was lost
   in the "big rewrite" (`6cdf7d5`). Should be restored for embed use cases.
 
-## Client Onboarding
+## Client Onboarding & Provisioning
 
-Internal tool at `qabu.net/onboarding` for creating new client subdomains.
-Express app (port 4321) on the main server.
+### Flow
 
-- Single HTML page: subdomain input + "Let's Qabu!" button
-- Auth: Google OAuth via centralized auth service + `onboarding_emails` allowlist
-- Subdomain validation: `^[a-z][a-z0-9-]{3,18}[a-z]$` (5–20 chars), regex
-  served via `GET /subdomain-regex` for client-side validation
-- On submit: checks if subdomain is taken (fetches `https://{sub}.qabu.net/taken`),
-  then iterates VMs (`v1.qabu.net`, `v2.qabu.net`, ...) calling `POST /scaffold`
-  on each until one succeeds or a non-existing VM is reached (`X-Qabu: not-found`)
-- On success: form disappears, shows "{sub}.qabu.net is live!" for 5 seconds,
-  then redirects to `https://{sub}.qabu.net/admin`
-- Shared `provision_secret` authenticates requests to the provisioner
+1. User goes to `qabu.net/onboarding`, authenticates via Google OAuth
+2. Enters a subdomain name, client validates format
+3. Onboarding checks if subdomain is taken (`https://{sub}.qabu.net/taken`)
+4. Tries VMs in order (`v1.qabu.net`, `v2.qabu.net`, ...) via `POST /scaffold`
+5. Provisioner validates `X-Provision-Secret`, delegates to conductor via Unix socket
+6. Conductor creates client directory (copies from `config/` template), starts stack
+7. On success: redirects to `https://{sub}.qabu.net/admin`
 
-Dev: `cd dev_setup/main_server && docker compose up client-onboarding` → `localhost:8559`
-Dev auth: load the browser extension from `dev_setup/header_extension/` (Manifest V3,
-injects `X-Auth-Email` header on localhost requests).
+### Services
 
-## Conductor
+- **client-onboarding** (`services/client_onboarding/`) — Express app on main
+  server at `qabu.net/onboarding`. Auth via Google OAuth + `onboarding_emails`
+  allowlist. Subdomain validation: `^[a-z][a-z0-9-]{3,18}[a-z]$` (5–20 chars).
+- **provisioner** (`services/provisioner/`) — thin proxy on client VM, receives
+  `POST /scaffold` (authenticated by `X-Provision-Secret`), talks to conductor
+  via Unix socket at `/run/qabu/conductor.sock`.
+- **conductor** (`clients_server_automation/conductor/`) — C++20 systemd daemon
+  on client VM. Manages full client lifecycle: creation, file watching, reconciliation.
 
-Host systemd daemon (C++20) on the client VM that owns all client lifecycle:
-file watching, reconciliation, and client creation. See `clients_server_automation/conductor/README.md`
-for full details, build instructions, and socket protocol.
+### Config Service
 
-## Provisioner
+The config service (`services/config/`) is an init container that ships the client
+template. It runs once on `docker compose up`, copying `files/` into
+`~/app/config/` on the VM. The conductor uses this template when creating new
+clients (copies `config/` → `clients/<subdomain>/`).
 
-Thin proxy on the client VM (`services/provisioner/`). Receives `POST /scaffold`
-(authenticated by `X-Provision-Secret` header) and delegates to the conductor
-via Unix socket at `/run/qabu/conductor.sock`.
+The template includes:
+- `docker-compose.yml` — client compose with all services, using Docker Compose profiles
+- `assets/client-config.json` — default client config
+- `data/` — default system_prompts.js, capabilities.js, greeting.json,
+  knowledge_base.json, config.env
 
-- Validates the secret header, then forwards `subdomain` and `tier` to conductor
-- Conductor handles all file creation, budget checks, and stack startup
-- Returns conductor's response: 201 (created), 400 (invalid subdomain),
-  409 (exists), 507 (over budget), 503 (health check failed)
-- Routed via clients router Caddyfile (`/scaffold` → `provisioner:4321`)
-- Subdomain validation exists in both onboarding (`SUBDOMAIN_RE`) and conductor
-  (`valid_sub()`) — these MUST stay in sync (see comments in both files)
+### Conductor Details
 
-Test suite: `services/provisioner/test/` (docker-compose + test.sh with 16 tests)
+See `clients_server_automation/conductor/README.md` for full details, build
+instructions, and socket protocol. Key behaviors:
+- Watches `~/app/clients/` via inotify — restarts client stacks on compose file changes
+- Reconciles every 60s: every client dir with a compose file should have a running stack
+- Handles creation requests from provisioner via Unix socket at `/run/qabu/conductor.sock`
+
+### Docker Compose Profiles
+
+Each client's `docker-compose.yml` (from the config template) uses profiles to
+control which services run. Core services (widget, services-router,
+prompt-composer, admin) have no profile and always run. Optional services have
+profiles:
+- `site` — site service
+- `facebook` — facebook-comments, facebook-dm, mock-facebook
+
+`data/config.env` sets `COMPOSE_PROFILES=` (e.g. `COMPOSE_PROFILES=site,facebook`).
+The admin "Manage Services" UI edits this file — changes take effect on next
+`docker compose up`.
+
+### Subdomain Validation
+
+`^[a-z][a-z0-9-]{3,18}[a-z]$` (5–20 chars). Exists in both onboarding
+(`SUBDOMAIN_RE`) and conductor (`valid_sub()`) — these MUST stay in sync.
+
+## Secrets
+
+Secrets are organized by scope:
+
+- `secrets/client_router_secrets/` — clients-router VM (TLS, JWT, dispatcher, provisioner)
+- `secrets/clients_secrets/` — shared per-client (LLM API keys, admin secret, authorized emails)
+- `secrets/main_server_secrets/` — main server (OAuth, FB app, JWT, dispatcher, onboarding)
+
+The `secrets/` directory in the repo is used by the QA docker-compose only. In
+production, secrets are copied manually to each VM. Future plan: Infisical.
+
+Shared secrets that must match across VMs:
+
+| Secret                 | Used by                                    |
+|------------------------|--------------------------------------------|
+| `jwt_signing_key`      | Auth (main) + auth-verifier (client)       |
+| `fb_dispatcher_secret` | Facebook dispatcher (main) + clients-router|
+| `provision_secret`     | Onboarding (main) + provisioner (client)   |
+| `cloudflare_api_token` | TLS on both VMs                            |
 
 ## Facebook Integration
 
@@ -534,14 +602,14 @@ Facebook webhook → https://qabu.net/facebook
   → main_router → facebook-dispatcher (validates HMAC signature)
   → looks up page_id in page_routes.json → client hostname
   → HTTPS forward to https://{client}.qabu.net/facebook-{dm|comments}
-  → client router (validates X-Dispatcher-Secret) → gateway
+  → client router (validates X-Dispatcher-Secret) → services-router
   → facebook-dm or facebook-comments
   → prompt-composer → LLM → reply to Facebook API
 ```
 
 ### Page Routing
 
-`prod_setup/main_server/data/page_routes.json` maps Facebook page IDs to client
+`services/main_router/data/page_routes.json` maps Facebook page IDs to client
 hostnames: `{ "808626769002262": "dradamblack.qabu.net" }`. The dispatcher
 loads this at startup.
 
