@@ -6,17 +6,6 @@
         respond "true" 200
     }
 
-    # -------------------------------------------------------------------------
-    # 2. Static Assets (The "First Priority" Block)
-    # -------------------------------------------------------------------------
-    # We handle assets first. Because Caddy 'handle' blocks are mutually exclusive,
-    # if a request matches /assets/*, it stops here and doesn't look at the 
-    # @svc logic below.
-    handle /assets/* {
-        root * /srv
-        file_server
-    }
-
     handle /widget.js {
         reverse_proxy widget:4321
     }
@@ -38,12 +27,7 @@
         # (/.*)$    -> Group 2: Capture the rest (the internal route)
         path_regexp svc ^/([^/]+)(/.*)$
 
-        # The Guardrail:
-        # We add 'not path /assets/*' here as "insurance."
-        # Even though there is a handle block for assets above, this ensures
-        # that the @svc logic explicitly ignores anything in the assets folder,
-        # preventing the RegEx from accidentally "claiming" an asset request.
-        not path /assets/*
+        not path /private/*
         not path /page/*
     }
 
@@ -68,7 +52,7 @@
     # -------------------------------------------------------------------------
     # 4. Catch-all (The "Safety Net")
     # -------------------------------------------------------------------------
-    # If a request didn't match /taken, /assets/, or the @svc pattern,
+    # If a request didn't match /taken, /private/, or the @svc pattern,
     # it ends up here. This usually serves your main frontend site.
     handle {
         reverse_proxy site:80

@@ -1,5 +1,5 @@
 (async function() {
-    const config = await fetch('/assets/client-config.json').then(r => r.json()).catch(() => ({}))
+    const config = await fetch('/private/client-config.json').then(r => r.json()).catch(() => ({}))
 
     document.documentElement.lang = config.lang || 'en'
     document.documentElement.dir = config.direction || 'ltr'
@@ -19,6 +19,8 @@
         targetElement: '#chat-section',
         canvasElement: '.site-section',
         clientName: config.overlayTitle || '',
+        direction: config.direction || 'ltr',
+        profilePic: config.profilePic || '',
         ...(config.widget || {}),
         ...(window.ChatWidgetConfig || {})
     }

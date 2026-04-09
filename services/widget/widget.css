@@ -181,6 +181,21 @@
   box-shadow: 4px 4px 12px rgba(0,0,0,0.08), 2px 2px 4px rgba(0,0,0,0.04);
 }
 
+[dir="rtl"] .chat-header-dropdown { right: auto; left: 12px; }
+
+[dir="rtl"] .chat-msg.user {
+  margin-right: 0; margin-left: -12px;
+  padding-right: 14px; padding-left: 24px;
+  border-radius: 0 12px 12px 0;
+  box-shadow: 4px 4px 12px rgba(133,193,233,0.3), 2px 2px 4px rgba(0,0,0,0.1);
+}
+[dir="rtl"] .chat-msg.bot {
+  margin-left: 0; margin-right: -12px;
+  padding-left: 14px; padding-right: 24px;
+  border-radius: 12px 0 0 12px;
+  box-shadow: -4px 4px 12px rgba(0,0,0,0.08), -2px 2px 4px rgba(0,0,0,0.04);
+}
+
 .msg-row.ghost-row { flex-direction: column; align-items: flex-end; }
 
 .chat-msg.ghost-input {

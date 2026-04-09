@@ -20,7 +20,7 @@ app.get('/', (_, rs) => rs.redirect('/admin/chatQA'))
 app.get('/chatQA', (_, rs) => rs.sendFile('/app/views/index.html'))
 app.get('/loader.js', (_, rs) => rs.sendFile('/app/views/loader.js'))
 app.get('/admin.js', (_, rs) => rs.sendFile('/app/views/admin.js'))
-app.use('/assets', express.static('/app/assets'))
+app.use('/private', express.static('/app/private'))
 
 app.get('/api/user', (rq, rs) =>
   rs.json({ email: rq.headers['x-auth-email'] || '', name: rq.headers['x-auth-name'] || '' }))
@@ -78,7 +78,7 @@ app.r('post', '/api/knowledge_base', async (rq, rs) => {
 })
 
 app.r('get', '/api/services', (_, rs) => {
-  const env = fs.readFileSync('/app/data/config.env', 'utf-8')
+  const env = fs.readFileSync('/app/private/config.env', 'utf-8')
   const match = env.match(/^COMPOSE_PROFILES=(.*)$/m)
   const profiles = match ? match[1].split(',').filter(Boolean) : []
   rs.json({ profiles })
@@ -87,7 +87,7 @@ app.r('get', '/api/services', (_, rs) => {
 app.r('post', '/api/services', (rq, rs) => {
   const { profiles } = rq.body
   if (!Array.isArray(profiles)) return rs.status(400).json({ error: 'Profiles array required' })
-  fs.writeFileSync('/app/data/config.env', `COMPOSE_PROFILES=${profiles.join(',')}\n`)
+  fs.writeFileSync('/app/private/config.env', `COMPOSE_PROFILES=${profiles.join(',')}\n`)
   rs.json({ success: true })
 })
 

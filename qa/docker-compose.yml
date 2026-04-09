@@ -80,8 +80,6 @@ services:
       qabu-network:
         aliases: [dradamblack-services-router-1]
       dradamblack-network:
-    volumes:
-      - ../clients/dradamblack/assets:/srv/assets:ro
 
   dradamblack-widget:
     build: {context: ../services/widget/}
@@ -95,7 +93,7 @@ services:
       dradamblack-network:
         aliases: [site]
     volumes:
-      - ../clients/dradamblack/assets:/site/assets:ro
+      - ../clients/dradamblack/private:/site/private:ro
 
   dradamblack-prompt-composer:
     build: {context: ../services/prompt_composer/, target: production}
@@ -105,6 +103,7 @@ services:
     secrets: [gemini_1, gemini_2, gemini_3, gemini_4, groq_1, groq_2, groq_3, groq_4, admin_secret]
     volumes:
       - ../clients/dradamblack/data:/app/data
+      - ../clients/dradamblack/logs:/app/logs
 
   dradamblack-admin:
     build: {context: ../services/admin/, target: production}
@@ -113,8 +112,7 @@ services:
         aliases: [admin]
     secrets: [authorized_emails, admin_secret]
     volumes:
-      - ../clients/dradamblack/assets:/app/assets:ro
-      - ../clients/dradamblack/data:/app/data
+      - ../clients/dradamblack/private:/app/private
 
   dradamblack-mock-facebook:
     build: {context: ../services/mock_facebook/, target: production}
@@ -122,7 +120,7 @@ services:
       dradamblack-network:
         aliases: [mock-facebook]
     volumes:
-      - ../clients/dradamblack/assets/mock_facebook:/app/data
+      - ../clients/dradamblack/private/mock_facebook:/app/data
 
   dradamblack-facebook-comments:
     build: {context: ../services/facebook_comments/, target: production}
@@ -140,8 +138,6 @@ services:
       qabu-network:
         aliases: [drlipokatz-services-router-1]
       drlipokatz-network:
-    volumes:
-      - ../clients/drlipokatz/assets:/srv/assets:ro
 
   drlipokatz-widget:
     build: {context: ../services/widget/}
@@ -155,7 +151,7 @@ services:
       drlipokatz-network:
         aliases: [site]
     volumes:
-      - ../clients/drlipokatz/assets:/site/assets:ro
+      - ../clients/drlipokatz/private:/site/private:ro
 
   drlipokatz-prompt-composer:
     build: {context: ../services/prompt_composer/, target: production}
@@ -165,6 +161,7 @@ services:
     secrets: [gemini_1, gemini_2, gemini_3, gemini_4, groq_1, groq_2, groq_3, groq_4, admin_secret]
     volumes:
       - ../clients/drlipokatz/data:/app/data
+      - ../clients/drlipokatz/logs:/app/logs
 
   drlipokatz-admin:
     build: {context: ../services/admin/, target: production}
@@ -173,8 +170,7 @@ services:
         aliases: [admin]
     secrets: [authorized_emails, admin_secret]
     volumes:
-      - ../clients/drlipokatz/assets:/app/assets:ro
-      - ../clients/drlipokatz/data:/app/data
+      - ../clients/drlipokatz/private:/app/private
 
   drlipokatz-mock-facebook:
     build: {context: ../services/mock_facebook/, target: production}
@@ -182,7 +178,7 @@ services:
       drlipokatz-network:
         aliases: [mock-facebook]
     volumes:
-      - ../clients/drlipokatz/assets/mock_facebook:/app/data
+      - ../clients/drlipokatz/private/mock_facebook:/app/data
 
   drlipokatz-facebook-comments:
     build: {context: ../services/facebook_comments/, target: production}

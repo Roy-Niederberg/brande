@@ -29,7 +29,7 @@ const ADMIN_SECRET = fs.readFileSync('/run/secrets/admin_secret', 'utf-8').trim(
 const gk1 = [new OpenAI({apiKey:GRK_1,baseURL:GROQ}),'openai/gpt-oss-120b']
 const gk2 = [new OpenAI({apiKey:GRK_2,baseURL:GROQ}),'qwen/qwen3-32b']
 const gk3 = [new OpenAI({apiKey:GRK_3,baseURL:GROQ}),'openai/gpt-oss-120b']
-const gk4 = [new OpenAI({apiKey:GRK_4,baseURL:GROQ}),'qwen/qwen3-32b']
+const gk4 = [new OpenAI({apiKey:GRK_4,baseURL:GROQ}),'openai/gpt-oss-20b']
 const m1 = [new OpenAI({apiKey:GEM_1,baseURL:GEMINI}),'gemini-2.5-flash']
 const m2 = [new OpenAI({apiKey:GEM_2,baseURL:GEMINI}),'gemini-2.5-flash']
 const m3 = [new OpenAI({apiKey:GEM_3,baseURL:GEMINI}),'gemini-2.5-flash']
@@ -40,7 +40,7 @@ const ask = async (llm, content, msgs) => {
   try {
     const r = await llm[0].chat.completions.create(ask_obj)
     const response = (r.choices[0]?.message?.content || '').replace(/<think>[\s\S]*?<\/think>\s*/g, '')
-    writeJSON('last_prompt.json', { ...ask_obj, response })
+    fs.writeFileSync('./logs/last_prompt.json', JSON.stringify({ ...ask_obj, response }))
     return response
   } catch (e) {console.error(`🚩 failed [${llm[1]}]:`, e.message)}
 }
@@ -157,7 +157,7 @@ Reply with a single word:
   rs.send("The assistant is unavailable at the moment. Please try again later.")
 })
 
-app.r('get', '/last_prompt', (_, rs) => {rs.sendFile('data/last_prompt.json', {root: '.'})})
+app.r('get', '/last_prompt', (_, rs) => {rs.sendFile('logs/last_prompt.json', {root: '.'})})
 
 // =============== Error handling middleware ====================================================//
 app.use((e, _, rs, _n) => {

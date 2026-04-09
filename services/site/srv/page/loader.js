@@ -1,5 +1,5 @@
 (async function() {
-    const config = await fetch('/assets/client-config.json').then(r => r.json()).catch(() => ({}))
+    const config = await fetch('/private/client-config.json').then(r => r.json()).catch(() => ({}))
 
     document.documentElement.lang = config.lang || 'en'
     document.documentElement.dir = config.direction || 'ltr'
@@ -11,7 +11,7 @@
         document.head.appendChild(link)
     }
 
-    document.getElementById('bg').src = `/assets/${config.backgroundImage || 'background.png'}`
+    document.getElementById('bg').src = `/private/${config.backgroundImage || 'background.png'}`
 
     const overlay = document.getElementById('overlay')
     const icons = {

@@ -3,7 +3,7 @@
  * Fetches client-config.json and sets up the admin page
  */
 (async function() {
-    const config = await fetch('/admin/assets/client-config.json').then(r => r.json()).catch(() => ({}))
+    const config = await fetch('/admin/private/client-config.json').then(r => r.json()).catch(() => ({}))
 
     document.documentElement.lang = config.lang || 'en'
     document.documentElement.dir = config.direction || 'ltr'
@@ -39,13 +39,15 @@
     // Set background image
     const bgImage = document.getElementById('bg-image')
     const bgReady = new Promise(r => { bgImage.onload = bgImage.onerror = r })
-    bgImage.src = `/admin/assets/${config.backgroundImage || 'background.png'}`
+    bgImage.src = `/admin/private/${config.backgroundImage || 'background.png'}`
 
     // Initialize chat widget
     window.ChatWidgetConfig = {
         targetElement: '#chat-section',
         canvasElement: '.site-section',
         clientName: config.overlayTitle || '',
+        direction: config.direction || 'ltr',
+        profilePic: config.profilePic || '',
         ...(config.widget || {}),
         ...(window.ChatWidgetConfig || {})
     }

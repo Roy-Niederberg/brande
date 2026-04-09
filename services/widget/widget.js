@@ -13,20 +13,18 @@
         ? document.querySelector(config.targetElement)
         : config.targetElement)
     : document.body // Default to body if not specified
-  targetElement.dir ='ltr'
   const canvasElement = config.canvasElement
     ? (typeof config.canvasElement === 'string'
         ? document.querySelector(config.canvasElement)
         : config.canvasElement)
     : null
   const API = config.apiEndpoint || '/prompt-composer/ask'
-  const ASSETS = API.includes('://') ? new URL(API).origin + '/assets' : '/assets'
   const STORAGE_KEY = 'chat_history'
   const history = []
   let lastMsgRole = null
   let lastMsgMinute = null
-
-  // Load per-client capabilities
+  const siteDir = config.direction || 'ltr'
+  targetElement.dir = siteDir
   const capabilities = import('/prompt-composer/capabilities')
     .then(m => m.default || {}).catch(() => ({}))
 
@@ -58,8 +56,8 @@
     <div id="chat-box">
       <div id="chat-header">
         <div class="chat-header-avatar">
-          <img src="${ASSETS}/profile-pic.jpg" onerror="this.style.display='none';this.nextElementSibling.style.display=''">
-          <svg style="display:none" width="48" height="48" viewBox="-603 -603 1206 1206">
+          ${config.profilePic ? `<img src="${config.profilePic}" onerror="this.style.display='none';this.nextElementSibling.style.display=''">` : ''}
+          <svg ${config.profilePic ? 'style="display:none"' : ''} width="48" height="48" viewBox="-603 -603 1206 1206">
             <path transform="rotate(135) scale(1)" fill="#1B4F72" d="M -43.934 -600L -43.934 0C -102.948 -160.66 -102.944 -248.528 -175.736 -175.736A 248.528 248.528 0 1 0 43.934 -244.614L 43.934 -804.594C 87.868 -512.132 248.528 -600 424.264 -424.264A 600 600 0 1 1 -43.934 -600"></path>
           </svg>
         </div>
@@ -146,7 +144,7 @@
   const getTextDirection = (text) => {
     // Remove numbers and common punctuation/symbols to detect natural language direction
     const cleanText = text.replace(/[0-9\.,!\?\-\+\(\)\[\]\{\}"'#@%&*\^$£€~`|\\\/<>:;]/g, '')
-    if (!cleanText.trim()) return 'ltr' // Default to LTR if only numbers/symbols
+    if (!cleanText.trim()) return siteDir // Default to site direction if only numbers/symbols
 
     const hebrewCount = (cleanText.match(/[\u0590-\u05FF]/g) || []).length
     const totalCount = cleanText.length
@@ -402,6 +400,7 @@
     bubble.id = 'ghost-bubble'
     bubble.className = 'chat-msg user ghost-input'
     bubble.contentEditable = 'true'
+    bubble.dir = siteDir
 
     const btn = document.createElement('button')
     btn.id = 'ghost-send'
