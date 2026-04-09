@@ -15,6 +15,6 @@
 # don't ignore .gitignore and gitlab-ci
 !.gitignore
 !.gitlab-ci.yml
-!deploy.sh
+!build.sh
 
 # Excluding other files will be done in the files directory itself!

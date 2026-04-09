@@ -21,4 +21,5 @@ volumes:
   conductor_sock:
 
 secrets:
-  provision_secret: {file: ./provision_secret.secret}
+  provision_secret:
+    environment: "${MY_SECRET_VAL:-dev}"
