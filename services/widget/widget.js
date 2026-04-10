@@ -110,6 +110,28 @@
   const dropdown = document.getElementById('chat-dropdown')
   const clearItem = document.getElementById('chat-clear-item')
 
+  const scrollToBottom = (d = 0) => {
+    const f = () => messages.scrollTo({ top: messages.scrollHeight, behavior: 'smooth' })
+    if (d) setTimeout(f, d)
+    else f()
+  }
+
+  const applyMetadata = (row, role, time) => {
+    const d = time ? new Date(time) : new Date()
+    const minuteKey = `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`
+    const isGrouped = role === lastMsgRole
+    if (isGrouped) row.classList.add('grouped')
+
+    if (!isGrouped || minuteKey !== lastMsgMinute) {
+      const ts = document.createElement('span')
+      ts.className = 'chat-timestamp'
+      ts.textContent = minuteKey
+      row.appendChild(ts)
+    }
+    lastMsgRole = role
+    lastMsgMinute = minuteKey
+  }
+
   let menuOpen = false
   menuBtn.onclick = (e) => { e.stopPropagation(); menuOpen = !menuOpen; dropdown.style.display = menuOpen ? 'block' : 'none' }
   document.addEventListener('click', () => { if (menuOpen) { menuOpen = false; dropdown.style.display = 'none' } })
@@ -164,11 +186,12 @@
   let restoring = false
 
   const addMsg = (content, role, time) => {
+    const uiRole = role === 'assistant' ? 'bot' : role
     const row = document.createElement('div')
-    row.className = `msg-row ${role}${role === lastMsgRole ? ' grouped' : ''}`
+    row.className = `msg-row ${uiRole}`
 
     const msg = document.createElement('div')
-    msg.className = `chat-msg ${role}`
+    msg.className = `chat-msg ${uiRole}`
     msg.innerHTML = parseMarkdown(content)
     msg.dir = getTextDirection(content)
     if (restoring) {
@@ -180,26 +203,10 @@
     }
 
     row.appendChild(msg)
-
-    const d = time ? new Date(time) : new Date()
-    const minuteKey = `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`
-    if (role !== lastMsgRole || minuteKey !== lastMsgMinute) {
-      const timestamp = document.createElement('span')
-      timestamp.className = 'chat-timestamp'
-      timestamp.textContent = minuteKey
-      row.appendChild(timestamp)
-    }
-    lastMsgRole = role
-    lastMsgMinute = minuteKey
+    applyMetadata(row, role, time)
 
     messages.appendChild(row)
-
-    setTimeout(() => {
-      messages.scrollTo({
-        top: messages.scrollHeight,
-        behavior: 'smooth'
-      })
-    }, 100)
+    scrollToBottom(100)
   }
 
   const addPendingBubble = (delay = 500) => {
@@ -207,24 +214,15 @@
     const promise = new Promise(resolve => {
       timeoutId = setTimeout(() => {
         const row = document.createElement('div')
-        row.className = `msg-row bot${lastMsgRole === 'bot' ? ' grouped' : ''}`
+        row.className = 'msg-row bot'
         const msg = document.createElement('div')
         msg.className = 'chat-msg bot'
         msg.innerHTML = '<span class="typing-dots"><span>.</span><span>.</span><span>.</span></span>'
         msg._showTime = Date.now()
-        const d = new Date()
-        const minuteKey = `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`
         row.appendChild(msg)
-        if (lastMsgRole !== 'bot' || minuteKey !== lastMsgMinute) {
-          const timestamp = document.createElement('span')
-          timestamp.className = 'chat-timestamp'
-          timestamp.textContent = minuteKey
-          row.appendChild(timestamp)
-        }
-        lastMsgRole = 'bot'
-        lastMsgMinute = minuteKey
+        applyMetadata(row, 'assistant')
         messages.appendChild(row)
-        setTimeout(() => messages.scrollTo({ top: messages.scrollHeight, behavior: 'smooth' }), 100)
+        scrollToBottom(100)
         resolve(msg)
       }, delay)
     })
@@ -278,9 +276,9 @@
           : token.value === '.' ? 180
           : 10
         if (d) await new Promise(r => setTimeout(r, d))
-        if (token.value === '<br>') messages.scrollTo({ top: messages.scrollHeight, behavior: 'smooth' })
+        if (token.value === '<br>') scrollToBottom()
       }
-      messages.scrollTo({ top: messages.scrollHeight, behavior: 'smooth' })
+      scrollToBottom()
     }
   }
 
@@ -296,7 +294,7 @@
       if (!entries.length) return false
       restoring = true
       for (const entry of entries) {
-        if (!entry.hidden) addMsg(entry.content, entry.role === 'user' ? 'user' : 'bot', entry.time)
+        if (!entry.hidden) addMsg(entry.content, entry.role, entry.time)
         history.push(entry)
       }
       restoring = false
@@ -422,14 +420,14 @@
 
     bubble.addEventListener('input', () => {
       bubble.dir = getTextDirection(bubble.innerText)
-      messages.scrollTo({ top: messages.scrollHeight, behavior: 'smooth' })
+      scrollToBottom()
     })
     bubble.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMsg() }
     })
     btn.onclick = sendMsg
 
-    setTimeout(() => messages.scrollTo({ top: messages.scrollHeight, behavior: 'smooth' }), 100)
+    scrollToBottom(100)
     if (!('ontouchstart' in window)) bubble.focus()
   }
 
@@ -481,7 +479,7 @@
       await askAndProcess(abort)
     } catch (e) {
       if (abort.stopped) return
-      addMsg('Unable to connect to service', 'bot')
+      addMsg('Unable to connect to service', 'assistant')
     }
 
     sendAbort = null

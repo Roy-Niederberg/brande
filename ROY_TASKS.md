@@ -1,20 +1,20 @@
 # Roy's Tasks
- - [ ] Delete the `router` image in GitLab
- - [ ] Next meeting with Nevo - show the langind page.
 
+The big plan:
+-----
+- [ ] Give Nevo the MVP
 - [ ] Finish the client-onboarding
+- [ ] Work on testing
+- [ ] Claude on the servers
+- [ ] Qabu as an employee with personality.
+
 - [ ] Build a local integration test environment — Docker network with service containers + wiremock (to stub external calls like VM endpoints) + browser container for visual testing. Host uses Wayland so X11 forwarding won't work — use a VNC-based approach instead (e.g. `selenium/standalone-chrome` with noVNC, access via `localhost:7900` in host browser). Keeps coming up: hard to test end-to-end flows (like onboarding success → redirect) locally without real infrastructure. Invest in this once there are enough flows to justify it. (added 2026-03-28)
-- [ ] Finish the file-provide patter in the docker-compose (the widget not in 'share' solution)
 
 - [ ] **Update provisioner to use conductor socket** — now that conductor handles client creation (filesystem + docker), the provisioner (`services/provisioner/src/server.js`) needs to be rewritten to: validate the secret + subdomain, then forward to conductor via Unix socket at `/run/qabu/conductor.sock` (mount it in the provisioner container). The provisioner keeps HTTP, auth, and validation; conductor does everything else. (added 2026-03-30)
-
-- [ ] **Delete `prod_setup/`** — deprecated now that clients live under `~/app/clients/` on the server directly. Roy confirmed the production server has already been migrated. Remove the directory and update CLAUDE.md accordingly. (added 2026-03-30)
 
 - [ ] **Write a "New Server Setup" guide** — document the full steps to provision a new Oracle Cloud VM for Qabu: install Docker, build + install the conductor binary, install `qabu-conductor.service`, set up Caddy TLS, etc. Replace references to `deploy.sh` and `prod_setup/`. Lives in `docs/` or a `SETUP.md`. (added 2026-03-30)
 
 - [ ] **Rebuild and redeploy conductor binary** — three fixes pending in source: (1) `setbuf(stdout, NULL)` so logs show in journalctl instead of being buffered, (2) removed `2>/dev/null` from `start_stack` and `stack_running` so docker compose errors are visible in logs, (3) `RuntimeDirectory=qabu` in systemd service file (already deployed to server, but binary needs rebuild). Rebuild with `docker run --rm -v $(pwd)/clients_server_automation/conductor/src:/src -w /src gcc:latest g++ -std=c++20 -O2 -static -s -o /src/conductor main.cpp` then scp + restart. (added 2026-04-06)
-
-- [ ] **Conductor doesn't copy secrets to new clients** — `create_client()` copies the config template to the client dir, but the template has no `secrets/` directory. Currently secrets must be manually copied to each new client (`~/app/clients/<sub>/secrets/`). Will be resolved when Infisical is set up — secrets will be pulled at runtime instead of living on disk. (added 2026-04-06)
 
 - [ ] **Migrate secrets to Infisical** — currently secrets are rsynced to VMs manually. Replace with Infisical so secrets are pulled at runtime (no rsync needed, no machine dependency). Part of the new deploy flow that replaces `deploy.sh`. (added 2026-03-28)
 
@@ -25,23 +25,11 @@ _Future_:
 - [ ] Check the credit on the langing page. I don't think its correct.
 - [ ] Add availability check in the langind page to see if the .qabu.net page for the wanted subdomain is free. Can improve sales.
 
- - [x] This warning when deploying:
- ``` 
- 1 warning found (use docker --debug to expand):
- - JSONArgsRecommended: JSON arguments recommended for CMD to prevent unintended behavior related to OS signals (line 10)
- ```
-
- - [x] Fix the admin secret read on prompt composr (we don't need the fs.existsSync)
  - [ ] Review the changes of changing the sp to js from json. I don't think it good.
 
- - [x] Check if the admin and the site share assets — resolved via the `private/` restructure (2026-04-10). Admin and site both mount `private/` from the client directory.
-
- - [x] **Restructure client directories** — Done (2026-04-10). Final structure: `private/` (was `assets/`), `data/`, `logs/`. Widget is fully configured via `ChatWidgetConfig` (direction, profilePic as data URI). Services-router no longer serves static assets. Admin no longer mounts `data/` — `config.env` moved to `private/`. Profile pics converted to base64 data URIs in `client-config.json`.
  - [ ] I don't think I want the widget to be shared. see the production server to understand. it should have version.
- - [x] The gatway Caddyfile - can we make it more generic? so we don't need to edit when add/remove services.
  - [ ] What about the 404 page? And what about a page that the name is already taken but site not active? 
  - [ ] Do I want the gatway volume? can we use existing one? 
- - [x] Need to review the ./deploy.sh. I dosn't make sense.
  - [ ] See the Gemini report - add 'docs' and add the report there. What else need to go to docs? Copy the design directory from rny3_docs
  - [ ] Why do we need the /admin/chatQA ? it can just be /admin ? 
  - [ ] Why do we need prod_setup/client_server/dradamblack/data/services.json ? The single point of truth should be the docker-compose
@@ -60,8 +48,6 @@ _Future_:
     - There was a version with a shirk/grow for the widget but it's gone from the code now. Claude wrote about it in CLOUDE.md so I can get it beck in the future.
  - [ ] Add reset all changes button to the admin site (the user want to go back to the current published sp/kb/greeting)
  - [ ] Add discard button to the edit/save buttons on the admin site (user want to leave the editing mode of the text box without saving)
- - [x] I don't like what Claude did with the CLIENT env var in the mock facebook. I want the volume to use the production data/srv to display the correct post-comments mock UI.
- - [x] Make facebook comment prompt fit the OpenAI api. no time stamp - just (a long time ago) ... make sure we know who is the assistant. How the hell this is working right now????
  - [ ] I need to enable the admin user to comment as few different users (add some images for random avatars to the docker images)
  - [ ] Text the facebook_comments and the facebook_dm in production
  - [ ] With Nevo - facebook_comments to DM per the gatekeeper decision.
@@ -84,9 +70,7 @@ _Future_:
         * The widget is the state. I should think of it as the real AI/person/assistant and the prompt_composer is just a resource.
           So It will also ask the prompt_composer for stuff to keep the user engaged, play the greeting and so on. The widget is the initiator.
 
-- [ ] .gitignore on prod_setup (?!)
 - [ ] Organize my desk
-- [ ] Make sure I have all the secrets backed up
 
 - [ ] *Continuous improvement:*
     - [ ] *network of agents:*
@@ -109,14 +93,3 @@ _Future_:
 
 - Facebook:
     - [ ]  Multi-page per client support
-
-
-- [ ] *Claude skills*:
-    1. superpowers — teaches Claude better development patterns globally
-    1. skill-creator — for building your Qabû-specific skills
-    1. security-guidance — healthcare context, install early
-    1. code-review — everyday value
-    1. claude-md-management — keeps your CLAUDE.md healthy
-    1. playwright — when you're ready to add UI tests
-    1. frontend-design — for the chat/canvas UI work
-    1. code-simplifier — good for keeping things lean

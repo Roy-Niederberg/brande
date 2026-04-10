@@ -12,13 +12,9 @@
     - **[Low priority / future] Move KB before examples in prompt-composer.** The Gemini guideline says context (KB) should come BEFORE examples and task. Currently the prompt-composer appends KB at the very end: `main + capabilities_instructions + #CAPABILITIES + #KNOWLEDGE BASE`. Ideally the order would be: `main_part1 (role+instructions) + #KNOWLEDGE BASE + main_part2 (examples) + capabilities`. This is a bigger architectural change — would require splitting the `main` SP into two parts or having the prompt-composer insert KB at a marked position. Not urgent since the current setup works, but worth considering for a future refactor.
 
 - [ ] **Migrate system_prompts from `.js` module to plain `.txt` files (future LLM-friendliness improvement).** `system_prompts.json` was converted to `system_prompts.js` (ES module with template literals) — this solved the JSON encoding problem (no more `\n` escape sequences, readable git diffs, LLM-editable). However `.js` still has syntax to preserve (backtick delimiters, `export default` wrapper, key names) which adds friction for LLM editing.
-
     The ideal end state is plain `.txt` files — one file per prompt key, e.g. `data/prompts/widget.gatekeeper.txt`, `data/prompts/widget.main.txt`, etc. An LLM just reads and writes the file directly with no syntax concerns.
-
     **Loader change needed:** Replace the single `import('system_prompts.js')` with a ~5-line directory scan that builds `$.system_prompts` from filenames (`{module}.{key}.txt`). Adding a new prompt module = add a file, no code change.
-
     **Write-back change:** `POST /system_prompts` currently receives the full object and calls `writeJSObj`. With `.txt` files it would write each key as a separate `fs.writeFileSync`. The GET handler already returns `rs.json($[name])` (in-memory object), so no change there.
-
     Not urgent — `.js` is a big improvement over `.json` already. (added 2026-03-17)
 
 - [ ] **Per-client rate limits and token budgets in prompt-composer.** Currently the rate limiter is hardcoded (5 req/20s) and applies the same to all clients. Add per-client configurable limits to support tiered pricing. Implementation:
@@ -28,12 +24,5 @@
     - No per-client API keys needed — use shared keys with internal tracking.
     - Add tier/plan config to the onboarding form so limits are set when a new client is created.
     - Remember: this affects all channels (widget, FB comments, FB DMs) since they all go through prompt-composer `/ask`.
-
-- [ ] **Live/draft toggle for new client sites.** When a new client is onboarded, the site goes live immediately but the prompts/KB may not be ready yet — visitors could get bad answers. Add a draft mode so the site can be set up and tested via admin before going live.
-    - Add a `"live": false` flag to `client-config.json`. New clients created via onboarding default to `live: false`.
-    - The prompt-composer checks this flag on `/ask` requests. If `live: false` and the request is NOT from admin (check `apiEndpoint` — admin requests come via `/admin/ask`, site requests via `/site/ask`), return a canned response like "This site is coming soon" instead of calling the LLM.
-    - The admin panel should work normally regardless of the flag — so the client owner can test and tweak prompts/KB freely.
-    - Add a toggle in the admin UI (a simple button on the main admin screen) to flip the site live/draft. This calls the admin BE, which updates `client-config.json` via prompt-composer.
-    - The site's `index.html`/`loader.js` could also check the flag and show a "coming soon" banner instead of the chat widget, but the prompt-composer check is the critical gate (covers all channels including FB).
 
 - [ ] **Auto-create DNS records via Cloudflare API when a client is scaffolded.** Currently, when a new client is created via the onboarding flow, someone must manually add an A record (`<subdomain>.qabu.net` → VM IP) in Cloudflare. This doesn't scale. The conductor (or provisioner) should call the Cloudflare API to create the record automatically after a successful scaffold. The Cloudflare API token is already available on the client VM (used by Caddy for TLS). The conductor would need the zone ID and the VM's public IP — these could be constants or read from a config file. This becomes essential with multiple client VMs, since the wildcard `*.qabu.net` can only point to one IP. (added 2026-04-02)
