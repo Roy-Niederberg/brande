@@ -90,7 +90,7 @@ asked — just add it and mention that you did.
   ```sh
   docker run --rm -v "$(pwd)/services/<service>/src/package.json:/app/package.json" \
     -w /app node:22-alpine \
-    sh -c "npm install -g npm@latest && npm install && cat package-lock.json" \
+    sh -c "npm install -g npm@latest >&2 && npm install >&2 && cat package-lock.json" \
     > services/<service>/src/package-lock.json
   ```
   This mounts only `package.json` into the container, runs npm install inside it,

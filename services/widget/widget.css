@@ -37,6 +37,18 @@
   padding: 0;
   box-shadow: -4px 0 20px rgba(0, 0, 0, 0.03);
   height: 100%;
+  position: relative;
+  overflow: hidden;
+}
+#chat-box::before {
+  content: '';
+  position: absolute; top: -30%; left: -30%;
+  width: 140%; height: 140%;
+  pointer-events: none;
+  opacity: 0.04;
+  background: url("data:image/svg+xml,%3Csvg viewBox='-603 -603 1206 1206' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='%231B4F72' transform='rotate(135)' d='M -43.934 -600 L -43.934 0 C -102.948 -160.66 -102.944 -248.528 -175.736 -175.736 A 248.528 248.528 0 1 0 43.934 -244.614 L 43.934 -804.594 C 87.868 -512.132 248.528 -600 424.264 -424.264 A 600 600 0 1 1 -43.934 -600'/%3E%3C/svg%3E") no-repeat center;
+  background-size: contain;
+  z-index: 0;
 }
 
 #chat-header {
@@ -102,6 +114,7 @@
   scrollbar-color: rgba(0,0,0,0.1) transparent;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
+  position: relative; z-index: 1;
 }
 
 #chat-messages::-webkit-scrollbar { width: 6px; }
@@ -117,6 +130,7 @@
   line-height: 1.6;
   flex-shrink: 0;
   border-top: 1px solid rgba(0,0,0,0.05);
+  position: relative; z-index: 1;
 }
 #chat-footer a {
   color: rgba(27, 79, 114, 0.65);
@@ -249,13 +263,13 @@
 }
 
 @media (max-aspect-ratio: 1/1) {
-  #chat-box { background: transparent; box-shadow: none; }
-  #chat-header { background: rgba(255,255,255,0.82); backdrop-filter: blur(8px); }
-  #chat-footer { background: rgba(250,244,232,0.82); backdrop-filter: blur(8px); }
-  .chat-msg.ghost-input { background: rgba(133,193,233,0.55); backdrop-filter: blur(6px); }
+  .chat-msg.ghost-input { background: rgba(133,193,233,0.55); }
 }
 
 @media (prefers-color-scheme: dark) {
+  #chat-widget:not([data-theme="light"]) #chat-box::before {
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='-603 -603 1206 1206' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='%2385C1E9' transform='rotate(135)' d='M -43.934 -600 L -43.934 0 C -102.948 -160.66 -102.944 -248.528 -175.736 -175.736 A 248.528 248.528 0 1 0 43.934 -244.614 L 43.934 -804.594 C 87.868 -512.132 248.528 -600 424.264 -424.264 A 600 600 0 1 1 -43.934 -600'/%3E%3C/svg%3E");
+  }
   #chat-widget:not([data-theme="light"]) #chat-box { background-color: #1C2127; }
   #chat-widget:not([data-theme="light"]) #chat-header { background: #232B33; color: #FAF4E8; border-bottom-color: rgba(255,255,255,0.06); }
   #chat-widget:not([data-theme="light"]) .chat-header-subtitle { color: #85C1E9; }
@@ -278,6 +292,9 @@
   #chat-widget:not([data-theme="light"]) .chat-theme-btn.active { background: rgba(133,193,233,0.15); color: #85C1E9; }
 }
 
+#chat-widget[data-theme="dark"] #chat-box::before {
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='-603 -603 1206 1206' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='%2385C1E9' transform='rotate(135)' d='M -43.934 -600 L -43.934 0 C -102.948 -160.66 -102.944 -248.528 -175.736 -175.736 A 248.528 248.528 0 1 0 43.934 -244.614 L 43.934 -804.594 C 87.868 -512.132 248.528 -600 424.264 -424.264 A 600 600 0 1 1 -43.934 -600'/%3E%3C/svg%3E");
+}
 #chat-widget[data-theme="dark"] #chat-box { background-color: #1C2127; }
 #chat-widget[data-theme="dark"] #chat-header { background: #232B33; color: #FAF4E8; border-bottom-color: rgba(255,255,255,0.06); }
 #chat-widget[data-theme="dark"] .chat-header-subtitle { color: #85C1E9; }
@@ -300,12 +317,8 @@
 #chat-widget[data-theme="dark"] .chat-theme-btn.active { background: rgba(133,193,233,0.15); color: #85C1E9; }
 
 @media (max-aspect-ratio: 1/1) and (prefers-color-scheme: dark) {
-  #chat-widget:not([data-theme="light"]) #chat-header { background: rgba(35, 43, 51, 0.82); }
-  #chat-widget:not([data-theme="light"]) #chat-footer { background: rgba(28, 33, 39, 0.82); }
   #chat-widget:not([data-theme="light"]) .chat-msg.ghost-input { background: rgba(42, 67, 89, 0.55); }
 }
 @media (max-aspect-ratio: 1/1) {
-  #chat-widget[data-theme="dark"] #chat-header { background: rgba(35, 43, 51, 0.82); }
-  #chat-widget[data-theme="dark"] #chat-footer { background: rgba(28, 33, 39, 0.82); }
   #chat-widget[data-theme="dark"] .chat-msg.ghost-input { background: rgba(42, 67, 89, 0.55); }
 }

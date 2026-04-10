@@ -398,6 +398,7 @@
   let sendAbort = null
 
   const addGhostBubble = () => {
+    document.querySelectorAll('.ghost-send-btn').forEach(b => b.remove())
     const row = document.createElement('div')
     row.id = 'ghost-row'
     row.className = `msg-row user ghost-row${lastMsgRole === 'user' ? ' grouped' : ''}`
@@ -460,7 +461,8 @@
       ts.textContent = minuteKey
       ts.style.opacity = '0'
       ts.style.transition = 'opacity 0.3s ease'
-      sendBtn.remove()
+      sendBtn.id = ''
+      sendBtn.style.visibility = 'hidden'
       ghostRow.appendChild(ts)
       requestAnimationFrame(() => ts.style.opacity = '')
     }, 300)
