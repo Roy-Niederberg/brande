@@ -39,6 +39,7 @@ services:
     volumes:
       - ../services/admin/src:/app/src:ro
       - ../services/admin/src/views:/app/views:ro
+      - dradamblack-ui:/app/ui
 
   dradamblack-mock-facebook:
     build: {context: ../services/mock_facebook/, target: development}
@@ -62,6 +63,7 @@ services:
     volumes:
       - ../services/admin/src:/app/src:ro
       - ../services/admin/src/views:/app/views:ro
+      - drlipokatz-ui:/app/ui
 
   drlipokatz-mock-facebook:
     build: {context: ../services/mock_facebook/, target: development}
@@ -72,3 +74,7 @@ services:
     build: {context: ../services/facebook_comments/, target: development}
     volumes:
       - ../services/facebook_comments/src:/app/src:ro
+
+volumes:
+  dradamblack-ui:
+  drlipokatz-ui:

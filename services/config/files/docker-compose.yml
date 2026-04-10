@@ -54,21 +54,24 @@ services:
 
   admin:
     # --------------------------------------------------------------------------
-    # Admin interface to manage the SP/KB and to test it. Uses the production 
+    # Admin interface to manage the SP/KB and to test it. Uses the production
     # widget via the services-router.
-    # Use the admin_secret to inject a custom SP/KB to the prompt-composer to 
+    # Use the admin_secret to inject a custom SP/KB to the prompt-composer to
     # test it before publishing. To publish the SP/KB, uses the prompt-composer
     # CRUD API.
+    # Owns the shared UI (index.html, loader.js, page/) and copies it to the
+    # 'ui' volume on startup for the site service to serve publicly.
     # --------------------------------------------------------------------------
     image:    registry.gitlab.com/rny3/brande/admin:latest
     networks: [client_network]
     secrets:  [authorized_emails, admin_secret]
-    volumes:  [./private:/app/private]
+    volumes:  [./private:/app/private, ui:/app/ui]
 
   site:
     image:    registry.gitlab.com/rny3/brande/site:latest
     networks: [client_network]
-    volumes:  [./private:/site/private]
+    volumes:  [./private:/site/private, ui:/site/ui:ro]
+    depends_on: [admin]
     profiles: [site]
 
   facebook-comments:
@@ -90,6 +93,9 @@ services:
     networks: [client_network]
     volumes:  [./private/mock_facebook/:/app/data/]
     profiles: [facebook]
+
+volumes:
+  ui:
 
 networks:
   client_network:

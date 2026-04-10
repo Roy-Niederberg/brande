@@ -135,10 +135,11 @@ Thrown errors hit the error middleware at the bottom of the file (logs + 500).
 ## Project Structure
 
 ```
-clients/                    - Per-client data (assets + data), checked into git
+clients/                    - Per-client data, checked into git
   <subdomain>/
-    assets/                 - Static assets (background, profile-pic, client-config, og-meta)
-    data/                   - Runtime data (system_prompts.js, knowledge_base.json, etc.)
+    private/                - Client config & assets (client-config, background, og-meta, mock_facebook/, config.env)
+    data/                   - Prompt-composer config (system_prompts.js, knowledge_base.json, etc.)
+    logs/                   - System output (last_prompt.json)
 secrets/                    - Secrets for QA/dev (NOT deployed — VMs have their own copies)
   client_router_secrets/    - Clients-router VM secrets (TLS, JWT, dispatcher)
   clients_secrets/          - Shared per-client secrets (LLM keys, admin secret, etc.)
@@ -153,7 +154,7 @@ prod/                       - Production docker-compose files (deployed to VMs)
   client-server-clients-router-docker-compose.yml
 services/                   - Dockerized service source code
   config/                   - Client template (init container, copied by conductor on creation)
-    files/                  - Default files for a new client (assets/, data/, docker-compose.yml)
+    files/                  - Default files for a new client (private/, data/, docker-compose.yml)
 docs/                       - Operational guides
   client-server-setup.md    - How to provision a new client VM from scratch
 clients_server_automation/  - Host-level automation on the client VM
@@ -245,17 +246,17 @@ Routing: the main router Caddyfile proxies the catch-all to `landing-page:80`.
 Static assets (videos, images) go in `services/landing_page/public/` — Vite
 copies them to `dist/` as-is during build.
 
-## Client Assets
+## Client Config & Assets
 
-Each client has a `client-config.json` in its assets directory
-(`clients/<client>/assets/`) that configures language, direction, title,
-background image, and social links.
+Each client has a `client-config.json` in `clients/<client>/private/` that
+configures language, direction, title, background image, social links, and
+`profilePic` (base64 data URI). The profile pic is embedded in the config as a
+data URI — no separate image file. The widget receives it via `ChatWidgetConfig`
+and falls back to the Qabu logo SVG if not provided.
 
-Each client has a `profile-pic.jpg` in the root of its assets directory (used by
-the mock Facebook testing interface and available for the site/widget). Each client
-also has a `mock_facebook/` subfolder in assets with `post-data.json` (and optionally
-`post-image.jpg`) for the mock Facebook admin testing interface. Missing images
-fall back to defaults (SVG avatar, site background).
+Each client also has a `mock_facebook/` subfolder in `private/` with
+`post-data.json` (and optionally `post-image.jpg`) for the mock Facebook admin
+testing interface.
 
 ## Client Profiles
 
@@ -298,21 +299,64 @@ Four Caddyfiles handle routing across the two VMs:
 
 **Services router** (`services/services_router/src/Caddyfile`) — per-client
 gateway. Generic routing: `/{service}/...` → `{service}:4321` (prefix stripped).
-All services listen on port **4321**. `/assets/*`, `/widget.js`, and `/page/*`
+All services listen on port **4321**. `/private/*`, `/widget.js`, and `/page/*`
 are excluded from the generic routing.
 - `/taken` → responds "true" (for onboarding subdomain-taken check)
-- `/assets/*` → static file server from `/srv/assets`
-- `/widget.js` → widget:4321 (dedicated widget service)
+- `/widget.js`, `/widget.css` → widget:4321 (dedicated widget service)
 - `/{service}/*` → `{service}:4321` (generic: admin, prompt-composer, facebook-dm, etc.)
-- Everything else → site:80 (static file server)
+- Everything else (including `/private/*`) → site:80 (static file server)
 
-**Site Caddyfile** (`services/site/src/Caddyfile`) — pure static file server:
-- Serves `/site` directory with Caddy templates for HTML files
+**Site Caddyfile** (`services/site/src/Caddyfile`) — serves from the shared `ui`
+volume (HTML, loader, page) and the client's `private/` volume.
 
-## Site Layout: Chat Section + Site Section
+## Shared UI — Admin Owns, Site Mounts
 
-The Qabu site (`index.html`) has a split-view layout with two sections inside a
-flex `.container`:
+The admin and site share the exact same HTML shell, loader, and visual page.
+**The admin is WYSIWYG** — what the client sees while configuring is identical to
+what their customers see on the public site. The only difference is the admin
+overlay (editor panels, buttons) injected by `admin.js`.
+
+### How it works
+
+The admin Docker image owns the shared UI files (`index.html`, `loader.js`,
+`page/`). On startup, `server.js` copies them to the `ui` named volume. The
+site service mounts this volume read-only and serves the same files publicly.
+
+```
+admin image → /app/views/{index.html, loader.js, page/}
+           → copies to /app/ui/ (ui volume) on startup
+site image → mounts ui volume at /site/ui/ (read-only)
+```
+
+In the client docker-compose:
+```yaml
+volumes:
+  ui:    # shared between admin and site
+
+services:
+  admin:
+    volumes: [./private:/app/private, ui:/app/ui]
+  site:
+    volumes: [./private:/site/private, ui:/site/ui:ro]
+    depends_on: [admin]
+```
+
+### Context detection
+
+A single `loader.js` serves both contexts. It detects admin vs site by checking
+`location.pathname.startsWith('/admin')`:
+- **Admin**: dynamically loads `admin.js` first (sets `ChatWidgetConfig` overrides
+  for draft testing), prefixes fetches with `/admin` (e.g. `/admin/private/...`)
+- **Site**: loads the widget directly, fetches from `/private/...`
+
+The visual page (`page/`) uses relative paths (`../private/client-config.json`,
+`../private/background.png`) so it resolves correctly under both `/page/` (site)
+and `/admin/page/` (admin).
+
+### Layout
+
+The shared `index.html` has a split-view layout with two sections inside a flex
+`.container`:
 
 - **`.chat-section`** (`#chat-section`) — holds the chat widget. In admin mode,
   the Facebook test panel overlays this section.
@@ -320,11 +364,6 @@ flex `.container`:
   page (`/page/`) or an external client site (`config.siteUrl`). In admin mode,
   editor panels and admin buttons overlay this section. Capabilities render their
   UI here (passed as `canvasElement` to the widget), overlaying on top of the iframe.
-
-The built-in visual page (`services/site/srv/page/`) has its own `loader.js` that
-reads `client-config.json` and renders: background image, overlay title, social
-links, and custom font. This separation means the visual page can be developed
-independently or swapped for any external URL.
 
 In portrait mode (`max-aspect-ratio: 1/1`), both sections stack as absolute
 overlays — the chat section sits on top of the site section.
@@ -334,16 +373,21 @@ overlays — the chat section sits on top of the site section.
 external site, `canvasElement` can point to any element (or `null` to disable
 capability UI).
 
+### Important
+
+Any change to the shared UI files (`index.html`, `loader.js`, `page/`) affects
+both admin and site. This is intentional — they must stay in sync. Only `admin.js`
+is admin-specific.
+
 ## Admin
 
-The admin is fully independent of the site service. It has its own HTML shell
-(`services/admin/src/views/index.html`), its own loader
-(`services/admin/src/views/loader.js`), and loads the widget from the widget
-service (via `/widget.js`). The admin can run standalone with just gateway +
-prompt-composer + admin + widget — no site service required.
+The admin shares the same UI shell as the site (WYSIWYG). It can run standalone
+with just services-router + prompt-composer + admin + widget — no site service
+required. When site is disabled, admin still serves `/page/` from its own Express
+routes.
 
-Admin assets (client-config, background image) are volume-mounted from the
-client's `assets/` directory into `/app/assets`.
+Admin config & assets (client-config, background image, config.env) are
+volume-mounted from the client's `private/` directory into `/app/private`.
 
 `admin.js` pre-sets `window.ChatWidgetConfig` (apiEndpoint, beforeSend, greetingOverride) —
 `loader.js` merges it via `...(window.ChatWidgetConfig || {})`. It uses a factory
@@ -365,7 +409,7 @@ Six buttons on the main screen:
    'facebook_comments'` + draft overrides from localStorage. Opens independently
    of other panels so admin can edit SP on one side and test on the other.
 6. **Manage Services** — Toggle panel for enabling/disabling optional services.
-   Changes are saved to `data/config.env` (sets `COMPOSE_PROFILES=`) and take
+   Changes are saved to `private/config.env` (sets `COMPOSE_PROFILES=`) and take
    effect on next `docker compose up`.
 
 All three editors (KB, SP, greeting) use localStorage drafts and a publish flow.
@@ -406,7 +450,7 @@ Request flow:
 ### Prompt Logging
 
 After each LLM call, the prompt-composer writes the full request + response to
-`data/last_prompt.json` (overwritten each time). Readable via `GET /last_prompt`
+`logs/last_prompt.json` (overwritten each time). Readable via `GET /last_prompt`
 (proxied through admin as `GET /api/last_prompt`).
 
 ### System Prompts
@@ -427,7 +471,10 @@ The gatekeeper returns **plain text** (no JSON/tool use):
 The prompt-composer rate limiter (5 req/20s) applies only to `/ask`, not to
 config/log endpoints.
 
-Direction (RTL/LTR) is inherited from the site's `client-config.json` — no toggle needed.
+Direction (RTL/LTR) is passed via `ChatWidgetConfig.direction` — the widget
+sets `targetElement.dir` accordingly. The site/admin loaders read it from
+`client-config.json` and pass it through. RTL support includes flipped bubble
+border-radius, margins, padding, shadows, and dropdown positioning.
 
 ## Capabilities (LLM Tool Use)
 
@@ -500,7 +547,9 @@ Source: `services/widget/widget.js`. It loads per-client capabilities via dynami
 
 Config options: `targetElement` (selector or element, defaults to `document.body`),
 `canvasElement` (element for capability UI, defaults to `null`),
-`apiEndpoint`, `fontFamily`, `googleFontsUrl`, `beforeSend`, `greetingOverride`.
+`apiEndpoint`, `fontFamily`, `googleFontsUrl`, `beforeSend`, `greetingOverride`,
+`direction` (RTL/LTR, defaults to `'ltr'`), `profilePic` (URL or data URI,
+defaults to Qabu logo SVG), `clientName` (header title, defaults to `'Qabû'`).
 
 ### Known Issues
 
@@ -541,9 +590,9 @@ clients (copies `config/` → `clients/<subdomain>/`).
 
 The template includes:
 - `docker-compose.yml` — client compose with all services, using Docker Compose profiles
-- `assets/client-config.json` — default client config
+- `private/` — default client-config.json, config.env
 - `data/` — default system_prompts.js, capabilities.js, greeting.json,
-  knowledge_base.json, config.env
+  knowledge_base.json
 
 ### Conductor Details
 
@@ -562,7 +611,7 @@ profiles:
 - `site` — site service
 - `facebook` — facebook-comments, facebook-dm, mock-facebook
 
-`data/config.env` sets `COMPOSE_PROFILES=` (e.g. `COMPOSE_PROFILES=site,facebook`).
+`private/config.env` sets `COMPOSE_PROFILES=` (e.g. `COMPOSE_PROFILES=site,facebook`).
 The admin "Manage Services" UI edits this file — changes take effect on next
 `docker compose up`.
 
@@ -632,7 +681,7 @@ loads this at startup.
 
 - YAML flow mappings `{file: ...}` break with `${VAR}` inside — use block style
   instead.
-- `client-config.json` in assets controls `backgroundImage` — must match actual
+- `client-config.json` in `private/` controls `backgroundImage` — must match actual
   filename.
 - Panels hidden with `display:none` break `scrollHeight` — run `autoResize` on
   open.

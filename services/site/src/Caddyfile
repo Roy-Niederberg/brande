@@ -1,7 +1,10 @@
 :80 {
-	root * /site
-	templates {
-		mime text/html
+	handle /private/* {
+		root * /site
+		file_server
 	}
-	file_server
+	handle {
+		root * /site/ui
+		file_server
+	}
 }

@@ -75,9 +75,16 @@
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
             Clear conversation
           </div>
-          <div class="chat-header-dropdown-item" id="chat-hand-item">
-            <svg width="16" height="16" viewBox="0 0 64 64" fill="currentColor" style="flex-shrink:0"><path d="M61.529 29.137c-.856-1.662-2.515-2.615-4.55-2.615c-3.247 0-6.296 2.957-8.987 5.566c-1.245 1.207-2.52 2.443-3.569 3.113l4.447-22.527c.425-1.82.103-3.523-.905-4.793c-.953-1.201-2.461-1.918-4.034-1.918c-2.006 0-4.568 1.252-5.182 4.723l-2.055 8.553V8.715C36.694 4.307 33.751 2 30.843 2c-2.906 0-5.85 2.307-5.85 6.715V19.58l-2.79-10.238c-.705-3.039-3.054-4.123-5.017-4.123c-1.733 0-3.372.785-4.386 2.1c-.978 1.27-1.266 2.914-.822 4.59l1.94 8.861l-2.444-4.797c-1.025-2.014-2.709-3.168-4.62-3.168c-1.667 0-3.253.898-4.14 2.346c-.939 1.531-.956 3.434-.026 5.26c2.807 4.949 7.26 13.484 7.26 15.32c0 .529-.054 1.279-.116 2.148c-.267 3.734-.714 9.984 1.752 15.514c2.261 5.066 9.051 8.605 16.512 8.607c8.69 0 15.945-4.697 19.903-12.887c1.76-3.641 5.697-8.412 9.575-11.604c1.736-1.427 5.801-4.777 3.955-8.372m-50.113 6.584c0-2.898-6.268-14.117-7.501-16.291c-1.897-3.727 3.356-6.385 5.334-2.5L16.5 31.012l.615-2.457l-3.719-17.094c-1.051-3.973 5.469-6.266 6.521-1.74l5.418 20l1.047-2.291V8.742c0-6.24 8.036-6.26 8.036-.021v21.416l1.699-1.895l4-17.25c.928-5.227 7.225-3.074 6.261 1.063l-4.541 23.963c-6.729-.238-16.119 4.293-15.054 14.359c.857-9.309 9.397-12.416 15.199-12.416c2.209 0 2.949-.25 7.324-4.938c7.415-7.943 10.309-4.027 10.221-2.344c-.301 5.76-10.154 7.695-14.606 17.416c-5.846 12.762-22.854 13.279-29.961 7.146c-5.266-4.544-3.544-18.919-3.544-19.52"/></svg>
-            Left-handed mode
+          <div class="chat-theme-row" id="chat-theme-row">
+            <button class="chat-theme-btn" data-theme="light" title="Light">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+            </button>
+            <button class="chat-theme-btn" data-theme="system" title="System">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+            </button>
+            <button class="chat-theme-btn" data-theme="dark" title="Dark">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+            </button>
           </div>
         </div>
       </div>
@@ -107,19 +114,20 @@
   menuBtn.onclick = (e) => { e.stopPropagation(); menuOpen = !menuOpen; dropdown.style.display = menuOpen ? 'block' : 'none' }
   document.addEventListener('click', () => { if (menuOpen) { menuOpen = false; dropdown.style.display = 'none' } })
 
-  const handItem = document.getElementById('chat-hand-item')
-  const HAND_KEY = 'chat_left_handed'
-  const applyHand = (left) => {
-    widget.classList.toggle('left-handed', left)
-    handItem.childNodes[handItem.childNodes.length - 1].textContent =
-      left ? ' Right-handed mode' : ' Left-handed mode'
+  const THEME_KEY = 'chat_theme'
+  const applyTheme = (t) => {
+    widget.removeAttribute('data-theme')
+    if (t === 'light' || t === 'dark') widget.setAttribute('data-theme', t)
+    document.querySelectorAll('.chat-theme-btn').forEach(b =>
+      b.classList.toggle('active', b.dataset.theme === t))
   }
-  applyHand(localStorage.getItem(HAND_KEY) === '1')
-  handItem.onclick = () => {
-    const left = !widget.classList.contains('left-handed')
-    localStorage.setItem(HAND_KEY, left ? '1' : '0')
-    applyHand(left)
-    menuOpen = false; dropdown.style.display = 'none'
+  applyTheme(localStorage.getItem(THEME_KEY) || 'system')
+  document.getElementById('chat-theme-row').onclick = (e) => {
+    const btn = e.target.closest('.chat-theme-btn')
+    if (!btn) return
+    const t = btn.dataset.theme
+    localStorage.setItem(THEME_KEY, t)
+    applyTheme(t)
   }
 
   const parseMarkdown = (text) => {
@@ -408,8 +416,9 @@
     btn.textContent = 'send'
 
     row.appendChild(bubble)
-    row.appendChild(btn)
     messages.appendChild(row)
+    const footer = document.getElementById('chat-footer')
+    footer.parentNode.insertBefore(btn, footer)
 
     bubble.addEventListener('input', () => {
       bubble.dir = getTextDirection(bubble.innerText)
@@ -441,7 +450,7 @@
     ghostBubble.style.animation = 'none'
     ghostBubble.style.opacity = '1'
 
-    // Fade out send button, replace with timestamp
+    // Fade out send button, add timestamp to row
     const sendBtn = document.getElementById('ghost-send')
     sendBtn.style.opacity = '0'
     const d = new Date()
@@ -453,7 +462,8 @@
       ts.textContent = minuteKey
       ts.style.opacity = '0'
       ts.style.transition = 'opacity 0.3s ease'
-      sendBtn.replaceWith(ts)
+      sendBtn.remove()
+      ghostRow.appendChild(ts)
       requestAnimationFrame(() => ts.style.opacity = '')
     }, 300)
     ghostRow.id = ''
@@ -483,6 +493,8 @@
     if (greetingAbort) { greetingAbort.stopped = true; greetingAbort = null }
     if (sendAbort) { sendAbort.stopped = true; sendAbort = null }
     messages.innerHTML = ''
+    const oldBtn = document.getElementById('ghost-send')
+    if (oldBtn) oldBtn.remove()
     history.length = 0
     lastMsgRole = null; lastMsgMinute = null
     sessionStorage.removeItem(STORAGE_KEY)

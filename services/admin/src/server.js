@@ -1,6 +1,11 @@
 import fs from 'fs'
 import express from 'express'
 
+// Copy shared UI to the ui volume (mounted by site service)
+fs.cpSync('/app/views/index.html', '/app/ui/index.html')
+fs.cpSync('/app/views/loader.js', '/app/ui/loader.js')
+fs.cpSync('/app/views/page', '/app/ui/page', { recursive: true })
+
 const PROMPT_COMPOSER_URL = 'http://prompt-composer:4321'
 const app = express()
 app.set('trust proxy', true)
@@ -15,11 +20,10 @@ app.use((rq, rs, nx) => {
   nx()
 })
 
-app.get('/', (_, rs) => rs.redirect('/admin/chatQA'))
-
-app.get('/chatQA', (_, rs) => rs.sendFile('/app/views/index.html'))
+app.get(['/', '/chatQA'], (_, rs) => rs.sendFile('/app/views/index.html'))
 app.get('/loader.js', (_, rs) => rs.sendFile('/app/views/loader.js'))
 app.get('/admin.js', (_, rs) => rs.sendFile('/app/views/admin.js'))
+app.use('/page', express.static('/app/views/page'))
 app.use('/private', express.static('/app/private'))
 
 app.get('/api/user', (rq, rs) =>

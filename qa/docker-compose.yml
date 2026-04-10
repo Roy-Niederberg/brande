@@ -93,7 +93,9 @@ services:
       dradamblack-network:
         aliases: [site]
     volumes:
+      - dradamblack-ui:/site/ui:ro
       - ../clients/dradamblack/private:/site/private:ro
+    depends_on: [dradamblack-admin]
 
   dradamblack-prompt-composer:
     build: {context: ../services/prompt_composer/, target: production}
@@ -112,6 +114,7 @@ services:
         aliases: [admin]
     secrets: [authorized_emails, admin_secret]
     volumes:
+      - dradamblack-ui:/app/ui
       - ../clients/dradamblack/private:/app/private
 
   dradamblack-mock-facebook:
@@ -151,7 +154,9 @@ services:
       drlipokatz-network:
         aliases: [site]
     volumes:
+      - drlipokatz-ui:/site/ui:ro
       - ../clients/drlipokatz/private:/site/private:ro
+    depends_on: [drlipokatz-admin]
 
   drlipokatz-prompt-composer:
     build: {context: ../services/prompt_composer/, target: production}
@@ -170,6 +175,7 @@ services:
         aliases: [admin]
     secrets: [authorized_emails, admin_secret]
     volumes:
+      - drlipokatz-ui:/app/ui
       - ../clients/drlipokatz/private:/app/private
 
   drlipokatz-mock-facebook:
@@ -196,6 +202,8 @@ networks:
 
 volumes:
   onboarding_data:
+  dradamblack-ui:
+  drlipokatz-ui:
 
 secrets:
   # Main server

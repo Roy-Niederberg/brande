@@ -34,15 +34,9 @@ _Future_:
  - [x] Fix the admin secret read on prompt composr (we don't need the fs.existsSync)
  - [ ] Review the changes of changing the sp to js from json. I don't think it good.
 
- - [ ] Check if the admin and the site share assets  - like the bg images of the html itslef. if not it will be hard to maintain.
+ - [x] Check if the admin and the site share assets — resolved via the `private/` restructure (2026-04-10). Admin and site both mount `private/` from the client directory.
 
- - [ ] **Restructure client directories: `/public`, `/data`, `/admin`, `/logs`** — While discussing widget layout fixes and which services mount assets, we realized the current `assets/` folder mixes public files (profile-pic, client-config) with admin-only files (mock_facebook, background, og-meta). New structure:
-   - `public/` — only what the widget/browser needs publicly (profile-pic, minimal client-config with just direction/lang). Served by services-router at `/assets/*` (rename route to `/public/*`).
-   - `admin/` — admin + site content (background, og-meta, mock_facebook/, full client-config with title/font/socialLinks). Behind auth.
-   - `data/` — prompt-composer config (SP, KB, greeting, capabilities, config.env). Admin no longer mounts this.
-   - `logs/` — system output (last_prompt.json). Separates "things humans edit" from "things the system writes."
-   - Rule: if it must be publicly accessible → `public/`. If not → `admin/`. Think carefully about what goes in `public/client-config.json` — minimum data only.
-   - Requires updating: config template, per-client docker-compose, services-router Caddyfile, site/admin/widget code, conductor. (added 2026-04-09)
+ - [x] **Restructure client directories** — Done (2026-04-10). Final structure: `private/` (was `assets/`), `data/`, `logs/`. Widget is fully configured via `ChatWidgetConfig` (direction, profilePic as data URI). Services-router no longer serves static assets. Admin no longer mounts `data/` — `config.env` moved to `private/`. Profile pics converted to base64 data URIs in `client-config.json`.
  - [ ] I don't think I want the widget to be shared. see the production server to understand. it should have version.
  - [x] The gatway Caddyfile - can we make it more generic? so we don't need to edit when add/remove services.
  - [ ] What about the 404 page? And what about a page that the name is already taken but site not active? 
