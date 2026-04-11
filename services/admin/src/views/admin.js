@@ -34,7 +34,7 @@
     }
     .prompt.visible { display: block; }
     #panel-area {
-      display: none; flex-shrink: 0; width: 320px; overflow: hidden;
+      display: none; flex-shrink: 0; min-width: 320px; width: 30vw; max-width: 500px; overflow: hidden;
     }
     #panel-area.has-panel { display: block; }
     #panel-area .prompt {
@@ -42,15 +42,7 @@
       width: 100%; height: 100%; border-radius: 0;
     }
     @media (min-aspect-ratio: 13/10) {
-      #panel-area {
-        margin-top: 8px; margin-bottom: 8px;
-        height: calc(100dvh - 16px);
-        border: 1px solid #E2E8F0; border-right: none;
-        border-radius: 12px 0 0 12px;
-      }
-      #panel-area.has-panel + .container {
-        border-top-left-radius: 0; border-bottom-left-radius: 0;
-      }
+      #panel-area { height: calc(100dvh - 16px); margin-top: 8px; margin-bottom: 8px; }
     }
     @media (max-aspect-ratio: 1/1) {
       #panel-area {
@@ -471,7 +463,7 @@
   adminBtns.id = 'admin-buttons'
   adminBtns.innerHTML = `
     <button id="open-kb-btn" class="admin-open-btn">KB</button>
-    <button id="open-sp-btn" class="admin-open-btn">Edit SP</button>
+    <button id="open-sp-btn" class="admin-open-btn">SP</button>
     <button id="open-gr-btn" class="admin-open-btn">Greet</button>
     <button id="open-log-btn" class="admin-open-btn">Logs</button>
     <button id="open-fb-btn" class="admin-open-btn">FB</button>
@@ -493,6 +485,10 @@
   const allPanels = [kbPanel, spPanel, grPanel, logPanel, svcPanel]
   const clearActive = () => adminBtns.querySelectorAll('.admin-open-btn').forEach(b => b.classList.remove('active'))
   const openPanel = (panel, btn) => {
+    if (panel.classList.contains('visible')) {
+      closePanel(panel)
+      return false
+    }
     allPanels.forEach(p => p.classList.remove('visible'))
     fbPanel.classList.remove('visible')
     clearActive()
@@ -500,6 +496,7 @@
     panelArea.classList.add('has-panel')
     if (btn) btn.classList.add('active')
     setTimeout(() => panel.querySelectorAll('.kb-content').forEach(autoResize), 0)
+    return true
   }
   const closePanel = (panel) => {
     panel.classList.remove('visible')
@@ -523,8 +520,8 @@
     fbPanel.classList.toggle('visible')
     if (fbPanel.classList.contains('visible')) fbBtn.classList.add('active')
   })
-  svcBtn.addEventListener('click', () => { openPanel(svcPanel, svcBtn); loadServices() })
-  logBtn.addEventListener('click', () => { openPanel(logPanel, logBtn); loadLastPrompt() })
+  svcBtn.addEventListener('click', () => { if (openPanel(svcPanel, svcBtn)) loadServices() })
+  logBtn.addEventListener('click', () => { if (openPanel(logPanel, logBtn)) loadLastPrompt() })
   kbPanel.querySelector('.close-panel-btn').addEventListener('click', () => closePanel(kbPanel))
   spPanel.querySelector('.close-panel-btn').addEventListener('click', () => closePanel(spPanel))
   grPanel.querySelector('.close-panel-btn').addEventListener('click', () => closePanel(grPanel))
