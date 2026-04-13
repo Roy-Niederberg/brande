@@ -34,7 +34,7 @@
     }
     .prompt.visible { display: block; }
     #panel-area {
-      display: none; flex-shrink: 0; min-width: 320px; width: 30vw; max-width: 500px; overflow: hidden;
+      display: none; flex-shrink: 0; min-width: 420px; width: 42vw; max-width: 700px; overflow: hidden;
     }
     #panel-area.has-panel { display: block; }
     #panel-area .prompt {
