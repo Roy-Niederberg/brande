@@ -1,3 +1,6 @@
+# -----------------------------------------------------------------------------|
+# The man router compose file
+# -----------------------------------------------------------------------------|
 services:
   main-router:
     image:    registry.gitlab.com/rny3/brande/main_router:latest

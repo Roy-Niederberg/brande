@@ -4,20 +4,12 @@ Welcome to the Qabu Landing Page project! This is a modern, responsive React app
 
 ## Running Locally
 
-If you prefer using Docker to run the application in an isolated container, a `Dockerfile` has been included for you. Follow these steps:
-
-### 1. Build the Docker Image
-Open your terminal in the project folder and run:
 ```bash
 docker build -t qabu-landing-page .
-```
-
-### 2. Run the Docker Container
-Start the container and map the port to your local machine:
-```bash
 docker run -p 8080:80 qabu-landing-page
 ```
-Open your browser and navigate to `http://localhost:8080` to view the app.
+
+Navigate to `http://localhost:8080` to view the app.
 
 ---
 

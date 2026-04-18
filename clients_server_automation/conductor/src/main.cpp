@@ -67,17 +67,18 @@ static bool valid_sub(const char* s) {
 static bool stack_running(const char* dir) {
         char cmd[512];
         snprintf(cmd, sizeof(cmd),
-                 "docker compose -f %s/docker-compose.yml ps -q --status running | grep -q .",
-                 dir);
+                 "docker compose -f %s/docker-compose.yml --env-file %s/private/config.env"
+                 " ps -q --status running | grep -q .",
+                 dir, dir);
         return run_ok(cmd);
 }
 
 static void start_stack(const char* dir) {
         char cmd[512];
         snprintf(cmd, sizeof(cmd),
-                 "docker compose -f %s/docker-compose.yml pull -q;"
-                 "docker compose -f %s/docker-compose.yml up -d --remove-orphans",
-                 dir, dir);
+                 "docker compose -f %s/docker-compose.yml --env-file %s/private/config.env pull -q;"
+                 "docker compose -f %s/docker-compose.yml --env-file %s/private/config.env up -d --remove-orphans",
+                 dir, dir, dir, dir);
         system(cmd);
 }
 
@@ -96,6 +97,9 @@ static void watch_client(const char* dir) {
         char data_dir[512];
         snprintf(data_dir, sizeof(data_dir), "%s/data", dir);
         if (fs::exists(data_dir)) add_watch(data_dir, dir);
+        char private_dir[512];
+        snprintf(private_dir, sizeof(private_dir), "%s/private", dir);
+        if (fs::exists(private_dir)) add_watch(private_dir, dir);
 }
 
 static const char* find_watch_dir(int wd) {
@@ -183,7 +187,7 @@ static const char* create_client(const char* sub, int tier) {
         if (dir_count() + tier > MAX_TIER) return "err 507";
 
         fs::copy(CONFIG_DIR, dir, fs::copy_options::recursive);
-        auto config_json = std::string(dir) + "/assets/client-config.json";
+        auto config_json = std::string(dir) + "/private/client-config.json";
         if (fs::exists(config_json)) template_file(config_json, sub);
         watch_client(dir);
         start_stack(dir);
