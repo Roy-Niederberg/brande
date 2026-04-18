@@ -29,15 +29,18 @@
     .then(m => m.default || {}).catch(() => ({}))
 
   const parseActions = (text) => {
-    const idx = text.indexOf('\n|| ACTIONS')
-    if (idx === -1) return { text, actions: [] }
-    const actions = text.slice(idx).split('\n')
-      .filter(l => l.startsWith('|| ') && l !== '|| ACTIONS')
-      .map(l => {
+    if (!text.includes('|| ACTIONS')) return { text, actions: [] }
+    const actions = []
+    const kept = []
+    for (const l of text.split('\n')) {
+      if (l.startsWith('|| ACTIONS')) continue
+      if (l.startsWith('|| ')) {
         const parts = l.slice(3).split(' ')
-        return { name: parts[0], args: parts.slice(1).join(' ') }
-      })
-    return { text: text.slice(0, idx).trimEnd(), actions }
+        actions.push({ name: parts[0], args: parts.slice(1).join(' ') })
+      } else kept.push(l)
+    }
+    const cleanText = kept.join('\n').replace(/\n{3,}/g, '\n\n').trim()
+    return { text: cleanText, actions }
   }
 
   // Font configuration
