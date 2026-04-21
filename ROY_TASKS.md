@@ -2,10 +2,12 @@
 
 The big plan:
 -----
+- [ ] Claude on the servers
+- [ ] backup the client data on the server (and to the cloud somehow)
+- [ ] Better log the chats.
 - [ ] Give Nevo the MVP
 - [ ] Finish the client-onboarding
 - [ ] Work on testing
-- [ ] Claude on the servers
 - [ ] Qabu as an employee with personality.
 
 - [ ] Build a local integration test environment — Docker network with service containers + wiremock (to stub external calls like VM endpoints) + browser container for visual testing. Host uses Wayland so X11 forwarding won't work — use a VNC-based approach instead (e.g. `selenium/standalone-chrome` with noVNC, access via `localhost:7900` in host browser). Keeps coming up: hard to test end-to-end flows (like onboarding success → redirect) locally without real infrastructure. Invest in this once there are enough flows to justify it. (added 2026-03-28)
@@ -17,6 +19,8 @@ The big plan:
 - [ ] **Rebuild and redeploy conductor binary** — three fixes pending in source: (1) `setbuf(stdout, NULL)` so logs show in journalctl instead of being buffered, (2) removed `2>/dev/null` from `start_stack` and `stack_running` so docker compose errors are visible in logs, (3) `RuntimeDirectory=qabu` in systemd service file (already deployed to server, but binary needs rebuild). Rebuild with `docker run --rm -v $(pwd)/clients_server_automation/conductor/src:/src -w /src gcc:latest g++ -std=c++20 -O2 -static -s -o /src/conductor main.cpp` then scp + restart. (added 2026-04-06)
 
 - [ ] **Migrate secrets to Infisical** — currently secrets are rsynced to VMs manually. Replace with Infisical so secrets are pulled at runtime (no rsync needed, no machine dependency). Part of the new deploy flow that replaces `deploy.sh`. (added 2026-03-28)
+
+- [ ] **Separate code (git) from per-client data (server-owned)** — current model treats `clients/<sub>/data/` (KB, SP, greeting, capabilities) and `clients/<sub>/private/` (client-config, background, etc.) as git-tracked, but they're actually mutable runtime state edited by the admin UI. This creates a real bug: local edits deployed via rsync/compose clobber admin-made changes on the server. Decision: code lives in git and ships via docker push/pull; per-client data lives only on the VM and is backed up separately. This also paves the way for LLM-assisted editing for owners (future) and for installing Claude Code in Docker on the client VM as a stepping stone (mount only `~/app/clients/<sub>/data` + `private/` into the container; keep it scoped so it can't touch services or compose files). Sub-steps: (1) decide what happens to the demo clients currently in git (`dradamblack`, `drlipokatz`) — either keep them purely as seed fixtures under `services/config/files/` or a `seeds/` dir, or remove them from git entirely and spin up fresh in QA from the template; (2) set up a backup job (cron + tar + Cloudflare R2 or Backblaze B2, ~15 lines) for `~/app/clients/*/data` and `~/app/clients/*/private` **before onboarding the first real client** — don't leave backup as "future" once prod has a paying customer; (3) update the deploy flow docs so the code/data split is explicit; (4) install Claude Code in Docker on the client VM with a narrow mount scope and a container-local CLAUDE.md that restricts it to editing KB/SP only. Context: came up while discussing the current loop (simulate conversation → ask Claude locally to improve SP → rsync → retry). Roy pushed back that the real problem is the git-as-source-of-truth model for client data, not the loop latency. (added 2026-04-19)
 
 _Future_:
 - [ ] **When switching to Anthropic as LLM provider** — update `prod_setup/main_server/srv/privacy/index.html` Third-Party Processors section to add Anthropic, Inc. alongside Google and Groq. One extra `<li>` with a link to their privacy policy. (added 2026-03-15)
