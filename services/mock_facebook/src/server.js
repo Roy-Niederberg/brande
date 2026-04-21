@@ -119,7 +119,7 @@ body { font-family: Helvetica, Arial, sans-serif; background:#f0f2f5;
   <div class="post-text">${d.postText}</div>
 
   <img class="post-img" src="${postImg}"
-    onerror="this.src='/assets/background.png'" alt="Post image">
+    onerror="this.src='/private/background.png'" alt="Post image">
 
   <div class="page-bar">
     <div class="page-bar-left">

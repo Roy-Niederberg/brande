@@ -5,6 +5,7 @@
 	}
 	handle {
 		root * /site/ui
+		templates
 		file_server
 	}
 }

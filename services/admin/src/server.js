@@ -20,7 +20,8 @@ app.use((rq, rs, nx) => {
   nx()
 })
 
-app.get(['/', '/chatQA'], (_, rs) => rs.sendFile('/app/views/index.html'))
+const indexHtml = fs.readFileSync('/app/views/index.html', 'utf-8').replace(/\{\{include[^}]*\}\}/g, '')
+app.get(['/', '/chatQA'], (_, rs) => rs.type('html').send(indexHtml))
 app.get('/loader.js', (_, rs) => rs.sendFile('/app/views/loader.js'))
 app.get('/admin.js', (_, rs) => rs.sendFile('/app/views/admin.js'))
 app.use('/page', express.static('/app/views/page'))
