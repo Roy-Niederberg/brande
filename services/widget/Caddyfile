@@ -1,0 +1,5 @@
+:4321 {
+    root * /srv
+    header Cache-Control no-cache
+    file_server
+}

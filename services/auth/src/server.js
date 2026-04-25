@@ -6,6 +6,9 @@ const app = express()
 const SECRET = fs.readFileSync('/run/secrets/jwt_signing_key', 'utf-8').trim()
 const { clientID, clientSecret } = JSON.parse(fs.readFileSync('/run/secrets/google_oauth', 'utf-8').trim())
 const CALLBACK = process.env.OAUTH_CALLBACK || 'https://qabu.net/auth/callback'
+const COOKIE_DOMAIN = process.env.COOKIE_DOMAIN || '.qabu.net'
+const COOKIE_SECURE = process.env.COOKIE_SECURE !== 'false'
+const ALLOWED_HOSTS = (process.env.ALLOWED_HOSTS || 'qabu.net').split(',')
 const GOOGLE_AUTH = 'https://accounts.google.com/o/oauth2/v2/auth'
 const GOOGLE_TOKEN = 'https://oauth2.googleapis.com/token'
 
@@ -26,8 +29,10 @@ const verify = token => {
 }
 
 const validReturn = url => {
-  try { const u = new URL(url); return /^(.+\.)?qabu\.net$/.test(u.hostname) }
-  catch { return false }
+  try {
+    const h = new URL(url).hostname
+    return ALLOWED_HOSTS.some(a => h === a || h.endsWith('.' + a))
+  } catch { return false }
 }
 
 app.get('/login', (rq, rs) => {
@@ -54,14 +59,14 @@ app.get('/callback', async (rq, rs) => {
     const { id_token } = await tokenRes.json()
     const claims = JSON.parse(Buffer.from(id_token.split('.')[1], 'base64url').toString())
     const jwt = sign({ email: claims.email, name: claims.name, picture: claims.picture, iat: Math.floor(Date.now() / 1000), exp: Math.floor(Date.now() / 1000) + 86400 })
-    rs.cookie('qabu_token', jwt, { domain: '.qabu.net', httpOnly: true, secure: true, sameSite: 'lax', maxAge: 86400000 })
+    rs.cookie('qabu_token', jwt, { domain: COOKIE_DOMAIN, httpOnly: true, secure: COOKIE_SECURE, sameSite: 'lax', maxAge: 86400000 })
     rs.redirect(validReturn(return_to) ? return_to : 'https://qabu.net')
   } catch (e) { console.error('OAuth callback error:', e.message); rs.status(500).send('Auth failed') }
 })
 
 app.get('/logout', (rq, rs) => {
   const returnTo = rq.query.return_to && validReturn(rq.query.return_to) ? rq.query.return_to : 'https://qabu.net'
-  rs.cookie('qabu_token', '', { domain: '.qabu.net', httpOnly: true, secure: true, sameSite: 'lax', maxAge: 0 })
+  rs.cookie('qabu_token', '', { domain: COOKIE_DOMAIN, httpOnly: true, secure: COOKIE_SECURE, sameSite: 'lax', maxAge: 0 })
   rs.redirect(returnTo)
 })
 

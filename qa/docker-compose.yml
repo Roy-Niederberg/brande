@@ -1,0 +1,229 @@
+# Full QA environment — simulates both production VMs in one compose.
+#
+# DNS: add two A records in Cloudflare (DNS only, grey cloud):
+#   qa.qabu.net     → 127.0.0.1
+#   *.qa.qabu.net   → 127.0.0.1
+#
+# GCP OAuth: add http://qa.qabu.net:8080/auth/callback as redirect URI.
+#
+# Access:
+#   http://qa.qabu.net:8080              — landing page, auth, onboarding
+#   http://dradamblack.qa.qabu.net:8443  — dradamblack client
+#   http://drlipokatz.qa.qabu.net:8443   — drlipokatz client
+#
+# Note: Facebook dispatcher → client forwarding won't work end-to-end
+# (it does external HTTPS in prod). Use mock-facebook for FB testing.
+
+services:
+
+  # ─── Main server (simulates main VM) ───
+
+  main-router:
+    build: {context: ../services/main_router/, target: production}
+    command: caddy run --config /etc/caddy/Caddyfile
+    ports: ["8080:80"]
+    networks: [main-network]
+    volumes:
+      - ./main-router-Caddyfile:/etc/caddy/Caddyfile:ro
+      - ../services/main_router/srv:/srv:ro
+
+  facebook-dispatcher:
+    build: {context: ../services/facebook_dispatcher/, target: production}
+    networks: [main-network]
+    secrets: [fb_webhook_verify_token, fb_app_secret, fb_dispatcher_secret]
+    volumes:
+      - ../services/main_router/data/page_routes.json:/app/data/page_routes.json:ro
+
+  auth:
+    build: {context: ../services/auth/, target: production}
+    networks: [main-network]
+    environment:
+      - OAUTH_CALLBACK=http://qa.qabu.net:8080/auth/callback
+      - COOKIE_DOMAIN=qa.qabu.net
+      - COOKIE_SECURE=false
+      - ALLOWED_HOSTS=qa.qabu.net,dradamblack.qa.qabu.net,drlipokatz.qa.qabu.net
+    secrets: [jwt_signing_key, google_oauth]
+
+  landing-page:
+    build: {context: ../services/landing_page/}
+    networks: [main-network]
+
+  client-onboarding:
+    build: {context: ../services/client_onboarding/, target: production}
+    networks: [main-network]
+    secrets: [onboarding_emails, provision_secret]
+    volumes: [onboarding_data:/app/data]
+
+  # ─── Client infra (simulates client VM shared services) ───
+
+  clients-router:
+    build: {context: ../services/clients_router/, target: production}
+    command: >-
+      sh -c 'FB_DISPATCHER_SECRET=$$(cat /run/secrets/fb_dispatcher_secret)
+      caddy run --config /etc/caddy/Caddyfile'
+    ports: ["8443:80"]
+    networks: [qabu-network]
+    secrets: [fb_dispatcher_secret]
+    volumes:
+      - ./clients-router-Caddyfile:/etc/caddy/Caddyfile:ro
+
+  auth-verifier:
+    build: {context: ../services/auth_verifier/, target: production}
+    networks: [qabu-network]
+    secrets: [jwt_signing_key]
+
+  # ─── dradamblack ───
+
+  dradamblack-services-router:
+    build: {context: ../services/services_router/, target: production}
+    networks:
+      qabu-network:
+        aliases: [dradamblack-services-router-1]
+      dradamblack-network:
+
+  dradamblack-widget:
+    build: {context: ../services/widget/}
+    networks:
+      dradamblack-network:
+        aliases: [widget]
+
+  dradamblack-site:
+    build: {context: ../services/site/, target: production}
+    networks:
+      dradamblack-network:
+        aliases: [site]
+    volumes:
+      - dradamblack-ui:/site/ui:ro
+      - ../clients/dradamblack/private:/site/private:ro
+    depends_on: [dradamblack-admin]
+
+  dradamblack-prompt-composer:
+    build: {context: ../services/prompt_composer/, target: production}
+    networks:
+      dradamblack-network:
+        aliases: [prompt-composer]
+    secrets: [gemini_1, gemini_2, gemini_3, gemini_4, groq_1, groq_2, groq_3, groq_4, admin_secret]
+    volumes:
+      - ../clients/dradamblack/data:/app/data
+      - ../clients/dradamblack/logs:/app/logs
+
+  dradamblack-admin:
+    build: {context: ../services/admin/, target: production}
+    networks:
+      dradamblack-network:
+        aliases: [admin]
+    secrets: [authorized_emails, admin_secret]
+    volumes:
+      - dradamblack-ui:/app/ui
+      - ../clients/dradamblack/private:/app/private
+
+  dradamblack-mock-facebook:
+    build: {context: ../services/mock_facebook/, target: production}
+    networks:
+      dradamblack-network:
+        aliases: [mock-facebook]
+    volumes:
+      - ../clients/dradamblack/private/mock_facebook:/app/data
+
+  dradamblack-facebook-comments:
+    build: {context: ../services/facebook_comments/, target: production}
+    networks:
+      dradamblack-network:
+        aliases: [facebook-comments]
+    secrets: [fb_page_access_token]
+    environment: [FACEBOOK_API_URL=https://graph.facebook.com/v24.0/]
+
+  # ─── drlipokatz ───
+
+  drlipokatz-services-router:
+    build: {context: ../services/services_router/, target: production}
+    networks:
+      qabu-network:
+        aliases: [drlipokatz-services-router-1]
+      drlipokatz-network:
+
+  drlipokatz-widget:
+    build: {context: ../services/widget/}
+    networks:
+      drlipokatz-network:
+        aliases: [widget]
+
+  drlipokatz-site:
+    build: {context: ../services/site/, target: production}
+    networks:
+      drlipokatz-network:
+        aliases: [site]
+    volumes:
+      - drlipokatz-ui:/site/ui:ro
+      - ../clients/drlipokatz/private:/site/private:ro
+    depends_on: [drlipokatz-admin]
+
+  drlipokatz-prompt-composer:
+    build: {context: ../services/prompt_composer/, target: production}
+    networks:
+      drlipokatz-network:
+        aliases: [prompt-composer]
+    secrets: [gemini_1, gemini_2, gemini_3, gemini_4, groq_1, groq_2, groq_3, groq_4, admin_secret]
+    volumes:
+      - ../clients/drlipokatz/data:/app/data
+      - ../clients/drlipokatz/logs:/app/logs
+
+  drlipokatz-admin:
+    build: {context: ../services/admin/, target: production}
+    networks:
+      drlipokatz-network:
+        aliases: [admin]
+    secrets: [authorized_emails, admin_secret]
+    volumes:
+      - drlipokatz-ui:/app/ui
+      - ../clients/drlipokatz/private:/app/private
+
+  drlipokatz-mock-facebook:
+    build: {context: ../services/mock_facebook/, target: production}
+    networks:
+      drlipokatz-network:
+        aliases: [mock-facebook]
+    volumes:
+      - ../clients/drlipokatz/private/mock_facebook:/app/data
+
+  drlipokatz-facebook-comments:
+    build: {context: ../services/facebook_comments/, target: production}
+    networks:
+      drlipokatz-network:
+        aliases: [facebook-comments]
+    secrets: [fb_page_access_token]
+    environment: [FACEBOOK_API_URL=https://graph.facebook.com/v24.0/]
+
+networks:
+  main-network:
+  qabu-network:
+  dradamblack-network:
+  drlipokatz-network:
+
+volumes:
+  onboarding_data:
+  dradamblack-ui:
+  drlipokatz-ui:
+
+secrets:
+  # Main server
+  jwt_signing_key:         {file: ../secrets/main_server_secrets/jwt_signing_key.secret}
+  google_oauth:            {file: ../secrets/main_server_secrets/google_oauth.secret}
+  fb_webhook_verify_token: {file: ../secrets/main_server_secrets/fb_webhook_verify_token.secret}
+  fb_app_secret:           {file: ../secrets/main_server_secrets/fb_app_secret.secret}
+  fb_dispatcher_secret:    {file: ../secrets/main_server_secrets/fb_dispatcher_secret.secret}
+  onboarding_emails:       {file: ../secrets/main_server_secrets/onboarding_emails.json}
+  provision_secret:        {file: ../secrets/main_server_secrets/provision_secret.secret}
+
+  # Clients (shared)
+  gemini_1:           {file: ../secrets/clients_secrets/gemini_1.secret}
+  gemini_2:           {file: ../secrets/clients_secrets/gemini_2.secret}
+  gemini_3:           {file: ../secrets/clients_secrets/gemini_3.secret}
+  gemini_4:           {file: ../secrets/clients_secrets/gemini_4.secret}
+  groq_1:             {file: ../secrets/clients_secrets/groq_1.secret}
+  groq_2:             {file: ../secrets/clients_secrets/groq_2.secret}
+  groq_3:             {file: ../secrets/clients_secrets/groq_3.secret}
+  groq_4:             {file: ../secrets/clients_secrets/groq_4.secret}
+  admin_secret:       {file: ../secrets/clients_secrets/admin_secret.secret}
+  authorized_emails:  {file: ../secrets/clients_secrets/authorized_emails.json}
+  fb_page_access_token: {file: ../secrets/clients_secrets/fb_page_access_token.secret}

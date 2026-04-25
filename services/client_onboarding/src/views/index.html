@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <base href="/onboarding/">
+  <title>Qabu Onboarding</title>
+  <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #fff; font-family: 'Raleway', sans-serif; font-weight: 300;
+      height: 100vh; height: 100dvh; display: flex; align-items: center; justify-content: center;
+    }
+    .logo {
+      position: fixed; top: -40%; left: -30%; pointer-events: none; opacity: 0.06;
+    }
+    .logo svg { width: 140vh; height: 140vh; }
+    .form { display: flex; flex-direction: column; align-items: center; gap: 20px; }
+    .input-row { display: flex; align-items: center; gap: 4px; }
+    .input-row input {
+      width: 390px; padding: 10px 24px; font-size: 84px; line-height: 0.85; text-align: center;
+      border: 2px solid #85C1E9; border-radius: 8px; outline: none;
+      background: rgba(250, 244, 232, 0.7); color: #5D6D7E; font-family: inherit;
+      transition: border-color 0.2s;
+    }
+    .input-row span { font-size: 84px; color: #5D6D7E; line-height: 1; }
+    button {
+      padding: 18px 72px; font-size: 27px; font-family: inherit;
+      background: #85C1E9; color: #1B4F72; border: none; border-radius: 8px;
+      cursor: pointer; font-weight: 600; transition: opacity 0.2s;
+    }
+    button:hover { opacity: 0.85; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    #message { min-height: 24px; text-align: center; display: flex; align-items: center; justify-content: center; gap: 8px; }
+    .success { color: #1B4F72; font-size: 64px; }
+    .error { color: #c0392b; font-size: 16px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner { width: 20px; height: 20px; animation: spin 1s linear infinite; }
+    .spinner path { fill: #1B4F72; }
+    @media (max-width: 500px) {
+      .input-row { flex-wrap: wrap; justify-content: center; }
+      .input-row input { width: 180px; max-width: 85vw; font-size: 38px; padding: 8px 14px; }
+      .input-row span { font-size: 38px; }
+      button { padding: 14px 48px; font-size: 20px; }
+      .logo svg { width: 100vh; height: 100vh; }
+    }
+  </style>
+</head>
+<body>
+  <div class="logo">
+    <svg viewBox="-603 -603 1206 1206" xmlns="http://www.w3.org/2000/svg">
+      <path fill="#1B4F72" transform="rotate(135)" d="M -43.934 -600 L -43.934 0 C -102.948 -160.66 -102.944 -248.528 -175.736 -175.736 A 248.528 248.528 0 1 0 43.934 -244.614 L 43.934 -804.594 C 87.868 -512.132 248.528 -600 424.264 -424.264 A 600 600 0 1 1 -43.934 -600"/>
+    </svg>
+  </div>
+  <div class="form">
+    <div class="input-row">
+      <input id="subdomain" maxlength="20" autocomplete="off" spellcheck="false" autofocus>
+      <span>.qabu.net</span>
+    </div>
+    <button id="create" disabled>Let's Qabu!</button>
+    <div id="message"></div>
+  </div>
+  <script>
+    const input = document.getElementById('subdomain')
+    const btn = document.getElementById('create')
+    const msg = document.getElementById('message')
+    let re = null
+
+    fetch('subdomain-regex')
+      .then(r => r.json())
+      .then(d => re = new RegExp(d.pattern))
+
+    const sizer = document.createElement('span')
+    Object.assign(sizer.style, {position:'absolute',visibility:'hidden',whiteSpace:'pre'})
+    document.body.appendChild(sizer)
+
+    input.addEventListener('input', () => {
+      const v = input.value.toLowerCase()
+      input.value = v
+      sizer.style.font = getComputedStyle(input).font
+      sizer.textContent = v
+      const mobile = window.innerWidth <= 500
+      const minW = mobile ? 180 : 390
+      const pad = mobile ? 30 : 60
+      input.style.width = (sizer.offsetWidth > minW - pad ? sizer.offsetWidth + pad : minW) + 'px'
+      const valid = re && re.test(v)
+      btn.disabled = !valid
+      msg.textContent = ''
+    })
+
+    btn.addEventListener('click', async () => {
+      btn.disabled = true
+      msg.className = ''
+      msg.innerHTML = '<svg class="spinner" viewBox="-603 -603 1206 1206"><path transform="rotate(135)" d="M -43.934 -600 L -43.934 0 C -102.948 -160.66 -102.944 -248.528 -175.736 -175.736 A 248.528 248.528 0 1 0 43.934 -244.614 L 43.934 -804.594 C 87.868 -512.132 248.528 -600 424.264 -424.264 A 600 600 0 1 1 -43.934 -600"/></svg>'
+      try {
+        const resp = await fetch('create-client', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({subdomain: input.value})
+        })
+        if (resp.ok) {
+          const d = await resp.json()
+          document.querySelector('.form').innerHTML = `<div id="message" class="success">${d.subdomain}.qabu.net is live!</div>`
+          setTimeout(() => location.href = `https://${d.subdomain}.qabu.net/admin`, 5000)
+          return
+        } else {
+          const errors = {400: 'Invalid subdomain', 409: 'Subdomain already taken', 507: 'No available servers'}
+          msg.textContent = errors[resp.status] || 'Something went wrong'
+          msg.className = 'error'
+          btn.disabled = false
+        }
+      } catch {
+        msg.textContent = 'Network error'
+        msg.className = 'error'
+        btn.disabled = false
+      }
+    })
+  </script>
+</body>
+</html>

@@ -1,9 +1,0 @@
-{
-  "request": {
-    "method": "POST",
-    "urlPattern": "/openai/v1/chat/completions.*"
-  },
-  "response": {
-    "proxyBaseUrl": "http://llm-proxy:80"
-  }
-}

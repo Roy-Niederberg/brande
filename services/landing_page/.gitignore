@@ -1,0 +1,10 @@
+!*.ts
+!*.tsx
+!*.css
+!*.html
+!*.json
+!.env.example
+!.dockerignore
+!*.mp4
+!*.conf
+!*.txt

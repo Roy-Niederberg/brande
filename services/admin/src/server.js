@@ -1,31 +1,31 @@
 import fs from 'fs'
 import express from 'express'
 
+// Copy shared UI to the ui volume (mounted by site service)
+fs.cpSync('/app/views/index.html', '/app/ui/index.html')
+fs.cpSync('/app/views/loader.js', '/app/ui/loader.js')
+fs.cpSync('/app/views/page', '/app/ui/page', { recursive: true })
+
 const PROMPT_COMPOSER_URL = 'http://prompt-composer:4321'
 const app = express()
 app.set('trust proxy', true)
 app.use(express.json())
 app.r = (vrb, u, f) => app[vrb](u, async (rq, rs, nxt) => { try { await f(rq, rs, nxt) } catch (e) { nxt(e) } })
 
-const emails = process.env.NODE_ENV === 'production'
-  ? JSON.parse(fs.readFileSync('/run/secrets/authorized_emails', 'utf-8').trim()).emails
-  : null
-const admin_secret = process.env.NODE_ENV === 'production'
-  ? fs.readFileSync('/run/secrets/admin_secret', 'utf-8').trim()
-  : 'dev'
+const emails = JSON.parse(fs.readFileSync('/run/secrets/authorized_emails', 'utf-8').trim()).emails
+const admin_secret = fs.readFileSync('/run/secrets/admin_secret', 'utf-8').trim()
 app.use((rq, rs, nx) => {
   if (!emails) return nx()
   if (!emails.includes(rq.headers['x-auth-email'])) return rs.sendStatus(403)
   nx()
 })
 
-app.get('/', (_, rs) => rs.redirect('/admin/chatQA'))
-
-app.get('/chatQA', (_, rs) => rs.sendFile('/app/views/index.html'))
+const indexHtml = fs.readFileSync('/app/views/index.html', 'utf-8').replace(/\{\{include[^}]*\}\}/g, '')
+app.get(['/', '/chatQA'], (_, rs) => rs.type('html').send(indexHtml))
 app.get('/loader.js', (_, rs) => rs.sendFile('/app/views/loader.js'))
 app.get('/admin.js', (_, rs) => rs.sendFile('/app/views/admin.js'))
-app.get('/widget.js', (_, rs) => rs.sendFile('/app/public/widget.js'))
-app.use('/assets', express.static('/app/assets'))
+app.use('/page', express.static('/app/views/page'))
+app.use('/private', express.static('/app/private'))
 
 app.get('/api/user', (rq, rs) =>
   rs.json({ email: rq.headers['x-auth-email'] || '', name: rq.headers['x-auth-name'] || '' }))
@@ -52,8 +52,8 @@ app.r('get', '/greeting', async (_, rs) => {
 app.r('post', '/ask', async (rq, rs) => {
   console.log(`[${new Date().toISOString()}] Widget chat request from admin`)
   const { knowledgeBaseOverride, systemPromptOverride, ...requestBody } = rq.body
-  if (knowledgeBaseOverride) requestBody.kb_override = knowledgeBaseOverride
-  if (systemPromptOverride) requestBody.sp_override = systemPromptOverride
+  requestBody.kb_override = knowledgeBaseOverride
+  requestBody.sp_override = systemPromptOverride
   const response = await fetch(`${PROMPT_COMPOSER_URL}/ask`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-admin-secret': admin_secret },
@@ -82,12 +82,17 @@ app.r('post', '/api/knowledge_base', async (rq, rs) => {
   rs.json({ success: true })
 })
 
-app.r('get', '/api/services', (_, rs) => rs.sendFile('/app/data/services.json'))
+app.r('get', '/api/services', (_, rs) => {
+  const env = fs.readFileSync('/app/private/config.env', 'utf-8')
+  const match = env.match(/^COMPOSE_PROFILES=(.*)$/m)
+  const profiles = match ? match[1].split(',').filter(Boolean) : []
+  rs.json({ profiles })
+})
 
 app.r('post', '/api/services', (rq, rs) => {
-  const { services } = rq.body
-  if (!services) return rs.status(400).json({ error: 'Services required' })
-  fs.writeFileSync('/app/data/services.json', JSON.stringify(services))
+  const { profiles } = rq.body
+  if (!Array.isArray(profiles)) return rs.status(400).json({ error: 'Profiles array required' })
+  fs.writeFileSync('/app/private/config.env', `COMPOSE_PROFILES=${profiles.join(',')}\n`)
   rs.json({ success: true })
 })
 

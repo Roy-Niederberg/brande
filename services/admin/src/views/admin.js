@@ -6,11 +6,9 @@
     greetingOverride: () => ({ messages: grEditor.getDraft().map(e => ({ delay: parseInt(e.key) || 0, text: e.content })) }),
     beforeSend: (body) => {
       body.knowledgeBaseOverride = kbEditor.getDraft()
-      const spDraft = spEditor.getDraft().filter(e => e.key.startsWith(body.mod + '/'))
-      if (spDraft.length) {
-        body.systemPromptOverride = {}
-        for (const e of spDraft) body.systemPromptOverride[e.key.split('/')[1]] = e.content
-      }
+      body.systemPromptOverride = {}
+      for (const e of spEditor.getDraft())
+        if (e.key.startsWith(body.mod + '/')) body.systemPromptOverride[e.key.split('/')[1]] = e.content
       return body
     }
   }
@@ -35,32 +33,50 @@
       display: none;
     }
     .prompt.visible { display: block; }
+    #panel-area {
+      display: none; flex-shrink: 0; min-width: 420px; width: 42vw; max-width: 700px; overflow: hidden;
+    }
+    #panel-area.has-panel { display: block; }
+    #panel-area .prompt {
+      position: relative; top: auto; left: auto;
+      width: 100%; height: 100%; border-radius: 0;
+    }
+    @media (min-aspect-ratio: 13/10) {
+      #panel-area { height: calc(100dvh - 16px); margin-top: 8px; margin-bottom: 8px; }
+    }
+    @media (max-aspect-ratio: 1/1) {
+      #panel-area {
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 50;
+      }
+    }
+    body.admin-mode { display: flex; flex-direction: row; }
+    body.admin-mode > .container { flex: 1; min-width: 0; }
     #admin-buttons {
-      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-      display: flex; flex-direction: column; gap: 16px; align-items: center;
+      display: flex; flex-direction: column; gap: 0; align-items: stretch;
+      padding: 0; background: #c0c0c0; flex-shrink: 0;
+      border-right: 2px solid #808080;
     }
     .admin-open-btn {
-      padding: 16px 32px; width: 240px; color: white; border: 1px solid rgba(0,0,0,0.15);
-      border-radius: 12px; font-size: 18px; font-weight: 600; cursor: pointer;
-      transition: all 0.2s ease; box-shadow: 0 4px 14px rgba(0,0,0,0.25); position: relative;
+      padding: 3px 6px; color: #000; background: #c0c0c0; border: none;
+      border-bottom: 1px solid #808080; font-size: 11px; font-weight: normal;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      cursor: pointer; position: relative; text-align: left;
+      line-height: 1.4; white-space: nowrap;
     }
-    .admin-open-btn:hover { transform: scale(1.05); }
+    .admin-open-btn:hover { background: #000080; color: #fff; }
+    .admin-open-btn.active { background: #000080; color: #fff; }
     .admin-open-btn.has-draft::after {
-      content: ''; position: absolute; top: 6px; right: 6px; width: 10px; height: 10px;
-      background: #f44336; border-radius: 50%; border: 2px solid white;
+      content: '*'; position: static; display: inline;
+      color: #f00; font-weight: bold; margin-left: 2px;
     }
-    #open-kb-btn { background: #7b8eb5; box-shadow: 0 4px 12px rgba(123,142,181,0.3); }
-    #open-kb-btn:hover { background: #6a7da4; }
-    #open-sp-btn { background: #c4956d; box-shadow: 0 4px 12px rgba(196,149,109,0.3); }
-    #open-sp-btn:hover { background: #b3845c; }
-    #open-gr-btn { background: #a87c9e; box-shadow: 0 4px 12px rgba(168,124,158,0.3); }
-    #open-gr-btn:hover { background: #976b8d; }
-    #open-log-btn { background: #7ba8a0; box-shadow: 0 4px 12px rgba(123,168,160,0.3); }
-    #open-log-btn:hover { background: #6a978f; }
-    #open-fb-btn { background: #5b7bbf; box-shadow: 0 4px 12px rgba(91,123,191,0.3); }
-    #open-fb-btn:hover { background: #4a6aae; }
-    #open-svc-btn { background: #6b8e7b; box-shadow: 0 4px 12px rgba(107,142,123,0.3); }
-    #open-svc-btn:hover { background: #5a7d6a; }
+    @media (max-aspect-ratio: 1/1) {
+      body.admin-mode { flex-direction: column; }
+      #admin-buttons {
+        flex-direction: row; border-right: none;
+        border-bottom: 2px solid #808080;
+      }
+      .admin-open-btn { border-bottom: none; border-right: 1px solid #808080; }
+    }
     .svc-list { display: flex; flex-direction: column; gap: 16px; padding-top: 48px; padding-bottom: 20px; }
     .svc-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: #f8f9fa; border: 1px solid #e1e4e8; border-radius: 8px; }
     .svc-label { font-size: 15px; font-weight: 500; }
@@ -195,11 +211,16 @@
     .add-entry-btn:hover { background: #218838; transform: translateY(-1px); }
     .empty-state { text-align: center; padding: 40px; color: #6c757d; }
     #logout-btn {
-      padding: 8px 16px; width: 140px; background: transparent; color: #999;
-      border: 1px solid #ccc; border-radius: 8px; font-size: 13px;
-      cursor: pointer; transition: all 0.2s ease; margin-top: 8px;
+      padding: 3px 6px; background: #c0c0c0; color: #808080; border: none;
+      border-top: 1px solid #808080; font-size: 11px; cursor: pointer;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin-top: auto; text-align: left;
     }
-    #logout-btn:hover { color: #dc3545; border-color: #dc3545; }
+    #logout-btn:hover { color: #fff; background: #800000; }
+    @media (max-aspect-ratio: 1/1) {
+      #logout-btn { margin-top: 0; border-top: none; border-left: 1px solid #808080; }
+      .prompt { width: 100%; height: 100%; border-radius: 0; }
+    }
     @media (max-aspect-ratio: 1/1) { .prompt { width: 100%; height: 100%; border-radius: 0; } }
   `
   document.head.appendChild(style)
@@ -407,35 +428,33 @@
     <div class="svc-list">Loading...</div>`
   siteSection.appendChild(svcPanel)
 
-  const SVC_NAMES = { site: 'Site (Widget)', 'facebook-comments': 'Facebook Comments', 'facebook-dm': 'Facebook DM', 'mock-facebook': 'Mock Facebook' }
-  let svcData = null
+  const PROFILES = { site: 'Site', facebook: 'Facebook (Comments, DM & Mock)' }
 
   async function loadServices() {
     const list = svcPanel.querySelector('.svc-list')
     try {
-      svcData = await fetch('/admin/api/services').then(r => r.json())
-      list.innerHTML = Object.entries(SVC_NAMES).map(([k, label]) => `
+      const { profiles } = await fetch('/admin/api/services').then(r => r.json())
+      list.innerHTML = Object.entries(PROFILES).map(([k, label]) => `
         <div class="svc-row">
           <span class="svc-label">${label}</span>
-          <label class="svc-toggle"><input type="checkbox" data-svc="${k}" ${svcData[k] ? 'checked' : ''}><span class="svc-slider"></span></label>
+          <label class="svc-toggle"><input type="checkbox" data-profile="${k}" ${profiles.includes(k) ? 'checked' : ''}><span class="svc-slider"></span></label>
         </div>`).join('') +
-        '<button class="svc-save-btn">Save Changes</button>' +
-        '<div class="svc-note">Service changes require a deploy to take effect.</div>'
+        '<button class="svc-save-btn">Save & Apply</button>'
       list.querySelector('.svc-save-btn').addEventListener('click', saveServices)
     } catch { list.innerHTML = '<div class="empty-state" style="color:#e74c3c">Error loading services</div>' }
   }
 
   async function saveServices() {
     const btn = svcPanel.querySelector('.svc-save-btn')
-    const services = {}
-    svcPanel.querySelectorAll('[data-svc]').forEach(cb => { services[cb.dataset.svc] = cb.checked })
+    const profiles = []
+    svcPanel.querySelectorAll('[data-profile]').forEach(cb => { if (cb.checked) profiles.push(cb.dataset.profile) })
     btn.disabled = true
     try {
       await fetch('/admin/api/services', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ services })
+        body: JSON.stringify({ profiles })
       })
-      alert('Service changes saved. Contact admin to apply.')
+      alert('Services updated! Changes will apply shortly.')
     } catch { alert('Error saving services') }
     btn.disabled = false
   }
@@ -443,39 +462,71 @@
   const adminBtns = document.createElement('div')
   adminBtns.id = 'admin-buttons'
   adminBtns.innerHTML = `
-    <button id="open-kb-btn" class="admin-open-btn">Edit Knowledge Base</button>
-    <button id="open-sp-btn" class="admin-open-btn">Edit System Prompts</button>
-    <button id="open-gr-btn" class="admin-open-btn">Edit Greeting</button>
-    <button id="open-log-btn" class="admin-open-btn">See Prompt</button>
-    <button id="open-fb-btn" class="admin-open-btn">Test Facebook Comments</button>
-    <button id="open-svc-btn" class="admin-open-btn">Manage Services</button>
+    <button id="open-kb-btn" class="admin-open-btn">KB</button>
+    <button id="open-sp-btn" class="admin-open-btn">SP</button>
+    <button id="open-gr-btn" class="admin-open-btn">Greet</button>
+    <button id="open-log-btn" class="admin-open-btn">Logs</button>
+    <button id="open-fb-btn" class="admin-open-btn">FB</button>
+    <button id="open-svc-btn" class="admin-open-btn">Services</button>
     <button id="logout-btn">Logout</button>`
-  siteSection.appendChild(adminBtns)
+  document.body.classList.add('admin-mode')
+  const container = document.querySelector('.container')
+  document.body.insertBefore(adminBtns, container)
+  const panelArea = document.createElement('div')
+  panelArea.id = 'panel-area'
+  document.body.insertBefore(panelArea, container)
+  panelArea.append(kbPanel, spPanel, grPanel, logPanel, svcPanel)
 
   document.getElementById('logout-btn').addEventListener('click', () => {
     if (confirm('Log out?')) window.location.href =
       'https://qabu.net/auth/logout?return_to=' + encodeURIComponent(location.origin)
   })
 
-  const openPanel = (panel) => {
-    panel.classList.add('visible'); adminBtns.style.display = 'none'
+  const allPanels = [kbPanel, spPanel, grPanel, logPanel, svcPanel]
+  const clearActive = () => adminBtns.querySelectorAll('.admin-open-btn').forEach(b => b.classList.remove('active'))
+  const openPanel = (panel, btn) => {
+    if (panel.classList.contains('visible')) {
+      closePanel(panel)
+      return false
+    }
+    allPanels.forEach(p => p.classList.remove('visible'))
+    fbPanel.classList.remove('visible')
+    clearActive()
+    panel.classList.add('visible')
+    panelArea.classList.add('has-panel')
+    if (btn) btn.classList.add('active')
     setTimeout(() => panel.querySelectorAll('.kb-content').forEach(autoResize), 0)
+    return true
   }
-  const closePanel = (panel) => { panel.classList.remove('visible'); adminBtns.style.display = '' }
+  const closePanel = (panel) => {
+    panel.classList.remove('visible')
+    panelArea.classList.remove('has-panel')
+    clearActive()
+  }
 
-  document.getElementById('open-kb-btn').addEventListener('click', () => openPanel(kbPanel))
-  document.getElementById('open-sp-btn').addEventListener('click', () => openPanel(spPanel))
-  document.getElementById('open-gr-btn').addEventListener('click', () => openPanel(grPanel))
-  document.getElementById('open-fb-btn').addEventListener('click', () => fbPanel.classList.toggle('visible'))
-  document.getElementById('open-svc-btn').addEventListener('click', () => { openPanel(svcPanel); loadServices() })
-  document.getElementById('open-log-btn').addEventListener('click', () => {
-    openPanel(logPanel); loadLastPrompt()
+  const kbBtn = document.getElementById('open-kb-btn')
+  const spBtn = document.getElementById('open-sp-btn')
+  const grBtn = document.getElementById('open-gr-btn')
+  const fbBtn = document.getElementById('open-fb-btn')
+  const svcBtn = document.getElementById('open-svc-btn')
+  const logBtn = document.getElementById('open-log-btn')
+  kbBtn.addEventListener('click', () => openPanel(kbPanel, kbBtn))
+  spBtn.addEventListener('click', () => openPanel(spPanel, spBtn))
+  grBtn.addEventListener('click', () => openPanel(grPanel, grBtn))
+  fbBtn.addEventListener('click', () => {
+    allPanels.forEach(p => p.classList.remove('visible'))
+    panelArea.classList.remove('has-panel')
+    clearActive()
+    fbPanel.classList.toggle('visible')
+    if (fbPanel.classList.contains('visible')) fbBtn.classList.add('active')
   })
+  svcBtn.addEventListener('click', () => { if (openPanel(svcPanel, svcBtn)) loadServices() })
+  logBtn.addEventListener('click', () => { if (openPanel(logPanel, logBtn)) loadLastPrompt() })
   kbPanel.querySelector('.close-panel-btn').addEventListener('click', () => closePanel(kbPanel))
   spPanel.querySelector('.close-panel-btn').addEventListener('click', () => closePanel(spPanel))
   grPanel.querySelector('.close-panel-btn').addEventListener('click', () => closePanel(grPanel))
   logPanel.querySelector('.close-panel-btn').addEventListener('click', () => closePanel(logPanel))
-  fbPanel.querySelector('.close-panel-btn').addEventListener('click', () => fbPanel.classList.remove('visible'))
+  fbPanel.querySelector('.close-panel-btn').addEventListener('click', () => { fbPanel.classList.remove('visible'); clearActive() })
   svcPanel.querySelector('.close-panel-btn').addEventListener('click', () => closePanel(svcPanel))
 
   kbEditor = createEditor(kbPanel, {

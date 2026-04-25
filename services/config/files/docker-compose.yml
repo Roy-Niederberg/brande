@@ -1,0 +1,115 @@
+# -----------------------------------------------------------------------------|
+# The basic compose file for any client. Include the basic three services.
+# -----------------------------------------------------------------------------|
+
+# -----------------------------------------------------------------------------|
+# The 'env'  file determine the  profiles which  determine the services included
+# for this client. This ./data/config.env is managed by the 'admin' service.
+# -----------------------------------------------------------------------------|
+services:
+
+  widget:
+    image:    registry.gitlab.com/rny3/brande/widget:latest
+    networks: [client_network]
+
+  services-router:
+    # -------------------------------------------------------------------------|
+    # The entry point for all traffic from the clients-router. Share the network
+    # both with the clients-router & the different services.  The docker compose
+    # will create '<client-id>_client_network', so there won't be name collision
+    # between clients (each prompt_composer is in a different docker network).
+    # Use Caddy to route the traffic to each service according to the URL.  Uses
+    # RegEx on the URL to extract the service name. This enforce a protocol that
+    # 1.  To reach any service, the URL should include the service name exactly.
+    #     Example: /prompt-composer/test → prompt-composer:4321/test
+    # 2.  Port 4321 - any new service just need to listen on it and traffic with
+    #     with its name will automatically be routed to it.
+    #
+    # Gets http traffic, after the 'clients-router' perform https termination.
+    #
+    # Other roles:
+    #  - Route widget.js to the widget service.
+    #  - Endpoint for the /taken route: indicator for the client onboarding that
+    #    the subdomain is taken.
+    # -------------------------------------------------------------------------|
+    image:    registry.gitlab.com/rny3/brande/services_router:latest
+    networks: [client_network, qabu_network]
+
+  prompt-composer:
+    # -------------------------------------------------------------------------|
+    # The 'hart of Qabu'.  This is where you ask qabu questions using the '/ask'
+    # route. Has two modes -
+    #  1. Uses the internal SP (system prompt) and the KB (knowledge base).
+    #  2. Get the SP and the KB from the request body. This mode is only for the
+    #     owner/admin and requires the admin_secret.
+    # The prompt-composer  is responsible for CRUD API for the SP/KB files (also
+    # requires the admin_secret).
+    # -------------------------------------------------------------------------|
+    image:    registry.gitlab.com/rny3/brande/prompt_composer:latest
+    networks: [client_network]
+    secrets:  [gemini_1, gemini_2, gemini_3, gemini_4,
+               groq_1,   groq_2,   groq_3,   groq_4,
+               admin_secret]
+    volumes:  [./data:/app/data, ./logs:/app/logs]
+
+  admin:
+    # -------------------------------------------------------------------------|
+    # Admin interface to manage the SP/KB and to test it. Uses the production
+    # widget via the services-router.
+    # Use the admin_secret to inject a custom SP/KB to the prompt-composer to
+    # test it before publishing. To publish the SP/KB, uses the prompt-composer
+    # CRUD API.
+    # Owns the shared UI (index.html, loader.js, page/) and copies it to the
+    # 'ui' volume on startup for the site service to serve publicly.
+    # -------------------------------------------------------------------------|
+    image:    registry.gitlab.com/rny3/brande/admin:latest
+    networks: [client_network]
+    secrets:  [authorized_emails, admin_secret]
+    volumes:  [./private:/app/private, ui:/app/ui]
+
+  site:
+    image:    registry.gitlab.com/rny3/brande/site:latest
+    networks: [client_network]
+    volumes:  [./private:/site/private, ui:/site/ui:ro]
+    depends_on: [admin]
+    profiles: [site]
+
+  facebook-comments:
+    image:    registry.gitlab.com/rny3/brande/facebook_comments:latest
+    networks: [client_network]
+    secrets:  [fb_page_access_token]
+    environment: [FACEBOOK_API_URL=https://graph.facebook.com/v24.0/]
+    profiles: [facebook]
+
+  facebook-dm:
+    image:    registry.gitlab.com/rny3/brande/facebook_dm:latest
+    networks: [client_network]
+    secrets:  [fb_page_access_token]
+    environment: [FACEBOOK_API_URL=https://graph.facebook.com/v24.0/]
+    profiles: [facebook]
+
+  mock-facebook:
+    image:    registry.gitlab.com/rny3/brande/mock_facebook:latest
+    networks: [client_network]
+    volumes:  [./private/mock_facebook/:/app/data/]
+    profiles: [facebook]
+
+volumes:
+  ui:
+
+networks:
+  client_network:
+  qabu_network: {external: true}
+
+secrets:
+  authorized_emails: {file: ./secrets/authorized_emails.json}
+  gemini_1:          {file: ./secrets/gemini_1.secret}
+  gemini_2:          {file: ./secrets/gemini_2.secret}
+  gemini_3:          {file: ./secrets/gemini_3.secret}
+  gemini_4:          {file: ./secrets/gemini_4.secret}
+  groq_1:            {file: ./secrets/groq_1.secret}
+  groq_2:            {file: ./secrets/groq_2.secret}
+  groq_3:            {file: ./secrets/groq_3.secret}
+  groq_4:            {file: ./secrets/groq_4.secret}
+  admin_secret:      {file: ./secrets/admin_secret.secret}
+  fb_page_access_token: {file: ./secrets/fb_page_access_token.secret}

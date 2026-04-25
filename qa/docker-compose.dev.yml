@@ -1,0 +1,80 @@
+# Dev overlay — adds nodemon + source mounts to QA.
+# Usage: docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+services:
+
+  # ─── Main server ───
+
+  facebook-dispatcher:
+    build: {context: ../services/facebook_dispatcher/, target: development}
+    volumes:
+      - ../services/facebook_dispatcher/src:/app/src:ro
+
+  auth:
+    build: {context: ../services/auth/, target: development}
+    volumes:
+      - ../services/auth/src:/app/src:ro
+
+  client-onboarding:
+    build: {context: ../services/client_onboarding/, target: development}
+    volumes:
+      - ../services/client_onboarding/src:/app/src:ro
+
+  # ─── Client infra ───
+
+  auth-verifier:
+    build: {context: ../services/auth_verifier/, target: development}
+    volumes:
+      - ../services/auth_verifier/src:/app/src:ro
+
+  # ─── dradamblack ───
+
+  dradamblack-prompt-composer:
+    build: {context: ../services/prompt_composer/, target: development}
+    volumes:
+      - ../services/prompt_composer/src:/app/src:ro
+
+  dradamblack-admin:
+    build: {context: ../services/admin/, target: development}
+    volumes:
+      - ../services/admin/src:/app/src:ro
+      - ../services/admin/src/views:/app/views:ro
+      - dradamblack-ui:/app/ui
+
+  dradamblack-mock-facebook:
+    build: {context: ../services/mock_facebook/, target: development}
+    volumes:
+      - ../services/mock_facebook/src:/app/src:ro
+
+  dradamblack-facebook-comments:
+    build: {context: ../services/facebook_comments/, target: development}
+    volumes:
+      - ../services/facebook_comments/src:/app/src:ro
+
+  # ─── drlipokatz ───
+
+  drlipokatz-prompt-composer:
+    build: {context: ../services/prompt_composer/, target: development}
+    volumes:
+      - ../services/prompt_composer/src:/app/src:ro
+
+  drlipokatz-admin:
+    build: {context: ../services/admin/, target: development}
+    volumes:
+      - ../services/admin/src:/app/src:ro
+      - ../services/admin/src/views:/app/views:ro
+      - drlipokatz-ui:/app/ui
+
+  drlipokatz-mock-facebook:
+    build: {context: ../services/mock_facebook/, target: development}
+    volumes:
+      - ../services/mock_facebook/src:/app/src:ro
+
+  drlipokatz-facebook-comments:
+    build: {context: ../services/facebook_comments/, target: development}
+    volumes:
+      - ../services/facebook_comments/src:/app/src:ro
+
+volumes:
+  dradamblack-ui:
+  drlipokatz-ui:
