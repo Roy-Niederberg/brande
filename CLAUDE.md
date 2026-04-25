@@ -3,10 +3,10 @@
 Qabu (from Akkadian "to say/speak") is a RAG-based AI agent platform for small
 businesses. Clients get a site at `<name>.qabu.net` with an AI chat that answers
 customer questions from a knowledge base, plus a widget, Facebook, WhatsApp and
-more. See `for_claude.md` for full project context.
+more.
 
 - Owners: Roy & Nevo, based in Israel. Domain: `qabu.net` (registered on GoDaddy, DNS on Cloudflare).
-- Infra: Two Oracle Cloud VMs (client server + main server), Docker everywhere.
+- Infra: Three VMs across two clouds — one main (Oracle) + two clients (Oracle + GCP IPv6-only). Docker everywhere. See **VM Strategy** below.
 - Repo: Private GitLab (`origin`), mirrored to GitHub (`github` remote).
 - Email: `privacy@qabu.net` → Cloudflare Email Routing → `roy.niederberg@gmail.com`
 
@@ -32,8 +32,11 @@ git push github --delete <branch>                   # 6. clean up remote branch
 
 ## Setup (new machine)
 
-Install each plugin listed in `.claude/settings.json` via `/plugin install <name>`.
-For the local skill, run: `/plugin install local .claude/plugins/qabu-prompt-engineer`
+Install each plugin listed under `enabledPlugins` in `.claude/settings.json`
+via `/plugin install <name>` (currently: `typescript-lsp@claude-plugins-official`).
+
+Local skills live in `.claude/skills/` (checked into the repo via a whitelist
+`.gitignore`) and are auto-discovered — no install step needed.
 
 ## Skills
 
@@ -116,9 +119,8 @@ asked — just add it and mention that you did.
 * **Background** `#1C2127 `Base Canvas (60%)
 * **Accent / Alt** `#85C1E9` Highlights / Buttons
 
-
 Use these consistently. The widget and capabilities already follow this palette.
-Admin buttons intentionally use distinct per-button colors (not brand colors).
+Admin buttons intentionally use simpler colors (not brand colors) for separation.
 
 ## Express Async Error Handling
 
@@ -131,6 +133,56 @@ app.r = (vrb,u,f)=>app[vrb](u,async (rq,rs,nxt)=>{try{ await f(rq,rs,nxt)} catch
 
 Use `app.r('get', '/path', handler)` instead of `app.get('/path', handler)`.
 Thrown errors hit the error middleware at the bottom of the file (logs + 500).
+
+## Source of Truth
+
+Two kinds of state, two different sources of truth:
+
+1. **Generic code** — not client-specific. Lives in **git**, developed locally,
+   deployed via Docker images (build/push from local, pull on the VM).
+2. **Per-client data** — config, prompts, KB, assets. Lives on the **client VM**,
+   edited via the admin panel. The VM's volume is authoritative.
+
+For local dev or inspection, `rsync_clients.sh` pulls each client's `private/`
+and `data/` from the VM back into `clients/<sub>/` on the local machine. This
+direction is **read-only-for-development** — never the other way around.
+
+### Known violations of the desired state
+
+This split is the goal, not the current reality. Active problems, in priority
+order:
+
+1. **No backups for client data.** If a client's admin nukes their KB, prompts,
+   or config, it's gone. The VM volume is authoritative *and* unprotected.
+   Highest-priority fix.
+2. **No version history / rollback for published changes.** The admin publish
+   flow overwrites the live file. Drafts exist in localStorage, but once
+   published there's no "previous version" anywhere.
+3. **No audit log.** Multi-admin clients will eventually want who-changed-what.
+4. **`clients/` is checked into git.** Legacy clients (drlipokatz, eintal,
+   dradamblack, yomialpurrer, ofirfichman) all have committed copies that drift
+   from the VM. Onboarding-created clients (the new flow) correctly don't enter
+   git. Long-term, `clients/` should be gitignored and only the template
+   (`services/config/files/`) stays in git.
+5. **Admin UI gaps force git+rsync edits** for things that should be
+   admin-editable: background images, og-meta, capabilities (`run()` logic is
+   code, but the list of available capabilities should be selectable),
+   `client-config.json` fields, `config.env` toggles beyond `COMPOSE_PROFILES`.
+   Every gap here is a reason someone has to bypass the admin and touch git.
+6. **`system_prompts.js` and `capabilities.js` straddle the line.** They're JS
+   modules (code-shaped) but `system_prompts.main`/`capabilities` text is
+   edited via admin. Acceptable for now, but worth keeping in mind when
+   touching the loader.
+
+### Rule for future changes
+
+**Don't make the split worse.** Before adding a feature, ask:
+- Is this generic code or client data?
+- If client data: is it editable in the admin? If not, the feature ships with
+  a known gap that forces git+rsync. Either build the admin UI or accept the
+  debt explicitly.
+- If you're tempted to commit a client-specific file to git as a workaround,
+  stop — that's exactly what we're trying to get away from.
 
 ## Project Structure
 
@@ -156,19 +208,76 @@ services/                   - Dockerized service source code
   config/                   - Client template (init container, copied by conductor on creation)
     files/                  - Default files for a new client (private/, data/, docker-compose.yml)
 docs/                       - Operational guides
+  images/                   - Images for the project
   client-server-setup.md    - How to provision a new client VM from scratch
 clients_server_automation/  - Host-level automation on the client VM
   conductor/                - systemd daemon that manages client lifecycle
 ```
 
+## VM Strategy
+
+Three VMs, picked across clouds to avoid single-vendor lock-in:
+
+- **Main** (Oracle, `brande@129.159.134.3`) — singleton. Landing page, auth,
+  FB dispatcher, onboarding. Scales vertically.
+- **Clients #1** (Oracle, `brande@129.159.159.251`) — multi-tenant: drlipokatz,
+  dradamblack, eintal, yomialpurrer.
+- **Clients #2** (GCP, IPv6-only) — multi-tenant, currently just ofirfichman.
+  Doubles as an IPv6-only hosting testbed.
+
+### Why multi-tenant (not VM-per-client)
+
+The cleaner mental model is **one VM per client**: a client = a VM + a
+docker-compose + some DNS. Clean separation, trivial "conductor" (just systemd),
+per-client geolocation and vertical scale, dead-simple onboarding (create VM,
+pull images, start). That was the original plan.
+
+We went multi-tenant because VMs cost money and we want to try many clients
+cheaply — Oracle free tier gives two VMs, GCP gives one. Multi-tenant creates
+real complications:
+
+- A second docker-compose network per VM.
+- A fuzzy split between `clients-router` and each client's `services-router`.
+- Onboarding must find a VM with capacity, not just spin up a new one.
+- The `conductor` daemon exists specifically to watch N client stacks per VM;
+  VM-per-client would collapse this to plain systemd.
+
+### The clients-router ↔ services-router tension
+
+The biggest architectural tension in this setup. The rule we want to hold:
+
+- **clients-router** — cross-cutting concerns only (TLS, `forward_auth` for
+  admin, dispatcher secret validation, rate limits).
+- **services-router** — per-client URL routing only, nothing cross-cutting.
+
+If a future feature blurs that line or pushes cross-cutting logic into the
+services-router, that's the signal to reconsider the VM-per-client model —
+not the signal to add more glue. **Keep this split in mind on every routing
+or auth decision.**
+
+### Multi-cloud
+
+Oracle + GCP today, Azure possibly later. Goal: **platform portability** —
+we should be able to rebuild Qabu on any single cloud in a reasonable time.
+Scattering clients across clouds is a side-effect of free-tier limits, not a
+strategy; all clients of a given kind should be movable together.
+
+### IPv6 per client (considered, not adopted)
+
+Tempting because IPv6 space is effectively free — one address per client
+without buying VMs. But it doesn't actually eliminate the clients-router:
+Facebook webhooks, Meta API, and most corporate networks still need an IPv4
+front door. The GCP IPv6-only VM (ofirfichman) proves the hosting model works;
+it doesn't remove the need for a central routing layer.
+
 ## Running the QA Environment
 
 The QA environment simulates both production VMs in a single Docker Compose.
-DNS must be configured in Cloudflare (DNS only, grey cloud):
+To support the qa environment, Cloudflare DNS is configured (DNS only, grey cloud):
 - `qa.qabu.net` → `127.0.0.1`
 - `*.qa.qabu.net` → `127.0.0.1`
 
-GCP OAuth: add `http://qa.qabu.net:8080/auth/callback` as redirect URI.
+And GCP OAuth has `http://qa.qabu.net:8080/auth/callback` as redirect URI.
 
 ```sh
 cd qa
@@ -192,14 +301,22 @@ Note: Facebook dispatcher → client forwarding won't work end-to-end in QA
 
 ### Building images
 
-`build.sh` builds and pushes a single service image to the GitLab registry:
+`services/build.sh` builds and pushes a single service image to the GitLab
+registry. It lives inside `services/` so service-name tab completion works
+naturally (service directories are its siblings).
 
 ```sh
-./build.sh <service>    # e.g. ./build.sh prompt_composer
+services/build.sh <service>             # e.g. services/build.sh prompt_composer
+services/build.sh -t <tag> <service>    # also tag with <tag>
 ```
 
-This builds with `--target production`, tags as both `v0.1.0` and `latest`,
-and pushes to `registry.gitlab.com/rny3/brande/<service>`.
+For each build it:
+- Runs `docker build --target production`.
+- Labels the image with `org.opencontainers.image.revision=<full SHA>`.
+- Tags and pushes `latest` + `<short SHA>` (and `<tag>` if `-t` is given).
+
+The build/deploy flow has changed a lot and will keep changing — treat this
+section as a snapshot of what exists now, not a long-term contract.
 
 ### Deploying to VMs
 
@@ -219,11 +336,33 @@ ssh brande@129.159.159.251 'cd ~/app/clients/<sub> && docker compose pull && doc
 ### Server setup
 
 See `docs/client-server-setup.md` for provisioning a new client VM from scratch
-(Docker, conductor, clients-router, secrets, DNS).
+(Docker, conductor, clients-router, secrets, DNS). See **VM Strategy** above
+for the full VM list and hosting rationale.
 
-Two Oracle Cloud VMs:
-- Client VM (`brande@129.159.159.251`) — hosts client sites + agents
-- Main VM (`brande@129.159.134.3`) — hosts qabu.net + shared services
+## Repo Scripts
+
+Three shell scripts live at the repo root, all run from a local dev machine:
+
+- **`check_main.sh`** — health-checks `qabu.net` endpoints: landing page, static
+  assets, `/privacy`, `/terms`, `/auth/*`, `/onboarding`, `/facebook` dispatcher,
+  HTTP→HTTPS redirect, content sniff, TLS cert expiry (warns under 14 days),
+  and a single admin `forward_auth` canary via `drlipokatz.qabu.net` (covers
+  the cross-VM auth chain). Run after main-server deploys.
+
+- **`check_clients.sh`** — iterates every directory under `clients/` and checks
+  `widget.js` (status + JS content-type, catches mis-routing), `/taken` (proves
+  services-router is alive), and `/` (warn-only, since site profile may be off).
+  Run after client-VM deploys or when adding a client.
+
+- **`rsync_clients.sh`** — pulls each client's `private/` and `data/` from the
+  client VMs back to the local `clients/<sub>/` directory. Currently runs with
+  `--dry-run` by default — drop the flag to actually copy. This is the
+  read-only-for-development escape hatch from the **Source of Truth** section
+  above; the VM is authoritative, local is a snapshot for inspection. Don't
+  push the other direction.
+
+When adding a new client VM or subdomain, all three scripts need updating
+(`rsync_clients.sh` per-client list especially — it's hand-maintained).
 
 ## Landing Page
 
@@ -260,14 +399,19 @@ testing interface.
 
 ## Client Profiles
 
-**dradamblack** — English demo client. Cataract surgery clinic (Dr. Adam Black).
-English translation of `drlipokatz` with US medical context (insurance instead of
-HMO, USD instead of ILS, NY address). Same prompt design patterns, same KB
-structure, male doctor.
+All five clients are demos. None are paying customers yet.
 
-**drlipokatz** — Hebrew demo client. Cataract surgery clinic (ד"ר ליפו כץ).
-Modeled after Nevo's master spec (`Nevo.txt`) with 15 consolidated intents
-(`intent.md`). KB has 12 entries covering the cataract patient journey. Key
+**eintal** — Prospective first real customer. Real multi-doctor clinic, currently
+running as a demo against their real site. The headline feature being demoed is
+**multi-doctor routing**: Qabu gathers what the patient needs and directs them to
+the right doctor. The candidate doctors today are `drlipokatz` (cataract surgeon)
+and `yomialpurrer` (fictional — placeholder for a second specialty). If eintal
+converts, those placeholders get replaced with their actual roster.
+
+**drlipokatz** — Hebrew demo client. Cataract surgery clinic (ד"ר ליפו כץ) —
+**fictional doctor**. Modeled after Nevo's master spec (`Nevo.txt`) with 15
+consolidated intents (`intent.md`). KB has 12 entries covering the cataract
+patient journey. Doubles as a referral target for eintal's routing demo. Key
 prompt design patterns:
 - **Slot tracking** (prompt-only, no code): the main SP instructs the LLM to
   gather 5 data points naturally (topic, not emergency, HMO, insurance, readiness)
@@ -277,6 +421,19 @@ prompt design patterns:
   curtain sensation) and respond with ER referral — no booking offered.
 - **Tiered CTAs**: soft CTA for educational questions, HMO question for cost
   queries, direct booking CTA for surgery-ready users.
+
+**yomialpurrer** — Hebrew demo, **fictional doctor**. Second specialty option for
+eintal's multi-doctor routing demo. Paired with `drlipokatz`.
+
+**dradamblack** — English demo client. Cataract surgery clinic (Dr. Adam Black —
+**fictional doctor**). English translation of `drlipokatz` with US medical context
+(insurance instead of HMO, USD instead of ILS, NY address). Same prompt design
+patterns, same KB structure. Exists so English-speaking prospects can see Qabu
+in their language.
+
+**ofirfichman** — Real architect, friend of Roy's. Site is real; helps test and
+QA the platform under a real non-clinic use case. Only client hosted on the GCP
+VM (IPv6-only) rather than the Oracle client VM.
 
 ## Caddy Routing
 

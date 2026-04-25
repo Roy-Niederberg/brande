@@ -13,25 +13,80 @@ check() {
   fi
 }
 
-status() { curl -s -o /dev/null -w "%{http_code}" "$1"; }
+status()   { curl -s -o /dev/null -w "%{http_code}"    "$1"; }
 location() { curl -s -o /dev/null -w "%{redirect_url}" "$1"; }
+body()     { curl -s "$1"; }
 
-check "Landing page"     200 "$(status https://qabu.net/)"
-check "favicon.ico"      200 "$(status https://qabu.net/favicon.ico)"
-check "logo_dark.svg"    200 "$(status https://qabu.net/logo_dark.svg)"
-check "logo_white.svg"   200 "$(status https://qabu.net/logo_white.svg)"
-check "Privacy page"     200 "$(status https://qabu.net/privacy)"
-check "Terms page"       200 "$(status https://qabu.net/terms)"
-check "Auth /verify"     401 "$(status https://qabu.net/auth/verify)"
-check "Auth /login"      302 "$(status https://qabu.net/auth/login)"
-check "Onboarding"       302 "$(status https://qabu.net/onboarding)"
+# ---- Status-code checks ----
+check "Landing page"        200 "$(status https://qabu.net/)"
+check "favicon.ico"         200 "$(status https://qabu.net/favicon.ico)"
+check "logo_dark.svg"       200 "$(status https://qabu.net/logo_dark.svg)"
+check "logo_white.svg"      200 "$(status https://qabu.net/logo_white.svg)"
+check "Privacy page"        200 "$(status https://qabu.net/privacy)"
+check "Terms page"          200 "$(status https://qabu.net/terms)"
+check "Auth /verify"        401 "$(status https://qabu.net/auth/verify)"
+check "Auth /login"         302 "$(status https://qabu.net/auth/login)"
+check "Onboarding"          302 "$(status https://qabu.net/onboarding)"
+check "FB dispatcher"       403 "$(status https://qabu.net/facebook)"
 
-# Verify login redirects to Google
+# ---- Redirect targets ----
 login_url=$(location https://qabu.net/auth/login)
 if [[ "$login_url" == *"accounts.google.com"* ]]; then
   echo "$PASS Auth /login → Google OAuth"
 else
   echo "$FAIL Auth /login → expected Google redirect, got: $login_url"
+  ((errors++))
+fi
+
+onboarding_url=$(location https://qabu.net/onboarding)
+if [[ "$onboarding_url" == *"/auth/login"* ]]; then
+  echo "$PASS Onboarding → /auth/login (forward_auth)"
+else
+  echo "$FAIL Onboarding → expected /auth/login redirect, got: $onboarding_url"
+  ((errors++))
+fi
+
+http_redirect=$(location http://qabu.net/)
+if [[ "$http_redirect" == https://* ]]; then
+  echo "$PASS HTTP → HTTPS ($http_redirect)"
+else
+  echo "$FAIL HTTP → HTTPS (got: $http_redirect)"
+  ((errors++))
+fi
+
+# Admin forward_auth — exercises the cross-VM admin auth chain via one
+# canary client subdomain (clients-router → auth-verifier → /auth/login).
+# Picks drlipokatz as the canary; if it's ever undeployed, change this.
+admin_canary=drlipokatz.qabu.net
+admin_url=$(location "https://$admin_canary/admin/")
+if [[ "$admin_url" == *"/auth/login"* ]]; then
+  echo "$PASS Admin forward_auth via $admin_canary"
+else
+  echo "$FAIL Admin forward_auth via $admin_canary (got: $admin_url)"
+  ((errors++))
+fi
+
+# ---- Content sniff ----
+if [[ "$(body https://qabu.net/)" == *"Qab"* ]]; then
+  echo "$PASS Landing page contains 'Qab'"
+else
+  echo "$FAIL Landing page missing 'Qab' branding"
+  ((errors++))
+fi
+
+# ---- TLS cert expiry (warn under 14 days) ----
+cert_end=$(echo | openssl s_client -servername qabu.net -connect qabu.net:443 2>/dev/null \
+          | openssl x509 -noout -enddate 2>/dev/null | cut -d= -f2)
+if [ -n "$cert_end" ]; then
+  days_left=$(( ( $(date -d "$cert_end" +%s) - $(date +%s) ) / 86400 ))
+  if [ "$days_left" -gt 14 ]; then
+    echo "$PASS TLS cert valid ($days_left days left)"
+  else
+    echo "$FAIL TLS cert expires in $days_left days"
+    ((errors++))
+  fi
+else
+  echo "$FAIL TLS cert check (could not read certificate)"
   ((errors++))
 fi
 
