@@ -24,8 +24,8 @@ When Claude Code creates a branch on GitHub, merge locally:
 ```sh
 git fetch github                                    # 1. fetch new branches
 git branch -r --list 'github/*'                     # 2. see what's new
-git diff origin/dev...github/<branch>               # 3. review changes
-git merge github/<branch>                           # 4. merge into dev
+git diff origin/main...github/<branch>              # 3. review changes
+git merge github/<branch>                           # 4. merge into main
 git push origin                                     # 5. push to GitLab
 git push github --delete <branch>                   # 6. clean up remote branch
 ```
