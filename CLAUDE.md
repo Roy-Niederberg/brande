@@ -40,7 +40,14 @@ Local skills live in `.claude/skills/` (checked into the repo via a whitelist
 
 ## Skills
 
-Before responding to any request, check the available skills list. If there is
+Two skills exist (`qabu-prompt-engineer-gemini`, `qabu-prompt-engineer-openai`),
+both with `disable-model-invocation: true` in their frontmatter — they will not
+auto-fire and are effectively **dormant**. They're kept for future use; revisit
+when actively iterating on prompts. Skill content itself is fine — only the
+auto-invocation is off.
+
+When a skill is re-enabled (remove `disable-model-invocation` or set to `false`):
+before responding to any request, check the available skills list. If there is
 even a 1% chance a skill applies, invoke it with the Skill tool before doing
 anything else.
 
@@ -61,25 +68,24 @@ outside the repo, mention it so Roy can back it up.
 
 ## Task Management
 
-When a new task comes up during conversation, add it to the correct file:
-- **Roy's tasks** → `ROY_TASKS.md`
-- **Claude's tasks** → `CLAUDE_TASKS.md`
-- **Unsure** → ask Roy which file
+All tasks live in `TASKS.md`. Tag with ownership (`[roy]`, `[claude]`, `[both]`)
+and phase from `QABU-PLAN.md` (`[P0]`–`[P4]`, `[defer]`, `[goal]`, `[when-X]`,
+`[done]`). See the Priority section in `TASKS.md` for what each phase tag means.
 
-Each task must be **very detailed** with full context so Roy can recall what it's
-about later. Include:
+Each task must be **very detailed** with full context so Roy can recall what
+it's about later. Include:
 1. The conversation context that led to the task (e.g. "While discussing X, we
    realized Y because...")
 2. Why it matters / what problem it solves
 3. Date of creation in parentheses at the end, e.g. `(added 2026-03-13)`
 
-Roy uses these files as a backlog across conversations. Without context, tasks
+Roy uses this file as a backlog across conversations. Without context, tasks
 become cryptic reminders that are hard to act on weeks later.
 
 Whenever a conversation surfaces something that should be done later (Roy says
 "I need to...", "we should...", "add a task for...", or a TODO naturally emerges
-from the discussion), proactively write it to the correct file. Don't wait to be
-asked — just add it and mention that you did.
+from the discussion), proactively write it to `TASKS.md` and mention that you
+did.
 
 ## Dev Philosophy
 
@@ -221,7 +227,8 @@ Three VMs, picked across clouds to avoid single-vendor lock-in:
 - **Main** (Oracle, `brande@129.159.134.3`) — singleton. Landing page, auth,
   FB dispatcher, onboarding. Scales vertically.
 - **Clients #1** (Oracle, `brande@129.159.159.251`) — multi-tenant: drlipokatz,
-  dradamblack, eintal, yomialpurrer.
+  eintal, yomialpurrer. (`dradamblack` is kept locally but not currently
+  deployed — see Client Profiles.)
 - **Clients #2** (GCP, IPv6-only) — multi-tenant, currently just ofirfichman.
   Doubles as an IPv6-only hosting testbed.
 
@@ -341,7 +348,7 @@ for the full VM list and hosting rationale.
 
 ## Repo Scripts
 
-Three shell scripts live at the repo root, all run from a local dev machine:
+Four shell scripts live at the repo root, all run from a local dev machine:
 
 - **`check_main.sh`** — health-checks `qabu.net` endpoints: landing page, static
   assets, `/privacy`, `/terms`, `/auth/*`, `/onboarding`, `/facebook` dispatcher,
@@ -361,8 +368,16 @@ Three shell scripts live at the repo root, all run from a local dev machine:
   above; the VM is authoritative, local is a snapshot for inspection. Don't
   push the other direction.
 
-When adding a new client VM or subdomain, all three scripts need updating
-(`rsync_clients.sh` per-client list especially — it's hand-maintained).
+- **`check_versions.sh`** — for each VM (main + both client VMs), prints a table
+  of running containers with their git SHA (from the
+  `org.opencontainers.image.revision` label set by `services/build.sh`), image
+  build date, status, and image. Run after a deploy to confirm every VM picked
+  up the new image. Empty SHA column = image was built before `build.sh` started
+  labeling, or built off-flow.
+
+When adding a new client VM or subdomain, all four scripts need updating
+(`rsync_clients.sh` per-client list especially — it's hand-maintained;
+`check_versions.sh` has a per-VM list at the top).
 
 ## Landing Page
 
@@ -429,7 +444,9 @@ eintal's multi-doctor routing demo. Paired with `drlipokatz`.
 **fictional doctor**). English translation of `drlipokatz` with US medical context
 (insurance instead of HMO, USD instead of ILS, NY address). Same prompt design
 patterns, same KB structure. Exists so English-speaking prospects can see Qabu
-in their language.
+in their language. **Not currently deployed** — files are kept locally under
+`clients/dradamblack/` for future use; spin it back up on a client VM when an
+English demo is needed.
 
 **ofirfichman** — Real architect, friend of Roy's. Site is real; helps test and
 QA the platform under a real non-clinic use case. Only client hosted on the GCP
@@ -707,13 +724,6 @@ Config options: `targetElement` (selector or element, defaults to `document.body
 `apiEndpoint`, `fontFamily`, `googleFontsUrl`, `beforeSend`, `greetingOverride`,
 `direction` (RTL/LTR, defaults to `'ltr'`), `profilePic` (URL or data URI,
 defaults to Qabu logo SVG), `clientName` (header title, defaults to `'Qabû'`).
-
-### Known Issues
-
-- **Minimize/reopen was removed.** An earlier version (commit `ea62340`, when the
-  widget lived at `services/router/public/widget.js`) had minimize/maximize with a
-  floating reopen bubble — essential for embedding on existing pages. This was lost
-  in the "big rewrite" (`6cdf7d5`). Should be restored for embed use cases.
 
 ## Client Onboarding & Provisioning
 

@@ -20,7 +20,7 @@ app.use((rq, rs, nx) => {
   nx()
 })
 
-const indexHtml = fs.readFileSync('/app/views/index.html', 'utf-8').replace(/\{\{include[^}]*\}\}/g, '')
+const indexHtml = fs.readFileSync('/app/views/index.html', 'utf-8').replace(/\{\{(http)?[Ii]nclude[^}]*\}\}/g, '')
 app.get(['/', '/chatQA'], (_, rs) => rs.type('html').send(indexHtml))
 app.get('/loader.js', (_, rs) => rs.sendFile('/app/views/loader.js'))
 app.get('/admin.js', (_, rs) => rs.sendFile('/app/views/admin.js'))
@@ -28,7 +28,7 @@ app.use('/page', express.static('/app/views/page'))
 app.use('/private', express.static('/app/private'))
 
 app.get('/api/user', (rq, rs) =>
-  rs.json({ email: rq.headers['x-auth-email'] || '', name: rq.headers['x-auth-name'] || '' }))
+  rs.json({ email: rq.headers['x-auth-email'] || '', name: decodeURIComponent(rq.headers['x-auth-name'] || '') }))
 
 app.r('get', '/api/initial-content', async (_rq, rs) => {
   const [instructionsRes, knowledgeBaseRes, greetingRes] = await Promise.all([

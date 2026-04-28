@@ -76,7 +76,7 @@ app.get('/verify', (rq, rs) => {
   if (!token) return rs.sendStatus(401)
   const payload = verify(token)
   if (!payload) return rs.sendStatus(401)
-  rs.set({ 'X-Auth-Email': payload.email, 'X-Auth-Name': payload.name || '' })
+  rs.set({ 'X-Auth-Email': payload.email, 'X-Auth-Name': encodeURIComponent(payload.name || '') })
   rs.sendStatus(200)
 })
 
