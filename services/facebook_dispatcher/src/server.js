@@ -20,7 +20,7 @@ function verify_signature(signature, rawBody) {
 }
 
 const dispatch_to = (target, page_id, events) => {
-  fetch( `https://${page_routes[page_id]}/${target}`, {
+  fetch( `https://${page_routes[page_id]}/${target}/`, {
     method: 'POST',
     headers: {'content-type': 'application/json', 'x-dispatcher-secret': dispatcher_secret},
     body: JSON.stringify({ page_id, events })
