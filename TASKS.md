@@ -2,7 +2,8 @@
 
 Open tasks for Qabu. Ownership tags: `[roy]`, `[claude]`, `[both]`. Phase tags
 from `QABU-PLAN.md`: `[P1]`–`[P4]`, plus `[defer]` for out-of-window, `[goal]`
-for north-star outcomes, `[when-X]` for conditional, `[done]` for completed.
+for north-star outcomes, `[when-X]` for conditional. Delete tasks when done —
+git history is the audit trail, this file is the working backlog.
 New tasks should follow CLAUDE.md's "Task Management" rules: rich context, why
 it matters, date in parens at the end.
 
@@ -239,20 +240,6 @@ Phase 3 work until there's a second paying client.
   replies (no restart needed), auth stability. Acceptance: Nevo updates a KB
   entry at 2pm and Qabu uses the new answer on the next FB comment without
   Roy in the loop. (added 2026-04-27)
-- [claude] [P1] **Admin BE: check `response.ok` on publish forwards.** In
-  `services/admin/src/server.js`, the `/api/system_prompts`,
-  `/api/knowledge_base`, and `/api/greeting` handlers `await fetch(...)` to
-  prompt-composer but never check the response status. They unconditionally
-  return `{ success: true }`, so the frontend shows "Published!" even when
-  prompt-composer 5xx'd or the write to disk failed. Fix: read `res.ok` from
-  the fetch and propagate the error (status + body) back to the admin
-  frontend so the user sees "Failed to publish" instead of a silent lie. This
-  surfaced while debugging Nevo's 2026-05-03 "publish doesn't work" report —
-  publish works end-to-end for Roy, so Nevo's symptom is likely either stale
-  JWT (24h expiry) or this silent-failure bug masking a transient
-  prompt-composer outage (the rapid-reconcile conductor was restarting
-  containers around the same time). Tied to the P0 "admin works perfectly
-  for Nevo" task above. (added 2026-05-03)
 - [roy] [defer] **Admin: comment as multiple users in Facebook test.** Add a
   few avatar images to the docker images so the admin can simulate different
   commenters.
@@ -338,10 +325,6 @@ Phase 3 work until there's a second paying client.
   routing needed (eintal answers from one KB; drlipokatz / yomialpurrer stay
   as test fixtures only). Schedule the session early — weeks 3-5 of the
   Phase 0 plan stall if eintal can't sit down for content. (added 2026-04-27)
-- [roy] [done] **Review QABU-VISION.md** — make sure it still reflects current
-  thinking; pull anything still relevant into CLAUDE.md or here. (Reviewed
-  2026-04-26; produced `QABU-PLAN.md` to plan the path from current state to
-  90% of vision.)
 - [roy] [defer] **Go over Claude bot results** —
   https://claude.ai/code/session_015amX6XQKE6anSW2Vf9QjoU and
   https://claude.ai/code/session_013buYQPiU1E2Fyo9qYzqSCK

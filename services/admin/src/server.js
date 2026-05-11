@@ -65,20 +65,22 @@ app.r('post', '/ask', async (rq, rs) => {
 app.r('post', '/api/system_prompts', async (rq, rs) => {
   const { systemPrompts } = rq.body
   if (!systemPrompts) return rs.status(400).json({ error: 'System prompts required' })
-  await fetch(`${PROMPT_COMPOSER_URL}/system_prompts`, {
+  const r = await fetch(`${PROMPT_COMPOSER_URL}/system_prompts`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(systemPrompts)
   })
+  if (!r.ok) return rs.status(r.status).json({ error: await r.text() })
   rs.json({ success: true })
 })
 
 app.r('post', '/api/knowledge_base', async (rq, rs) => {
   const { knowledgeBase } = rq.body
   if (!knowledgeBase) return rs.status(400).json({ error: 'Knowledge base required' })
-  await fetch(`${PROMPT_COMPOSER_URL}/knowledge_base`, {
+  const r = await fetch(`${PROMPT_COMPOSER_URL}/knowledge_base`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(knowledgeBase)
   })
+  if (!r.ok) return rs.status(r.status).json({ error: await r.text() })
   rs.json({ success: true })
 })
 
@@ -99,10 +101,11 @@ app.r('post', '/api/services', (rq, rs) => {
 app.r('post', '/api/greeting', async (rq, rs) => {
   const { greeting } = rq.body
   if (!greeting) return rs.status(400).json({ error: 'Greeting required' })
-  await fetch(`${PROMPT_COMPOSER_URL}/greeting`, {
+  const r = await fetch(`${PROMPT_COMPOSER_URL}/greeting`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(greeting)
   })
+  if (!r.ok) return rs.status(r.status).json({ error: await r.text() })
   rs.json({ success: true })
 })
 
