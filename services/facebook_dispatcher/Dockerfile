@@ -14,4 +14,5 @@ RUN npm ci --production
 COPY ./src/server.js ./src/
 ENV NODE_ENV=production
 RUN rm package*.json
+# data/page_routes.json is host-mounted at runtime (see prod/main-server-docker-compose.yml). Do NOT COPY it here.
 CMD ["node", "src/server.js"]
