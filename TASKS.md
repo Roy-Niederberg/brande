@@ -64,11 +64,82 @@ Phase 3 work until there's a second paying client.
 
 ### Source of Truth & client-data lifecycle
 
-- [both] [P0] **Set up client-data backup before the first paying client.**
-  Cron + tar + Cloudflare R2 or Backblaze B2 (~15 lines) over
-  `~/app/clients/*/data` and `~/app/clients/*/private` on each client VM. Don't
-  ship to a paying customer without this. (Highest priority. Tied to CLAUDE.md
-  "Source of Truth" gap #1.) (added 2026-04-19)
+- [roy] [P0] **MVP backup doesn't survive VM reboot — add a reboot-survival
+  shim.** The backup MVP runs as `tmux new -d -s backup ~/app/backup_loop.sh`
+  in a user-owned tmux session on the eintal client VM. If the VM reboots
+  (planned maintenance, kernel patch, crash), tmux dies and the watcher is
+  silently gone until someone notices a stale `git log` — at which point
+  there's no backup for that window. The proper fix is the
+  `services/backup/` Dockerized service (tracked separately below) which
+  restarts via Docker's restart policy. Until that ships, do one of:
+  - `crontab -e` → `@reboot tmux new -d -s backup ~/app/backup_loop.sh`
+    (simplest, no systemd unit needed; uses Roy's existing user crontab)
+  - or a tiny systemd *user* unit at `~/.config/systemd/user/qabu-backup.service`
+    with `Restart=always` and `loginctl enable-linger brande`.
+
+  **Why:** silent backup death is worse than no backup — you think you're
+  protected and you're not. Window of risk = uptime between reboots, which
+  on Oracle VMs can be weeks of complacency followed by an unexpected
+  reboot. (added 2026-05-21, while verifying the MVP works end-to-end —
+  watcher loop confirmed to commit/push on create/modify/delete of
+  whitelisted files, but reboot-survival was the one gap not addressed.)
+
+- [both] [P0] **Replace the MVP backup with a proper `services/backup/` Node
+  service.** An MVP is live on the eintal client VM as of 2026-05-19: a tmux
+  session running `find data private -type f | entr -d ...` inside
+  `~/app/clients/eintal/`, which rsyncs into a cloned GitLab repo
+  (`rny3/qabu_clients`) and commits + pushes on every change. SSH deploy key
+  at `~/.ssh/qabu_backup`, write-enabled in GitLab. It works but:
+  (a) only covers eintal — not drlipokatz, yomialpurrer, or the GCP VM's
+  ofirfichman; (b) needs `entr` and `git` installed on the host, violating
+  the everything-in-Docker rule; (c) tmux doesn't survive VM reboot — needs
+  manual reattach; (d) no debounce — a burst of admin saves yields multiple
+  commits.
+
+  **Why:** unprotected client VM volumes are CLAUDE.md "Source of Truth"
+  gap #1. The MVP unblocks signing eintal as the first paying client without
+  a multi-day infra detour, but it's not the long-term answer.
+
+  **Design we sketched (2026-05-19 conversation):**
+
+  1. **Restructure first** — move `data/` and `private/` under a single
+     `state/` bucket per client: `clients/<sub>/state/{data,private}/`.
+     `logs/`, `secrets/`, and `docker-compose.yml` stay outside `state/`.
+     Touches: `services/config/files/docker-compose.yml` (4 volume mount
+     lines), the template tree (`git mv`), `clients_server_automation/conductor/src/main.cpp`
+     (5 path references), `rsync_clients.sh`, CLAUDE.md, and a one-shot
+     migration script for each existing client on each VM. Service-side
+     container paths (`/app/data`, `/app/private`, `/site/private`) stay
+     unchanged — only the host side of the mount moves. Ship and verify
+     this *before* writing the new service so debugging stays untangled.
+
+  2. **Then `services/backup/`** — Node + `chokidar` (inotify) in a Docker
+     container, deployed as shared infra alongside `clients-router` and
+     `auth-verifier` in each client VM's `docker-compose.yml`. Mounts:
+     `~/app/clients:/clients:ro` (whole tree, read-only), a named volume
+     for the local git workdir, SSH deploy key + known_hosts as Docker
+     secrets. Image base `node:22-alpine` + `apk add git openssh-client` —
+     git stays inside the container, host stays dep-free. Logic: debounce
+     ~30s on chokidar events, rsync `/clients/*/state/` → local repo
+     `/state/<vm-id>/...`, then `git add -A && commit && push`. Per-VM
+     subdirectory in one shared repo so multi-VM pushes never conflict.
+     Separate deploy key per VM (revocable independently). Add a daily
+     heartbeat commit so silent watcher death is visible in `git log`.
+
+  3. **Migration off the MVP** — once `services/backup/` is running, tear
+     down the tmux loop on eintal's VM, `apt remove entr git`, delete the
+     `~/.ssh/qabu_backup` key + GitLab deploy key, push to the same
+     `qabu_clients` repo from the new service. No data migration needed —
+     the new service produces an isomorphic tree.
+
+  **Sequencing constraint:** don't combine the restructure and the new
+  service into one PR — debugging "is this broken because of the
+  restructure or the new service?" gets painful. Restructure → verify all
+  clients still serve → then build the service.
+
+  Tied to CLAUDE.md "Source of Truth" gap #1 (backups), partially addresses
+  gap #2 (the git history gives basic version history / rollback for free).
+  (added 2026-04-19, MVP shipped & task rewritten 2026-05-19)
 - [roy] [defer] **Decide what happens to demo clients currently in git**
   (`dradamblack`, `drlipokatz`, `eintal`, `yomialpurrer`, `ofirfichman`).
   Either keep them as seed fixtures under `services/config/files/` or `seeds/`,
@@ -219,6 +290,32 @@ Phase 3 work until there's a second paying client.
   manually. Pull at runtime instead — no rsync, no machine dependency.
   (added 2026-03-28)
 
+- [roy] [P0] **GCP VM (ofirfichman) wildcard cert will fail to renew on
+  2026-07-19 — ~2 months out.** While debugging why ofirfichman was down on
+  2026-05-17 (turned out to be a frozen VM, fixed by console restart + manual
+  `docker compose up -d` in `~/app/clients/ofirfichman/`), I discovered
+  `app-clients-router-1` is logging continuous ACME renewal failures:
+  `context deadline exceeded` reaching `acme-v02.api.letsencrypt.org`.
+  Root cause: Roy removed Cloud NAT from the GCP project to stop being
+  billed for the static IPv4. The VM is IPv6-only, and Let's Encrypt's
+  ACME endpoints are IPv4-only — so Caddy can no longer fetch/renew the
+  wildcard cert. The cached `*.qabu.net` cert in the `router_data` volume is
+  valid until **2026-07-19 19:34 UTC**. After that, every HTTPS request to
+  `ofirfichman.qabu.net` will fail TLS and Cloudflare will start serving
+  errors. Three options to pick from (discussed but not chosen): (a) renew
+  on the main server (which has IPv4) and rsync the cert into the GCP
+  `router_data` volume on a schedule, (b) switch to a Cloudflare Origin
+  Certificate — issued by CF, doesn't need public ACME at all, just
+  install once and good for 15 years, (c) re-enable Cloud NAT around
+  renewal time only. Option (b) is the cleanest if we want to keep this VM
+  free-tier long-term. Note: ofirfichman is a demo (Roy's architect
+  friend) so downtime here isn't customer-facing, but the same problem
+  will hit any future GCP IPv6-only VM. Also, this VM has **no conductor
+  at all** (no `~/app/conductor` binary, no `qabu-conductor.service`) — so
+  every reboot requires manually bringing the client stack up. Worth
+  installing conductor here once the binary is rebuilt (see the P0
+  conductor task above). (added 2026-05-17)
+
 - [roy] [P0] **Rebuild and redeploy conductor binary.** Three pending source
   fixes: (1) `setbuf(stdout, NULL)` so logs show in journalctl, (2) remove
   `2>/dev/null` from `start_stack` and `stack_running` so docker compose
@@ -226,7 +323,18 @@ Phase 3 work until there's a second paying client.
   server, binary needs rebuild). Build: `docker run --rm -v
   $(pwd)/clients_server_automation/conductor/src:/src -w /src gcc:latest g++
   -std=c++20 -O2 -static -s -o /src/conductor main.cpp`, then scp + restart.
-  (added 2026-04-06)
+  **Extra urgency surfaced 2026-05-17:** the binary live on the Oracle client
+  VM is from 2026-04-05 — it predates the `--env-file private/config.env`
+  fix in `start_stack` (committed 2026-04-25, `b384255`). Without that fix
+  `COMPOSE_PROFILES` never activates, so on every reboot only the
+  no-profile services come up (admin, widget, prompt-composer, services-router)
+  and site + facebook stay down silently. We hit exactly this when the
+  Oracle VM rebooted overnight 2026-05-16 → eintal and drlipokatz both
+  went down until manual restore. `stack_running()` returns true as soon
+  as *any* container is up, so conductor never retries. Also redeploy the
+  shared-infra stack at `~/app/docker-compose.yml` somehow (systemd unit or
+  add to conductor's scope) — clients-router/auth-verifier/provisioner also
+  didn't come back automatically after the reboot. (added 2026-04-06)
 
 ### Admin & widget UX
 

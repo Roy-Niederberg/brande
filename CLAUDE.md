@@ -234,7 +234,7 @@ Three VMs, picked across clouds to avoid single-vendor lock-in:
 - **Main** (Oracle, `brande@129.159.134.3`) — singleton. Landing page, auth,
   FB dispatcher, onboarding. Scales vertically.
 - **Clients #1** (Oracle, `brande@129.159.159.251`) — multi-tenant: drlipokatz,
-  eintal, yomialpurrer. (`dradamblack` is kept locally but not currently
+  eintal. (`dradamblack` and `yomialpurrer` are kept locally but not currently
   deployed — see Client Profiles.)
 - **Clients #2** (GCP, IPv6-only) — multi-tenant, currently just ofirfichman.
 
@@ -406,7 +406,9 @@ prompt design patterns:
   queries, direct booking CTA for surgery-ready users.
 
 **yomialpurrer** — Hebrew demo, **fictional doctor**. Second specialty option for
-eintal's multi-doctor routing demo. Paired with `drlipokatz`.
+eintal's multi-doctor routing demo. Paired with `drlipokatz`. **Not currently
+deployed** — files are kept locally under `clients/yomialpurrer/`; spin back up
+on the Oracle client VM when the multi-doctor routing demo is needed.
 
 **dradamblack** — English demo client. Cataract surgery clinic (Dr. Adam Black —
 **fictional doctor**). English translation of `drlipokatz` with US medical context

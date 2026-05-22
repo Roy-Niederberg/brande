@@ -7,16 +7,20 @@
 !docker-compose.yml
 !Dockerfile
 
-# and for claude
-!README.md
-!CLAUDE.md
-!*TASKS.md
-
 # don't ignore .gitignore and gitlab-ci
 !.gitignore
 !.gitlab-ci.yml
 
-!build.sh
-!check_main.sh
+# and for claude
+!/README.md
+!/CLAUDE.md
+!/TASKS.md
+
+
+!/services/build.sh
+!/check_main.sh
+!/check_clients.sh
+!/check_versions.sh
+!/rsync_clients.sh
 
 # Excluding other files will be done in the files directory itself!
