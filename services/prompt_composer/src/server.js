@@ -42,7 +42,7 @@ const askGroq = async (content, msgs) => {
   for (const i of [0,2]) { // with retry
     const ask_obj = {model: llm[i + 1], messages: [{role: 'system', content}, ...msgs]}
     try {
-      const res = (await llm[i].chat.completions.create(ask_obj)).r.choices[0].message.content
+      const res = (await llm[i].chat.completions.create(ask_obj)).choices[0].message.content
       fs.writeFileSync('./logs/last_prompt.json', JSON.stringify({...ask_obj, res}))
       return res
     } catch (e) {console.error(`🚩 failed [${llm[i + 1]}] try ${i}:`, e.message)}
