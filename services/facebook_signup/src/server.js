@@ -14,9 +14,9 @@ app.use('/facebook-page-signup', express.static('public'));
 // =============== Server Loading section ============================================================================//
 // In this section the server should fail in case of error and not startup. ==========================================//
 
-const app_id  = read_scrt('fb_global_app_id')
+const app_id  = read_scrt('fb_app_id')
 app_id.length > 0 || LOG(0, 'App Id is empty.')
-const app_secret = read_scrt('fb_global_app_secret')
+const app_secret = read_scrt('fb_app_secret')
 app_secret.length > 0 || LOG(0, 'App Secret Token is empty.')
 
 // =============== Endpoints =========================================================================================//

@@ -27,6 +27,7 @@ check "Terms page"          200 "$(status https://qabu.net/terms)"
 check "Auth /verify"        401 "$(status https://qabu.net/auth/verify)"
 check "Auth /login"         302 "$(status https://qabu.net/auth/login)"
 check "Onboarding"          302 "$(status https://qabu.net/onboarding)"
+check "FB page signup"      302 "$(status https://qabu.net/facebook-page-signup)"
 check "FB dispatcher"       403 "$(status https://qabu.net/facebook)"
 
 # ---- Redirect targets ----
@@ -43,6 +44,14 @@ if [[ "$onboarding_url" == *"/auth/login"* ]]; then
   echo "$PASS Onboarding → /auth/login (forward_auth)"
 else
   echo "$FAIL Onboarding → expected /auth/login redirect, got: $onboarding_url"
+  ((errors++))
+fi
+
+fb_signup_url=$(location https://qabu.net/facebook-page-signup)
+if [[ "$fb_signup_url" == *"/auth/login"* ]]; then
+  echo "$PASS FB page signup → /auth/login (forward_auth)"
+else
+  echo "$FAIL FB page signup → expected /auth/login redirect, got: $fb_signup_url"
   ((errors++))
 fi
 

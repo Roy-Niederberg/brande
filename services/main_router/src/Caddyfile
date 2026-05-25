@@ -3,6 +3,17 @@ qabu.net {
 		dns cloudflare {env.CLOUDFLARE_API_TOKEN}
 	}
 
+	handle /facebook-page-signup* {
+		forward_auth auth:3456 {
+			uri /verify
+			@unauth status 401
+			handle_response @unauth {
+				redir https://qabu.net/auth/login?return_to={scheme}://{host}/facebook-page-signup 302
+			}
+		}
+		reverse_proxy facebook-signup:8558
+	}
+
 	handle_path /facebook* {
 		reverse_proxy facebook-dispatcher:3210
 	}
