@@ -355,10 +355,6 @@ Phase 3 work until there's a second paying client.
   See Prompt button so it asks prompt-composer to compose what *would* be sent
   given current draft state, without firing the LLM call. Today's
   `last_prompt.json` only shows what was actually sent.
-- [roy] [P3] **Restore widget minimize / reopen.** An earlier version (commit
-  `ea62340`, when widget lived at `services/router/public/widget.js`) had
-  minimize/maximize with a floating reopen bubble — essential for embedding
-  on existing pages. Lost in the big rewrite (`6cdf7d5`).
 - [roy] [P3] **Test the widget as an embedded widget.** Build a demo external
   site, drop the widget in via `<script src="https://<sub>.qabu.net/widget.js">`,
   test the full flow.
