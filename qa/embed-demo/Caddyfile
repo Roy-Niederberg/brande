@@ -1,0 +1,14 @@
+:80 {
+	# Proxy widget assets + chat API to drlipokatz so the embed page is
+	# effectively same-origin. Real external embedding will need CORS
+	# headers on the client services-router — separate task.
+	@proxied path /widget.js /widget.css /prompt-composer/* /private/*
+	handle @proxied {
+		reverse_proxy drlipokatz-services-router-1:80
+	}
+
+	handle {
+		root * /srv
+		file_server
+	}
+}

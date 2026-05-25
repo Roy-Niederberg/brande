@@ -10,6 +10,9 @@
 #   http://qa.qabu.net:8080              — landing page, auth, onboarding
 #   http://dradamblack.qa.qabu.net:8443  — dradamblack client
 #   http://drlipokatz.qa.qabu.net:8443   — drlipokatz client
+#   http://localhost:8090                — embed demo (fake host site
+#                                          loading drlipokatz widget as
+#                                          floating bubble)
 #
 # Note: Facebook dispatcher → client forwarding won't work end-to-end
 # (it does external HTTPS in prod). Use mock-facebook for FB testing.
@@ -193,6 +196,16 @@ services:
         aliases: [facebook-comments]
     secrets: [fb_page_access_token]
     environment: [FACEBOOK_API_URL=https://graph.facebook.com/v24.0/]
+
+  # ─── Embed demo (fake external host site loading drlipokatz widget) ───
+
+  embed-demo:
+    image: caddy:alpine
+    ports: ["8090:80"]
+    networks: [qabu-network]
+    volumes:
+      - ./embed-demo/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./embed-demo/index.html:/srv/index.html:ro
 
 networks:
   main-network:

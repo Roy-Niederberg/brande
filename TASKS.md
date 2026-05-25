@@ -362,6 +362,21 @@ Phase 3 work until there's a second paying client.
 - [roy] [P3] **Test the widget as an embedded widget.** Build a demo external
   site, drop the widget in via `<script src="https://<sub>.qabu.net/widget.js">`,
   test the full flow.
+- [roy] [P3] **Add CORS support on the client services-router for cross-origin
+  widget embedding.** While building the QA embed demo (`qa/embed-demo/`) we
+  found that true external embedding (host page on `acme.com`, widget loaded
+  from `drlipokatz.qabu.net`) currently breaks: `fetch('/prompt-composer/ask')`,
+  `fetch('/prompt-composer/greeting')`, and the `import('/prompt-composer/capabilities')`
+  dynamic import all hit CORS errors because the services-router doesn't emit
+  `Access-Control-Allow-Origin` headers. The QA demo works around this by
+  proxying all widget paths through its own Caddy so everything is same-origin
+  — useful for demoing the UI, but not the prod scenario. Need to decide on
+  the allowed-origins policy (open `*` for the public widget endpoints? per-client
+  allowlist? Roy + Nevo to discuss) and add `header` directives in
+  `services/services_router/src/Caddyfile` for `/widget.js`, `/widget.css`, and
+  `/prompt-composer/*`. Also verify `import()` works — module CORS is stricter
+  than `fetch` (needs `crossorigin` attribute on the script tag or the response
+  needs proper CORS). (added 2026-05-25)
 - [roy] [defer] **Save cleared chat for reference.** When the user clears a
   chat, keep the previous conversation accessible (history view, not gone
   forever).

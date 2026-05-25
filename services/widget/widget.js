@@ -8,11 +8,13 @@
 
   // Read global configuration
   const config = window.ChatWidgetConfig || {}
-  const targetElement = config.targetElement
-    ? (typeof config.targetElement === 'string'
+  // Floating mode (launcher bubble + minimize) when no targetElement is supplied.
+  const floating = !config.targetElement
+  const targetElement = floating
+    ? document.body
+    : (typeof config.targetElement === 'string'
         ? document.querySelector(config.targetElement)
         : config.targetElement)
-    : document.body // Default to body if not specified
   const canvasElement = config.canvasElement
     ? (typeof config.canvasElement === 'string'
         ? document.querySelector(config.canvasElement)
@@ -24,7 +26,9 @@
   let lastMsgRole = null
   let lastMsgMinute = null
   const siteDir = config.direction || 'ltr'
-  targetElement.dir = siteDir
+  // In floating mode, targetElement is the host's <body>; don't flip the
+  // entire host page's direction — set dir on the widget itself instead.
+  if (!floating) targetElement.dir = siteDir
   const capabilities = import('/prompt-composer/capabilities')
     .then(m => m.default || {}).catch(() => ({}))
 
@@ -68,6 +72,9 @@
           <span>${config.clientName || 'Qab\u00fb'}</span>
           <span class="chat-header-subtitle">Qab\u00fb AI assistance</span>
         </div>
+        ${floating ? `<button class="chat-header-menu-btn" id="chat-minimize-btn" title="Minimize" aria-label="Minimize">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </button>` : ''}
         <button class="chat-header-menu-btn" id="chat-menu-btn">
           <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
             <circle cx="10" cy="4" r="2"/><circle cx="10" cy="10" r="2"/><circle cx="10" cy="16" r="2"/>
@@ -106,6 +113,7 @@
   widget.style.fontFamily = fontFamilyCSS
   widget.innerHTML = html
 
+  if (floating) { widget.classList.add('floating'); widget.dir = siteDir }
   targetElement.appendChild(widget)
 
   const messages = document.getElementById('chat-messages')
@@ -505,10 +513,32 @@
     addGhostBubble()
   }
 
-  widget.style.display = 'block'
-  if (!restoreHistory()) {
-    playGreeting().then(() => addGhostBubble())
+  const hasHistory = restoreHistory()
+
+  if (floating) {
+    const launcher = document.createElement('button')
+    launcher.id = 'chat-launcher'
+    launcher.dir = siteDir
+    launcher.setAttribute('aria-label', 'Open chat')
+    launcher.innerHTML = `<svg width="28" height="28" viewBox="-603 -603 1206 1206" fill="white"><path transform="rotate(135)" d="M -43.934 -600 L -43.934 0 C -102.948 -160.66 -102.944 -248.528 -175.736 -175.736 A 248.528 248.528 0 1 0 43.934 -244.614 L 43.934 -804.594 C 87.868 -512.132 248.528 -600 424.264 -424.264 A 600 600 0 1 1 -43.934 -600"/></svg>`
+    document.body.appendChild(launcher)
+    document.getElementById('chat-minimize-btn').onclick = () => {
+      widget.classList.remove('open'); launcher.classList.add('show')
+    }
+    // Defer greeting/input until first open — playing into a hidden widget
+    // means users miss the typewriter animation.
+    let firstOpen = true
+    launcher.onclick = async () => {
+      widget.classList.add('open'); launcher.classList.remove('show')
+      if (!firstOpen) return
+      firstOpen = false
+      if (!hasHistory) await playGreeting()
+      addGhostBubble()
+    }
+    requestAnimationFrame(() => launcher.classList.add('show'))
   } else {
-    addGhostBubble()
+    widget.style.display = 'block'
+    if (!hasHistory) playGreeting().then(() => addGhostBubble())
+    else addGhostBubble()
   }
 })()

@@ -1,21 +1,29 @@
 # Dev overlay — adds nodemon + source mounts to QA.
 # Usage: docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+#
+# Each dev service uses a `qabu-<service>-dev` image tag, distinct from the
+# `qa-<client>-<service>` tags produced by the base compose. This prevents
+# a dev-built image from silently shadowing the prod one (or vice-versa)
+# when switching overlays — both can coexist in the local image store.
 
 services:
 
   # ─── Main server ───
 
   facebook-dispatcher:
+    image: qabu-facebook-dispatcher-dev
     build: {context: ../services/facebook_dispatcher/, target: development}
     volumes:
       - ../services/facebook_dispatcher/src:/app/src:ro
 
   auth:
+    image: qabu-auth-dev
     build: {context: ../services/auth/, target: development}
     volumes:
       - ../services/auth/src:/app/src:ro
 
   client-onboarding:
+    image: qabu-client-onboarding-dev
     build: {context: ../services/client_onboarding/, target: development}
     volumes:
       - ../services/client_onboarding/src:/app/src:ro
@@ -23,6 +31,7 @@ services:
   # ─── Client infra ───
 
   auth-verifier:
+    image: qabu-auth-verifier-dev
     build: {context: ../services/auth_verifier/, target: development}
     volumes:
       - ../services/auth_verifier/src:/app/src:ro
@@ -30,11 +39,13 @@ services:
   # ─── dradamblack ───
 
   dradamblack-prompt-composer:
+    image: qabu-prompt-composer-dev
     build: {context: ../services/prompt_composer/, target: development}
     volumes:
       - ../services/prompt_composer/src:/app/src:ro
 
   dradamblack-admin:
+    image: qabu-admin-dev
     build: {context: ../services/admin/, target: development}
     volumes:
       - ../services/admin/src:/app/src:ro
@@ -42,11 +53,13 @@ services:
       - dradamblack-ui:/app/ui
 
   dradamblack-mock-facebook:
+    image: qabu-mock-facebook-dev
     build: {context: ../services/mock_facebook/, target: development}
     volumes:
       - ../services/mock_facebook/src:/app/src:ro
 
   dradamblack-facebook-comments:
+    image: qabu-facebook-comments-dev
     build: {context: ../services/facebook_comments/, target: development}
     volumes:
       - ../services/facebook_comments/src:/app/src:ro
@@ -54,11 +67,13 @@ services:
   # ─── drlipokatz ───
 
   drlipokatz-prompt-composer:
+    image: qabu-prompt-composer-dev
     build: {context: ../services/prompt_composer/, target: development}
     volumes:
       - ../services/prompt_composer/src:/app/src:ro
 
   drlipokatz-admin:
+    image: qabu-admin-dev
     build: {context: ../services/admin/, target: development}
     volumes:
       - ../services/admin/src:/app/src:ro
@@ -66,11 +81,13 @@ services:
       - drlipokatz-ui:/app/ui
 
   drlipokatz-mock-facebook:
+    image: qabu-mock-facebook-dev
     build: {context: ../services/mock_facebook/, target: development}
     volumes:
       - ../services/mock_facebook/src:/app/src:ro
 
   drlipokatz-facebook-comments:
+    image: qabu-facebook-comments-dev
     build: {context: ../services/facebook_comments/, target: development}
     volumes:
       - ../services/facebook_comments/src:/app/src:ro
