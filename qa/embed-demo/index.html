@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Acme Clinic — Demo Host Site</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    color: #2c3e50; line-height: 1.6; background: #f4f6f8; }
+  header { background: #34495e; color: white; padding: 18px 32px; }
+  header h1 { font-size: 20px; font-weight: 600; }
+  .hero { background: linear-gradient(135deg, #5d6d7e 0%, #34495e 100%);
+    color: white; padding: 80px 32px; text-align: center; }
+  .hero h2 { font-size: 42px; margin-bottom: 16px; }
+  .hero p { font-size: 18px; opacity: 0.9; max-width: 600px; margin: 0 auto; }
+  main { max-width: 900px; margin: 0 auto; padding: 48px 32px; }
+  section { background: white; padding: 32px; margin-bottom: 24px;
+    border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+  section h3 { color: #34495e; margin-bottom: 12px; }
+  section p { color: #5d6d7e; }
+  .badge { display: inline-block; background: #e8f4f8; color: #1B4F72;
+    padding: 4px 10px; border-radius: 4px; font-size: 13px; margin-top: 16px; }
+</style>
+</head>
+<body>
+<header><h1>Acme Clinic</h1></header>
+<div class="hero">
+  <h2>Welcome to Acme Clinic</h2>
+  <p>This is a fake host site used to demo the Qabu chat widget as an embed.</p>
+</div>
+<main>
+  <section>
+    <h3>About this page</h3>
+    <p>The widget script is loaded from the drlipokatz QA client, with no
+    <code>targetElement</code> set — so it renders as a floating bubble in the
+    corner. Click the bubble to open the chat.</p>
+    <span class="badge">Embed mode: floating</span>
+  </section>
+  <section>
+    <h3>Our services</h3>
+    <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Curabitur
+    pellentesque, neque eu volutpat tristique, ipsum lectus iaculis quam.</p>
+  </section>
+</main>
+
+<script>
+  // Fetch the client's own config (profile pic, name, direction) — same
+  // pattern the admin shell uses. Then load the widget; no targetElement →
+  // floating bubble + minimize.
+  fetch('/private/client-config.json').then(r => r.json()).then(cfg => {
+    window.ChatWidgetConfig = {
+      clientName: cfg.overlayTitle || 'Chat',
+      direction: cfg.direction || 'ltr',
+      profilePic: cfg.profilePic || ''
+    }
+    const s = document.createElement('script')
+    s.src = '/widget.js'
+    document.body.appendChild(s)
+  })
+</script>
+</body>
+</html>
