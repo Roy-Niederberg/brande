@@ -83,6 +83,15 @@ else
   ((errors++))
 fi
 
+# ---- Hebrew landing page (qabu.co.il) ----
+check "Hebrew landing page"  200 "$(status https://qabu.co.il/)"
+if [[ "$(body https://qabu.co.il/)" == *"עין טל"* ]]; then
+  echo "$PASS Hebrew landing page contains 'עין טל'"
+else
+  echo "$FAIL Hebrew landing page missing 'עין טל' content"
+  ((errors++))
+fi
+
 # ---- TLS cert expiry (warn under 14 days) ----
 cert_end=$(echo | openssl s_client -servername qabu.net -connect qabu.net:443 2>/dev/null \
           | openssl x509 -noout -enddate 2>/dev/null | cut -d= -f2)

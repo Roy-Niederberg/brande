@@ -20,6 +20,9 @@ services:
   landing-page:
     image:    registry.gitlab.com/rny3/brande/landing_page:latest
 
+  landing-page-hebrew:
+    image:    registry.gitlab.com/rny3/brande/landing_page_hebrew:latest
+
   client-onboarding:
     image:    registry.gitlab.com/rny3/brande/client_onboarding:latest
     secrets:  [onboarding_emails, provision_secret]

@@ -60,3 +60,11 @@ qabu.net {
 		reverse_proxy landing-page:80
 	}
 }
+
+qabu.co.il {
+	tls {
+		dns cloudflare {env.CLOUDFLARE_API_TOKEN}
+	}
+
+	reverse_proxy landing-page-hebrew:80
+}

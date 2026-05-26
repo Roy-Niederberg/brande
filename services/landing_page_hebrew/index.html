@@ -1,0 +1,2669 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QABU | סוכן הבינה המלאכותית של עין טל</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800;900&family=DM+Serif+Display:ital@0;1&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --ink: #0a0a0f;
+    --surface: #f4f1ea;
+    --white: #fdfcf9;
+    --accent: #1a5cff;
+    --accent-soft: #dce8ff;
+    --teal: #0d9488;
+    --teal-soft: #ccfbf1;
+    --amber: #d97706;
+    --amber-soft: #fef3c7;
+    --red: #dc2626;
+    --red-soft: #fee2e2;
+    --ink-60: rgba(10,10,15,0.6);
+    --ink-30: rgba(10,10,15,0.15);
+    --ink-10: rgba(10,10,15,0.06);
+    --radius: 16px;
+    --radius-sm: 8px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'Heebo', sans-serif;
+    background: var(--surface);
+    color: var(--ink);
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
+
+  /* ── NOISE TEXTURE ── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 999;
+    opacity: 0.025;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  /* ── NAV ── */
+  nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    padding: 20px 48px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(244,241,234,0.85);
+    backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--ink-10);
+    transition: all 0.3s;
+  }
+
+  nav.scrolled {
+    padding: 14px 48px;
+    background: rgba(244,241,234,0.97);
+    box-shadow: 0 2px 24px var(--ink-10);
+  }
+
+  .nav-logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    text-decoration: none;
+  }
+
+  .logo-mark {
+    width: 40px; height: 40px;
+    background: var(--ink);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .logo-mark::after {
+    content: '';
+    position: absolute;
+    width: 18px; height: 18px;
+    border: 3px solid #fff;
+    border-radius: 50%;
+    top: 50%; left: 50%;
+    transform: translate(-50%,-50%);
+    box-shadow: 0 0 0 3px rgba(255,255,255,0.15);
+  }
+
+  .logo-mark::before {
+    content: '';
+    position: absolute;
+    width: 6px; height: 6px;
+    background: var(--accent);
+    border-radius: 50%;
+    top: 50%; left: 50%;
+    transform: translate(-50%,-50%);
+    z-index: 2;
+  }
+
+  .logo-text {
+    font-family: 'Space Mono', monospace;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--ink);
+    letter-spacing: -0.5px;
+  }
+
+  .logo-sub {
+    font-size: 11px;
+    color: var(--ink-60);
+    font-weight: 400;
+    margin-top: -2px;
+  }
+
+  .nav-links {
+    display: flex;
+    gap: 40px;
+    list-style: none;
+  }
+
+  .nav-links a {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--ink-60);
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+
+  .nav-links a:hover { color: var(--ink); }
+
+  .nav-cta {
+    background: var(--ink);
+    color: var(--white) !important;
+    padding: 10px 24px;
+    border-radius: 50px;
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    transition: transform 0.2s, box-shadow 0.2s !important;
+    color: #fff !important;
+  }
+
+  .nav-cta:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+    color: #fff !important;
+  }
+
+  /* ── HERO ── */
+  .hero {
+    min-height: 100vh;
+    padding: 140px 48px 80px;
+    display: flex;
+    align-items: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hero-bg {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  .hero-bg-circle {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(80px);
+    opacity: 0.35;
+  }
+
+  .hero-bg-circle:nth-child(1) {
+    width: 700px; height: 700px;
+    background: radial-gradient(circle, #c7d7ff 0%, transparent 70%);
+    top: -200px; left: -200px;
+    animation: float1 12s ease-in-out infinite;
+  }
+
+  .hero-bg-circle:nth-child(2) {
+    width: 500px; height: 500px;
+    background: radial-gradient(circle, #ccfbf1 0%, transparent 70%);
+    bottom: -100px; right: 0;
+    animation: float2 15s ease-in-out infinite;
+  }
+
+  @keyframes float1 {
+    0%, 100% { transform: translate(0,0) scale(1); }
+    50% { transform: translate(40px, 30px) scale(1.05); }
+  }
+  @keyframes float2 {
+    0%, 100% { transform: translate(0,0) scale(1); }
+    50% { transform: translate(-30px, -20px) scale(1.03); }
+  }
+
+  .hero-grid {
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(var(--ink-10) 1px, transparent 1px),
+      linear-gradient(90deg, var(--ink-10) 1px, transparent 1px);
+    background-size: 60px 60px;
+    mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 0%, transparent 70%);
+  }
+
+  .hero-content {
+    position: relative;
+    z-index: 2;
+    max-width: 1200px;
+    margin: 0 auto;
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 480px;
+    gap: 80px;
+    align-items: center;
+  }
+
+  .hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--ink);
+    color: var(--white);
+    padding: 8px 16px;
+    border-radius: 50px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    margin-bottom: 32px;
+  }
+
+  .hero-badge .dot {
+    width: 6px; height: 6px;
+    background: #4ade80;
+    border-radius: 50%;
+    animation: pulse-dot 2s infinite;
+  }
+
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.8); }
+  }
+
+  .hero-headline {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(48px, 5vw, 76px);
+    line-height: 1.08;
+    color: var(--ink);
+    margin-bottom: 28px;
+    letter-spacing: -2px;
+  }
+
+  .hero-headline em {
+    font-style: italic;
+    color: var(--accent);
+  }
+
+  .hero-desc {
+    font-size: 18px;
+    color: var(--ink-60);
+    line-height: 1.7;
+    margin-bottom: 48px;
+    max-width: 520px;
+  }
+
+  .hero-actions {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .btn-primary {
+    background: var(--ink);
+    color: var(--white);
+    padding: 16px 32px;
+    border-radius: 50px;
+    font-size: 16px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.25s;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    border: none;
+    cursor: pointer;
+  }
+
+  .btn-primary:hover {
+    background: #1a1a2e;
+    transform: translateY(-2px);
+    box-shadow: 0 12px 40px rgba(0,0,0,0.2);
+  }
+
+  .btn-secondary {
+    color: var(--ink);
+    padding: 16px 24px;
+    font-size: 15px;
+    font-weight: 500;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: color 0.2s;
+  }
+
+  .btn-secondary:hover { color: var(--accent); }
+
+  .hero-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-top: 60px;
+  }
+
+  .hero-stat {
+    padding: 20px;
+    background: var(--white);
+    border-radius: var(--radius);
+    border: 1px solid var(--ink-10);
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+
+  .hero-stat:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 32px var(--ink-10);
+  }
+
+  .hero-stat-num {
+    font-family: 'Space Mono', monospace;
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--ink);
+    line-height: 1;
+    margin-bottom: 6px;
+  }
+
+  .hero-stat-label {
+    font-size: 13px;
+    color: var(--ink-60);
+    line-height: 1.4;
+  }
+
+  /* ── CHAT MOCKUP ── */
+  .chat-mockup {
+    background: var(--white);
+    border-radius: 24px;
+    border: 1px solid var(--ink-10);
+    box-shadow: 0 32px 80px rgba(0,0,0,0.12), 0 4px 16px rgba(0,0,0,0.06);
+    overflow: hidden;
+    position: relative;
+  }
+
+  .chat-header {
+    padding: 18px 20px;
+    background: var(--ink);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .chat-avatar {
+    width: 36px; height: 36px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    font-weight: 700;
+    color: #fff;
+    flex-shrink: 0;
+  }
+
+  .chat-header-info { flex: 1; }
+
+  .chat-header-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: #fff;
+  }
+
+  .chat-header-status {
+    font-size: 11px;
+    color: rgba(255,255,255,0.6);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .chat-header-status::before {
+    content: '';
+    width: 6px; height: 6px;
+    background: #4ade80;
+    border-radius: 50%;
+    display: inline-block;
+  }
+
+  .chat-body {
+    padding: 20px;
+    min-height: 360px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    background: #fafaf8;
+  }
+
+  .chat-msg {
+    max-width: 85%;
+    opacity: 0;
+    transform: translateY(10px);
+    animation: msg-in 0.4s ease forwards;
+  }
+
+  .chat-msg.bot { align-self: flex-start; }
+  .chat-msg.user { align-self: flex-end; }
+
+  .chat-msg-bubble {
+    padding: 12px 16px;
+    border-radius: 16px;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  .chat-msg.bot .chat-msg-bubble {
+    background: var(--white);
+    border: 1px solid var(--ink-10);
+    border-bottom-right-radius: 4px;
+    color: var(--ink);
+    box-shadow: 0 2px 8px var(--ink-10);
+  }
+
+  .chat-msg.user .chat-msg-bubble {
+    background: var(--ink);
+    color: var(--white);
+    border-bottom-left-radius: 4px;
+  }
+
+  .chat-msg-time {
+    font-size: 10px;
+    color: var(--ink-60);
+    margin-top: 4px;
+    padding: 0 4px;
+  }
+
+  .chat-msg.user .chat-msg-time { text-align: left; }
+
+  .chat-tags {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 6px;
+  }
+
+  .chat-tag {
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-weight: 500;
+  }
+
+  .chat-tag.teal { background: var(--teal-soft); color: var(--teal); }
+  .chat-tag.blue { background: var(--accent-soft); color: var(--accent); }
+  .chat-tag.amber { background: var(--amber-soft); color: var(--amber); }
+
+  .chat-footer {
+    padding: 14px 16px;
+    border-top: 1px solid var(--ink-10);
+    background: var(--white);
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .chat-input-mock {
+    flex: 1;
+    padding: 10px 14px;
+    background: var(--surface);
+    border-radius: 20px;
+    font-size: 13px;
+    color: var(--ink-60);
+    border: 1px solid var(--ink-10);
+  }
+
+  .chat-send-btn {
+    width: 36px; height: 36px;
+    background: var(--accent);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .chat-send-btn svg { width: 16px; height: 16px; }
+
+  @keyframes msg-in {
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .chat-msg:nth-child(1) { animation-delay: 0.2s; }
+  .chat-msg:nth-child(2) { animation-delay: 0.8s; }
+  .chat-msg:nth-child(3) { animation-delay: 1.4s; }
+  .chat-msg:nth-child(4) { animation-delay: 2.0s; }
+  .chat-msg:nth-child(5) { animation-delay: 2.6s; }
+
+  /* ── SECTIONS COMMON ── */
+  .section { padding: 100px 48px; }
+  .section-inner { max-width: 1200px; margin: 0 auto; }
+
+  .section-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 20px;
+  }
+
+  .section-eyebrow::before {
+    content: '';
+    width: 24px; height: 2px;
+    background: var(--accent);
+  }
+
+  .section-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(36px, 3.5vw, 54px);
+    line-height: 1.15;
+    letter-spacing: -1.5px;
+    color: var(--ink);
+    margin-bottom: 20px;
+  }
+
+  .section-lead {
+    font-size: 18px;
+    color: var(--ink-60);
+    line-height: 1.7;
+    max-width: 600px;
+  }
+
+  /* ── VALUE STRIP ── */
+  .value-strip {
+    background: var(--ink);
+    padding: 20px 0;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .value-scroll {
+    display: flex;
+    gap: 60px;
+    animation: scroll-x 25s linear infinite;
+    width: max-content;
+  }
+
+  .value-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: rgba(255,255,255,0.7);
+    font-size: 14px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  .value-item .icon {
+    font-size: 18px;
+    filter: grayscale(0);
+  }
+
+  .value-sep {
+    color: rgba(255,255,255,0.2);
+    font-size: 20px;
+  }
+
+  @keyframes scroll-x {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
+
+  /* ── HOW IT WORKS ── */
+  .how-section {
+    background: var(--white);
+  }
+
+  .how-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2px;
+    margin-top: 64px;
+    background: var(--ink-10);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+
+  .how-card {
+    padding: 40px 32px;
+    background: var(--white);
+    position: relative;
+    transition: background 0.3s;
+  }
+
+  .how-card:hover { background: var(--surface); }
+
+  .how-num {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--ink-30);
+    letter-spacing: 1px;
+    margin-bottom: 20px;
+  }
+
+  .how-icon {
+    width: 48px; height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    margin-bottom: 20px;
+  }
+
+  .how-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--ink);
+    margin-bottom: 12px;
+    line-height: 1.3;
+  }
+
+  .how-desc {
+    font-size: 14px;
+    color: var(--ink-60);
+    line-height: 1.7;
+  }
+
+  /* ── LAYERS SECTION ── */
+  .layers-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 24px;
+    margin-top: 64px;
+  }
+
+  .layer-card {
+    padding: 32px;
+    background: var(--white);
+    border-radius: var(--radius);
+    border: 1px solid var(--ink-10);
+    transition: all 0.25s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .layer-card::before {
+    content: '';
+    position: absolute;
+    top: 0; right: 0;
+    width: 4px;
+    height: 0;
+    border-radius: 0 var(--radius) var(--radius) 0;
+    transition: height 0.3s;
+  }
+
+  .layer-card:hover::before { height: 100%; }
+
+  .layer-card.accent-blue::before { background: var(--accent); }
+  .layer-card.accent-teal::before { background: var(--teal); }
+  .layer-card.accent-amber::before { background: var(--amber); }
+  .layer-card.accent-red::before { background: var(--red); }
+
+  .layer-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 16px 48px var(--ink-10);
+  }
+
+  .layer-num {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--ink-30);
+    letter-spacing: 1px;
+    margin-bottom: 12px;
+  }
+
+  .layer-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--ink);
+    margin-bottom: 10px;
+  }
+
+  .layer-desc {
+    font-size: 14px;
+    color: var(--ink-60);
+    line-height: 1.7;
+    margin-bottom: 16px;
+  }
+
+  .layer-tags {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .layer-tag {
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-weight: 500;
+    background: var(--ink-10);
+    color: var(--ink-60);
+  }
+
+  /* ── ROUTING TABLE ── */
+  .routing-section { background: var(--white); }
+
+  .routing-table-wrap {
+    margin-top: 48px;
+    border-radius: var(--radius);
+    overflow: hidden;
+    border: 1px solid var(--ink-10);
+  }
+
+  .routing-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .routing-table th {
+    background: var(--ink);
+    color: rgba(255,255,255,0.7);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    padding: 14px 20px;
+    text-align: right;
+  }
+
+  .routing-table td {
+    padding: 16px 20px;
+    font-size: 14px;
+    color: var(--ink);
+    border-bottom: 1px solid var(--ink-10);
+  }
+
+  .routing-table tr:last-child td { border-bottom: none; }
+
+  .routing-table tr:hover td { background: var(--surface); }
+
+  .risk-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  .risk-high { background: var(--red-soft); color: var(--red); }
+  .risk-vhigh { background: #fee2e2; color: #991b1b; }
+  .risk-med { background: var(--amber-soft); color: var(--amber); }
+  .risk-low { background: var(--teal-soft); color: var(--teal); }
+
+  /* ── CONVERSION LOGIC ── */
+  .conversion-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 16px;
+    margin-top: 48px;
+  }
+
+  .conv-card {
+    padding: 24px 20px;
+    border-radius: var(--radius);
+    border: 1px solid var(--ink-10);
+    background: var(--white);
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+
+  .conv-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 40px var(--ink-10);
+  }
+
+  .conv-blocker {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--ink-60);
+    letter-spacing: 0.5px;
+    margin-bottom: 12px;
+    text-transform: uppercase;
+  }
+
+  .conv-signal {
+    font-size: 13px;
+    color: var(--ink-60);
+    margin-bottom: 16px;
+    line-height: 1.5;
+    font-style: italic;
+  }
+
+  .conv-cta {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 0.5px;
+    margin-bottom: 10px;
+  }
+
+  .conv-example {
+    font-size: 13px;
+    color: var(--ink);
+    line-height: 1.5;
+    padding: 10px 12px;
+    background: var(--surface);
+    border-radius: var(--radius-sm);
+    border-right: 3px solid var(--accent);
+  }
+
+  /* ── FLOW ── */
+  .flow-section { background: var(--surface); }
+
+  .flow-steps {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+    margin-top: 48px;
+  }
+
+  .flow-step {
+    position: relative;
+  }
+
+  .flow-step-inner {
+    padding: 28px;
+    background: var(--white);
+    border-radius: var(--radius);
+    border: 1px solid var(--ink-10);
+    height: 100%;
+    transition: all 0.25s;
+  }
+
+  .flow-step-inner:hover {
+    box-shadow: 0 12px 40px var(--ink-10);
+    transform: translateY(-2px);
+  }
+
+  .flow-step-num {
+    font-family: 'Space Mono', monospace;
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--ink-10);
+    line-height: 1;
+    margin-bottom: 16px;
+  }
+
+  .flow-step-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--ink);
+    margin-bottom: 8px;
+  }
+
+  .flow-step-action {
+    font-size: 13px;
+    color: var(--ink-60);
+    line-height: 1.6;
+    margin-bottom: 12px;
+  }
+
+  .flow-step-output {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--teal);
+    padding: 6px 10px;
+    background: var(--teal-soft);
+    border-radius: var(--radius-sm);
+    display: inline-block;
+  }
+
+  /* ── KPIs ── */
+  .kpi-section { background: var(--ink); color: var(--white); }
+  .kpi-section .section-eyebrow { color: rgba(255,255,255,0.5); }
+  .kpi-section .section-eyebrow::before { background: rgba(255,255,255,0.3); }
+  .kpi-section .section-title { color: var(--white); }
+  .kpi-section .section-lead { color: rgba(255,255,255,0.6); }
+
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 2px;
+    margin-top: 48px;
+    background: rgba(255,255,255,0.06);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+
+  .kpi-card {
+    padding: 32px 24px;
+    background: var(--ink);
+    transition: background 0.2s;
+  }
+
+  .kpi-card:hover { background: #1a1a2e; }
+
+  .kpi-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: rgba(255,255,255,0.4);
+    letter-spacing: 0.5px;
+    margin-bottom: 12px;
+    text-transform: uppercase;
+  }
+
+  .kpi-num {
+    font-family: 'Space Mono', monospace;
+    font-size: 36px;
+    font-weight: 700;
+    color: var(--white);
+    line-height: 1;
+    margin-bottom: 8px;
+  }
+
+  .kpi-target {
+    font-size: 12px;
+    color: rgba(255,255,255,0.5);
+  }
+
+  .kpi-target span {
+    color: #4ade80;
+    font-weight: 600;
+  }
+
+  /* ── TIMELINE ── */
+  .timeline-section { background: var(--white); }
+
+  .timeline {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 16px;
+    margin-top: 56px;
+    position: relative;
+  }
+
+  .timeline::before {
+    content: '';
+    position: absolute;
+    top: 36px; right: 0; left: 0;
+    height: 2px;
+    background: var(--ink-10);
+  }
+
+  .tl-item {
+    position: relative;
+  }
+
+  .tl-week {
+    width: 72px; height: 72px;
+    background: var(--surface);
+    border: 2px solid var(--ink-10);
+    border-radius: 50%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 20px;
+    position: relative;
+    z-index: 1;
+    transition: all 0.25s;
+  }
+
+  .tl-item:hover .tl-week {
+    background: var(--ink);
+    border-color: var(--ink);
+  }
+
+  .tl-week-num {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--ink-60);
+    line-height: 1;
+  }
+
+  .tl-week-label {
+    font-size: 10px;
+    color: var(--ink-30);
+  }
+
+  .tl-item:hover .tl-week-num,
+  .tl-item:hover .tl-week-label { color: var(--white); }
+
+  .tl-name {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--ink);
+    text-align: center;
+    margin-bottom: 8px;
+  }
+
+  .tl-tasks {
+    list-style: none;
+    font-size: 12px;
+    color: var(--ink-60);
+    line-height: 1.6;
+  }
+
+  .tl-tasks li::before {
+    content: '↗ ';
+    color: var(--accent);
+    font-weight: 700;
+  }
+
+  /* ── SAFETY ── */
+  .safety-section { background: #fff8f0; }
+
+  .safety-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
+    margin-top: 48px;
+    align-items: start;
+  }
+
+  .safety-rules {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .safety-rule {
+    display: flex;
+    gap: 16px;
+    padding: 20px;
+    background: var(--white);
+    border-radius: var(--radius);
+    border: 1px solid rgba(220,38,38,0.1);
+  }
+
+  .safety-rule-icon {
+    font-size: 20px;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  .safety-rule-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--ink);
+    margin-bottom: 4px;
+  }
+
+  .safety-rule-desc {
+    font-size: 13px;
+    color: var(--ink-60);
+    line-height: 1.5;
+  }
+
+  .safety-critical {
+    padding: 32px;
+    background: var(--ink);
+    border-radius: var(--radius);
+    color: var(--white);
+  }
+
+  .safety-critical-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 28px;
+    margin-bottom: 20px;
+    line-height: 1.2;
+  }
+
+  .safety-limits {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .safety-limit {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    font-size: 14px;
+    color: rgba(255,255,255,0.7);
+    line-height: 1.5;
+    padding: 12px;
+    background: rgba(255,255,255,0.04);
+    border-radius: var(--radius-sm);
+    border-right: 3px solid rgba(220,38,38,0.5);
+  }
+
+  .safety-limit .x { color: var(--red); font-weight: 700; font-size: 16px; }
+
+  /* ── POST VISIT ── */
+  .postvisit-section { background: var(--surface); }
+
+  .postvisit-timeline {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 24px;
+    margin-top: 48px;
+  }
+
+  .pv-card {
+    padding: 28px;
+    background: var(--white);
+    border-radius: var(--radius);
+    border: 1px solid var(--ink-10);
+    position: relative;
+    overflow: hidden;
+    transition: all 0.25s;
+  }
+
+  .pv-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 40px var(--ink-10);
+  }
+
+  .pv-card::after {
+    content: attr(data-num);
+    position: absolute;
+    bottom: -10px; left: -4px;
+    font-family: 'Space Mono', monospace;
+    font-size: 80px;
+    font-weight: 700;
+    color: var(--ink-10);
+    line-height: 1;
+    pointer-events: none;
+  }
+
+  .pv-trigger {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .pv-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--ink);
+    margin-bottom: 10px;
+  }
+
+  .pv-msg {
+    font-size: 13px;
+    color: var(--ink-60);
+    line-height: 1.6;
+    margin-bottom: 16px;
+    font-style: italic;
+    padding: 10px 12px;
+    background: var(--surface);
+    border-radius: var(--radius-sm);
+  }
+
+  .pv-goal {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--teal);
+    background: var(--teal-soft);
+    padding: 4px 10px;
+    border-radius: 20px;
+    display: inline-block;
+  }
+
+  .pv-channel {
+    font-size: 11px;
+    color: var(--ink-60);
+    margin-top: 8px;
+  }
+
+  /* ── NEXT STEPS ── */
+  .nextsteps-section { background: var(--white); }
+
+  .nextsteps-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 16px;
+    margin-top: 48px;
+  }
+
+  .ns-card {
+    padding: 28px 20px;
+    background: var(--surface);
+    border-radius: var(--radius);
+    border: 2px solid var(--ink-10);
+    transition: all 0.25s;
+    position: relative;
+  }
+
+  .ns-card:hover {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+    transform: translateY(-2px);
+  }
+
+  .ns-num {
+    font-family: 'Space Mono', monospace;
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--ink-10);
+    line-height: 1;
+    margin-bottom: 16px;
+  }
+
+  .ns-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--ink);
+    margin-bottom: 8px;
+    line-height: 1.3;
+  }
+
+  .ns-why {
+    font-size: 12px;
+    color: var(--ink-60);
+    line-height: 1.6;
+    margin-bottom: 12px;
+  }
+
+  .ns-who {
+    font-size: 11px;
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  /* ── CTA SECTION ── */
+  .cta-section {
+    background: var(--ink);
+    padding: 100px 48px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .cta-section::before {
+    content: 'QABU';
+    position: absolute;
+    font-family: 'Space Mono', monospace;
+    font-size: 280px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.02);
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%,-50%);
+    pointer-events: none;
+    white-space: nowrap;
+  }
+
+  .cta-inner {
+    position: relative;
+    z-index: 1;
+    max-width: 700px;
+    margin: 0 auto;
+  }
+
+  .cta-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(40px, 5vw, 64px);
+    color: var(--white);
+    letter-spacing: -2px;
+    line-height: 1.1;
+    margin-bottom: 24px;
+  }
+
+  .cta-desc {
+    font-size: 18px;
+    color: rgba(255,255,255,0.55);
+    line-height: 1.7;
+    margin-bottom: 48px;
+  }
+
+  .cta-btns {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .btn-cta-primary {
+    background: #fff;
+    color: var(--ink);
+    padding: 18px 40px;
+    border-radius: 50px;
+    font-size: 16px;
+    font-weight: 700;
+    text-decoration: none;
+    transition: all 0.25s;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .btn-cta-primary:hover {
+    background: var(--accent-soft);
+    transform: translateY(-2px);
+    box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+  }
+
+  .btn-cta-secondary {
+    border: 1px solid rgba(255,255,255,0.2);
+    color: rgba(255,255,255,0.7);
+    padding: 18px 40px;
+    border-radius: 50px;
+    font-size: 16px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all 0.25s;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .btn-cta-secondary:hover {
+    border-color: rgba(255,255,255,0.5);
+    color: #fff;
+    background: rgba(255,255,255,0.05);
+  }
+
+  /* ── FOOTER ── */
+  footer {
+    background: var(--ink);
+    border-top: 1px solid rgba(255,255,255,0.06);
+    padding: 40px 48px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .footer-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+  }
+
+  .footer-logo-mark {
+    width: 32px; height: 32px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .footer-logo-text {
+    font-family: 'Space Mono', monospace;
+    font-size: 16px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.7);
+  }
+
+  .footer-right {
+    font-size: 13px;
+    color: rgba(255,255,255,0.3);
+  }
+
+  /* ── SCROLL REVEAL ── */
+  .reveal {
+    opacity: 0;
+    transform: translateY(24px);
+    transition: opacity 0.6s ease, transform 0.6s ease;
+  }
+
+  .reveal.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .reveal-delay-1 { transition-delay: 0.1s; }
+  .reveal-delay-2 { transition-delay: 0.2s; }
+  .reveal-delay-3 { transition-delay: 0.3s; }
+  .reveal-delay-4 { transition-delay: 0.4s; }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 1100px) {
+    .hero-content { grid-template-columns: 1fr; }
+    .chat-mockup { max-width: 480px; }
+    .conversion-grid { grid-template-columns: repeat(3, 1fr); }
+    .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    .timeline { grid-template-columns: repeat(3, 1fr); }
+    .nextsteps-grid { grid-template-columns: repeat(3, 1fr); }
+  }
+
+  @media (max-width: 768px) {
+    nav { padding: 16px 24px; }
+    .nav-links { display: none; }
+    .hero { padding: 120px 24px 60px; }
+    .section { padding: 60px 24px; }
+    .how-grid { grid-template-columns: 1fr; }
+    .layers-grid { grid-template-columns: 1fr; }
+    .conversion-grid { grid-template-columns: 1fr 1fr; }
+    .flow-steps { grid-template-columns: 1fr; }
+    .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    .timeline { grid-template-columns: repeat(2, 1fr); }
+    .postvisit-timeline { grid-template-columns: 1fr 1fr; }
+    .nextsteps-grid { grid-template-columns: 1fr 1fr; }
+    .safety-grid { grid-template-columns: 1fr; }
+    footer { flex-direction: column; gap: 16px; text-align: center; }
+  }
+
+  /* ── INTENT CAROUSEL ── */
+  .intent-section { background: var(--surface); }
+
+  .intent-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 32px;
+  }
+
+  .intent-tag {
+    padding: 10px 18px;
+    border-radius: 50px;
+    font-size: 14px;
+    font-weight: 500;
+    border: 1px solid var(--ink-10);
+    background: var(--white);
+    color: var(--ink);
+    transition: all 0.2s;
+    cursor: default;
+  }
+
+  .intent-tag:hover {
+    background: var(--ink);
+    color: var(--white);
+    border-color: var(--ink);
+  }
+
+  .intent-tag.medical { border-color: rgba(13,148,136,0.3); }
+  .intent-tag.medical:hover { background: var(--teal); border-color: var(--teal); }
+  .intent-tag.financial { border-color: rgba(217,119,6,0.3); }
+  .intent-tag.financial:hover { background: var(--amber); border-color: var(--amber); }
+  .intent-tag.urgent { border-color: rgba(220,38,38,0.3); }
+  .intent-tag.urgent:hover { background: var(--red); border-color: var(--red); color: #fff; }
+  .intent-tag.logistic { border-color: rgba(26,92,255,0.3); }
+  .intent-tag.logistic:hover { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+  .intent-legend {
+    display: flex;
+    gap: 24px;
+    margin-top: 24px;
+    flex-wrap: wrap;
+  }
+
+  .intent-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--ink-60);
+  }
+
+  .intent-legend-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+  }
+
+  /* ── ARCHITECTURE VISUAL ── */
+  .arch-section { background: var(--ink); color: var(--white); }
+  .arch-section .section-eyebrow { color: rgba(255,255,255,0.5); }
+  .arch-section .section-eyebrow::before { background: rgba(255,255,255,0.3); }
+  .arch-section .section-title { color: var(--white); }
+  .arch-section .section-lead { color: rgba(255,255,255,0.5); }
+
+  .arch-layers {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    margin-top: 48px;
+  }
+
+  .arch-layer {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 20px 28px;
+    background: rgba(255,255,255,0.03);
+    border-radius: var(--radius-sm);
+    border: 1px solid rgba(255,255,255,0.06);
+    transition: all 0.25s;
+    cursor: default;
+  }
+
+  .arch-layer:hover {
+    background: rgba(255,255,255,0.07);
+    border-color: rgba(255,255,255,0.12);
+    transform: translateX(-4px);
+  }
+
+  .arch-layer-num {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.2);
+    width: 24px;
+    flex-shrink: 0;
+  }
+
+  .arch-layer-icon {
+    font-size: 20px;
+    width: 40px;
+    flex-shrink: 0;
+    text-align: center;
+  }
+
+  .arch-layer-name {
+    font-size: 15px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.85);
+    flex: 1;
+  }
+
+  .arch-layer-role {
+    font-size: 13px;
+    color: rgba(255,255,255,0.4);
+    flex: 2;
+  }
+
+  .arch-layer-owner {
+    font-size: 11px;
+    color: rgba(255,255,255,0.3);
+    font-family: 'Space Mono', monospace;
+    flex-shrink: 0;
+  }
+
+  /* ── INSURANCE SECTION ── */
+  .insurance-section { background: var(--white); }
+
+  .insurance-table-wrap {
+    margin-top: 40px;
+    border-radius: var(--radius);
+    overflow: hidden;
+    border: 1px solid var(--ink-10);
+  }
+
+  .insurance-table { width: 100%; border-collapse: collapse; }
+  .insurance-table th {
+    background: var(--surface);
+    padding: 14px 20px;
+    text-align: right;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--ink-60);
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid var(--ink-10);
+  }
+  .insurance-table td {
+    padding: 16px 20px;
+    font-size: 14px;
+    border-bottom: 1px solid var(--ink-10);
+    vertical-align: top;
+    line-height: 1.5;
+  }
+  .insurance-table tr:last-child td { border-bottom: none; }
+  .insurance-table tr:hover td { background: var(--surface); }
+
+  .kupah-name {
+    font-weight: 700;
+    color: var(--ink);
+  }
+
+  .approved-text {
+    color: var(--ink-60);
+    font-style: italic;
+    font-size: 13px;
+  }
+
+  /* ── QUOTE BLOCK ── */
+  .quote-block {
+    padding: 28px 32px;
+    background: var(--accent-soft);
+    border-radius: var(--radius);
+    border-right: 4px solid var(--accent);
+    margin-top: 32px;
+  }
+
+  .quote-block-text {
+    font-size: 16px;
+    color: var(--ink);
+    line-height: 1.7;
+    font-weight: 500;
+  }
+
+  .quote-block-source {
+    font-size: 13px;
+    color: var(--ink-60);
+    margin-top: 10px;
+  }
+</style>
+</head>
+
+<body>
+
+<!-- ──────────────────────── NAV ──────────────────────── -->
+<nav id="main-nav">
+  <a href="#" class="nav-logo">
+    <div class="logo-mark"></div>
+    <div>
+      <div class="logo-text">QABU</div>
+      <div class="logo-sub">עין טל | AI Medical Agent</div>
+    </div>
+  </a>
+  <ul class="nav-links">
+    <li><a href="#how">איך עובד</a></li>
+    <li><a href="#layers">ארכיטקטורה</a></li>
+    <li><a href="#routing">ניתוב</a></li>
+    <li><a href="#kpis">KPIs</a></li>
+    <li><a href="#timeline">הטמעה</a></li>
+    <li><a href="#contact" class="nav-cta">להתחיל</a></li>
+  </ul>
+</nav>
+
+<!-- ──────────────────────── HERO ──────────────────────── -->
+<section class="hero">
+  <div class="hero-bg">
+    <div class="hero-bg-circle"></div>
+    <div class="hero-bg-circle"></div>
+    <div class="hero-grid"></div>
+  </div>
+
+  <div class="hero-content">
+    <div>
+      <div class="hero-badge">
+        <span class="dot"></span>
+        סוכן פעיל 24/7 | עין טל
+      </div>
+
+      <h1 class="hero-headline">
+        לא צ'אטבוט.<br>
+        <em>סוכן תיאום</em><br>
+        רפואי-שיווקי.
+      </h1>
+
+      <p class="hero-desc">
+        QABU מוביל כל שיחה לתיאום ייעוץ, מסווג לידים אוטומטית, מוריד עומס מהמוקד, ומחזיר לצוות שליטה מלאה על חווית המטופל — עוד לפני הפגישה הראשונה.
+      </p>
+
+      <div class="hero-actions">
+        <a href="#layers" class="btn-primary">
+          לארכיטקטורה המלאה
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8H13M13 8L8 3M13 8L8 13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+        <a href="#how" class="btn-secondary">
+          → איך זה עובד
+        </a>
+      </div>
+
+      <div class="hero-stats">
+        <div class="hero-stat">
+          <div class="hero-stat-num">7</div>
+          <div class="hero-stat-label">שכבות ארכיטקטורה</div>
+        </div>
+        <div class="hero-stat">
+          <div class="hero-stat-num">39+</div>
+          <div class="hero-stat-label">Intents מוגדרים</div>
+        </div>
+        <div class="hero-stat">
+          <div class="hero-stat-num">6</div>
+          <div class="hero-stat-label">תחומי רפואת עיניים</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CHAT MOCKUP -->
+    <div class="chat-mockup">
+      <div class="chat-header">
+        <div class="chat-avatar">Q</div>
+        <div class="chat-header-info">
+          <div class="chat-header-name">QABU | עין טל</div>
+          <div class="chat-header-status">פעיל עכשיו</div>
+        </div>
+      </div>
+      <div class="chat-body">
+        <div class="chat-msg bot">
+          <div class="chat-msg-bubble">שלום! אני QABU, סוכן עין טל. במה אוכל לעזור לך היום?</div>
+          <div class="chat-msg-time">עכשיו</div>
+        </div>
+        <div class="chat-msg user">
+          <div class="chat-msg-bubble">שלום, יש לי טשטוש בראייה ואני מתעניין בניתוח קטרקט</div>
+          <div class="chat-msg-time">עכשיו</div>
+        </div>
+        <div class="chat-msg bot">
+          <div class="chat-msg-bubble">
+            הבנתי. טשטוש ראייה עשוי להצביע על קטרקט — וזה בהחלט משהו שניתן לטפל בו.<br><br>
+            שאלה קטנה לפני שמקדמים — באיזה קופת חולים אתה חבר?
+          </div>
+          <div class="chat-tags">
+            <span class="chat-tag teal">✓ Intent: ייעוץ קטרקט</span>
+            <span class="chat-tag blue">→ שכבת ניתוב פעילה</span>
+          </div>
+          <div class="chat-msg-time">עכשיו</div>
+        </div>
+        <div class="chat-msg user">
+          <div class="chat-msg-bubble">מכבי, יש לי גם שב"ן זהב</div>
+          <div class="chat-msg-time">עכשיו</div>
+        </div>
+        <div class="chat-msg bot">
+          <div class="chat-msg-bubble">
+            מצוין. אצל מכבי ניתן בדרך כלל לבצע ניתוח קטרקט דרך שב"ן עם השתתפות עצמית — הנציג שלנו יבדוק את הפרטים המדויקים עבורך.<br><br>
+            מתי נוח לך לתאם ייעוץ ראשוני?
+          </div>
+          <div class="chat-tags">
+            <span class="chat-tag amber">₪ בדיקת כיסוי ביטוח</span>
+            <span class="chat-tag teal">CTA: תיאום ייעוץ</span>
+          </div>
+          <div class="chat-msg-time">עכשיו</div>
+        </div>
+      </div>
+      <div class="chat-footer">
+        <div class="chat-input-mock">כתוב הודעה...</div>
+        <div class="chat-send-btn">
+          <svg viewBox="0 0 16 16" fill="none"><path d="M13 8L3 3l2.5 5L3 13l10-5z" fill="white"/></svg>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ──────────────────────── VALUE STRIP ──────────────────────── -->
+<div class="value-strip">
+  <div class="value-scroll">
+    <div class="value-item"><span class="icon">👁️</span> קטרקט</div>
+    <span class="value-sep">·</span>
+    <div class="value-item"><span class="icon">🔬</span> גלאוקומה</div>
+    <span class="value-sep">·</span>
+    <div class="value-item"><span class="icon">🧬</span> רשתית</div>
+    <span class="value-sep">·</span>
+    <div class="value-item"><span class="icon">🔷</span> קרנית</div>
+    <span class="value-sep">·</span>
+    <div class="value-item"><span class="icon">💊</span> עפעפיים</div>
+    <span class="value-sep">·</span>
+    <div class="value-item"><span class="icon">📋</span> ייעוץ כללי</div>
+    <span class="value-sep">·</span>
+    <div class="value-item"><span class="icon">🤖</span> Patient Intelligence</div>
+    <span class="value-sep">·</span>
+    <div class="value-item"><span class="icon">⚡</span> Adaptive Conversion</div>
+    <span class="value-sep">·</span>
+    <div class="value-item"><span class="icon">🔁</span> Post-Visit Loop</div>
+    <span class="value-sep">·</span>
+    <div class="value-item"><span class="icon">🛡️</span> Medical Safety Layer</div>
+    <span class="value-sep">·</span>
+    <div class="value-item"><span class="icon">👁️</span> קטרקט</div>
+    <span class="value-sep">·</span>
+    <div class="value-item"><span class="icon">🔬</span> גלאוקומה</div>
+    <span class="value-sep">·</span>
+    <div class="value-item"><span class="icon">🧬</span> רשתית</div>
+    <span class="value-sep">·</span>
+    <div class="value-item"><span class="icon">🔷</span> קרנית</div>
+    <span class="value-sep">·</span>
+    <div class="value-item"><span class="icon">💊</span> עפעפיים</div>
+    <span class="value-sep">·</span>
+    <div class="value-item"><span class="icon">📋</span> ייעוץ כללי</div>
+    <span class="value-sep">·</span>
+    <div class="value-item"><span class="icon">🤖</span> Patient Intelligence</div>
+    <span class="value-sep">·</span>
+    <div class="value-item"><span class="icon">⚡</span> Adaptive Conversion</div>
+    <span class="value-sep">·</span>
+    <div class="value-item"><span class="icon">🔁</span> Post-Visit Loop</div>
+    <span class="value-sep">·</span>
+    <div class="value-item"><span class="icon">🛡️</span> Medical Safety Layer</div>
+  </div>
+</div>
+
+<!-- ──────────────────────── HOW IT WORKS ──────────────────────── -->
+<section class="section how-section" id="how">
+  <div class="section-inner">
+    <div class="reveal">
+      <div class="section-eyebrow">איך זה עובד</div>
+      <h2 class="section-title">מפנייה לליד מסווג<br>בשיחה אחת</h2>
+      <p class="section-lead">QABU לא רק עונה — הוא מזהה, מנתב, אוסף מידע, ומסווג. הנציג מקבל פרופיל מוכן, לא שיחה גולמית.</p>
+    </div>
+
+    <div class="how-grid">
+      <div class="how-card reveal reveal-delay-1">
+        <div class="how-num">01 — IDENTIFY</div>
+        <div class="how-icon" style="background:#dce8ff;">🎯</div>
+        <div class="how-title">זיהוי כוונה ותחום</div>
+        <div class="how-desc">QABU מזהה מ-39+ Intents את הפנייה המדויקת — קטרקט, גלאוקומה, רשתית, מחיר, חירום — ומנתב לשכבה הנכונה.</div>
+      </div>
+      <div class="how-card reveal reveal-delay-2">
+        <div class="how-num">02 — GUIDE</div>
+        <div class="how-icon" style="background:#ccfbf1;">🧭</div>
+        <div class="how-title">הנחיה חכמה לפעולה</div>
+        <div class="how-desc">Adaptive Conversion מזהה חוסמים — חשש מחיר, פחד ניתוחי, חוסר ידע — ומשנה את ה-CTA בהתאם לפרופיל בזמן אמת.</div>
+      </div>
+      <div class="how-card reveal reveal-delay-3">
+        <div class="how-num">03 — DELIVER</div>
+        <div class="how-icon" style="background:#fef3c7;">📦</div>
+        <div class="how-title">מסירת פרופיל לנציג</div>
+        <div class="how-desc">Patient Intelligence מייצר תקציר CRM מלא בסוף כל שיחה — תחום, קופה, ביטוח, דחיפות, חוסם עיקרי — הנציג מוכן לשיחה.</div>
+      </div>
+      <div class="how-card reveal reveal-delay-1">
+        <div class="how-num">04 — PROTECT</div>
+        <div class="how-icon" style="background:#fee2e2;">🛡️</div>
+        <div class="how-title">זיהוי חירום בזמן אמת</div>
+        <div class="how-desc">שכבת הבטיחות סורקת 100% מהשיחות לסימני חירום ומפנה מיידית — ללא אפשרות לדילוג, ללא יוצא מן הכלל.</div>
+      </div>
+      <div class="how-card reveal reveal-delay-2">
+        <div class="how-num">05 — ROUTE</div>
+        <div class="how-icon" style="background:#dce8ff;">🔀</div>
+        <div class="how-title">ניתוב לרופא הנכון</div>
+        <div class="how-desc">Multi-Specialty Routing מזהה את התחום הרפואי ומנתב לרופא המדויק לפי תחום, זמינות ושפה — לא תשובה גנרית.</div>
+      </div>
+      <div class="how-card reveal reveal-delay-3">
+        <div class="how-num">06 — RETAIN</div>
+        <div class="how-icon" style="background:#ccfbf1;">🔁</div>
+        <div class="how-title">שמירת קשר אחרי הביקור</div>
+        <div class="how-desc">Post-Visit Loop חוזר למטופל ב-4 שלבים מוגדרים — לאחר ייעוץ, לפני ניתוח, לאחר ניתוח — ומעלה המרה לניתוח.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ──────────────────────── ARCHITECTURE ──────────────────────── -->
+<section class="section arch-section" id="layers">
+  <div class="section-inner">
+    <div class="reveal">
+      <div class="section-eyebrow">ארכיטקטורה</div>
+      <h2 class="section-title">7 שכבות שפועלות יחד</h2>
+      <p class="section-lead">כל שכבה מבצעת תפקיד ספציפי. יחד הן יוצרות מערכת שלא רק עונה — אלא לומדת, מסווגת ושומרת על קשר לאורך זמן.</p>
+    </div>
+
+    <div class="arch-layers reveal">
+      <div class="arch-layer">
+        <div class="arch-layer-num">01</div>
+        <div class="arch-layer-icon">🎙️</div>
+        <div class="arch-layer-name">Identity & Brand Voice</div>
+        <div class="arch-layer-role">איך QABU מדבר בשם עין טל — טון, ניסוחים, גבולות</div>
+        <div class="arch-layer-owner">שיווק + הנהלה</div>
+      </div>
+      <div class="arch-layer">
+        <div class="arch-layer-num">02</div>
+        <div class="arch-layer-icon">📚</div>
+        <div class="arch-layer-name">Medical Knowledge Base</div>
+        <div class="arch-layer-role">ידע רפואי מאושר לכל תחום — קטרקט, גלאוקומה, רשתית, קרנית</div>
+        <div class="arch-layer-owner">רופאים + שיווק</div>
+      </div>
+      <div class="arch-layer">
+        <div class="arch-layer-num">03</div>
+        <div class="arch-layer-icon">🔀</div>
+        <div class="arch-layer-name">Multi-Specialty Routing</div>
+        <div class="arch-layer-role">ניתוב מדויק לרופא הנכון לפי תחום, זמינות ושפה</div>
+        <div class="arch-layer-owner">תפעול + הנהלה</div>
+      </div>
+      <div class="arch-layer">
+        <div class="arch-layer-num">04</div>
+        <div class="arch-layer-icon">⚡</div>
+        <div class="arch-layer-name">Adaptive Conversion</div>
+        <div class="arch-layer-role">CTA דינמי לפי פרופיל המטופל — חוסמים, בשלות, מסלול כלכלי</div>
+        <div class="arch-layer-owner">שיווק + AI</div>
+      </div>
+      <div class="arch-layer">
+        <div class="arch-layer-num">05</div>
+        <div class="arch-layer-icon">🧠</div>
+        <div class="arch-layer-name">Patient Intelligence</div>
+        <div class="arch-layer-role">פרופיל מטופל מסווג בסוף כל שיחה — שדות CRM, תג סיכום, ניתוב לנציג</div>
+        <div class="arch-layer-owner">שיווק + מוקד</div>
+      </div>
+      <div class="arch-layer">
+        <div class="arch-layer-num">06</div>
+        <div class="arch-layer-icon">🛡️</div>
+        <div class="arch-layer-name">Escalation & Safety</div>
+        <div class="arch-layer-role">זיהוי חירום, תלונה, מקרה רגיש — Guardrails, ניתוב דחוף</div>
+        <div class="arch-layer-owner">רפואי + מוקד</div>
+      </div>
+      <div class="arch-layer">
+        <div class="arch-layer-num">07</div>
+        <div class="arch-layer-icon">🔁</div>
+        <div class="arch-layer-name">Post-Visit Loop</div>
+        <div class="arch-layer-role">שמירת קשר לאחר ביקור — תזכורות, Follow-up, המרה לניתוח</div>
+        <div class="arch-layer-owner">שיווק + תפעול</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ──────────────────────── LAYERS DETAIL ──────────────────────── -->
+<section class="section" style="background:var(--surface);">
+  <div class="section-inner">
+    <div class="reveal">
+      <div class="section-eyebrow">שכבות מפורטות</div>
+      <h2 class="section-title">שלוש שכבות<br>שמשנות הכל</h2>
+      <p class="section-lead">השכבות החדשות על גבי ארבע הליבה — Patient Intelligence, Adaptive Conversion, Post-Visit Loop — הופכות את המערכת ממשיבה ללומדת.</p>
+    </div>
+
+    <div class="layers-grid">
+      <div class="layer-card accent-blue reveal reveal-delay-1">
+        <div class="layer-num">LAYER 04</div>
+        <div class="layer-title">⚡ Adaptive Conversion Logic</div>
+        <div class="layer-desc">במקום CTA אחיד לכולם, המערכת מזהה מה חוסם את המטופל ומשנה את הגישה בזמן אמת. חמישה חוסמים, חמישה מסלולים שונים.</div>
+        <div class="layer-tags">
+          <span class="layer-tag">חשש מחיר → CTA_COST_CHECK</span>
+          <span class="layer-tag">פחד ניתוחי → CTA_REASSURE</span>
+          <span class="layer-tag">בשל ומוכן → CTA_BOOK_LINK</span>
+          <span class="layer-tag">בודק → CTA_NURTURE</span>
+        </div>
+      </div>
+
+      <div class="layer-card accent-teal reveal reveal-delay-2">
+        <div class="layer-num">LAYER 05</div>
+        <div class="layer-title">🧠 Patient Intelligence Layer</div>
+        <div class="layer-desc">בסוף כל שיחה, הסוכן מייצר תג מסווג שמועבר לנציג. הנציג לא מקבל שיחה גולמית — הוא מקבל פרופיל מוכן לפעולה.</div>
+        <div class="layer-tags">
+          <span class="layer-tag">שם + טלפון</span>
+          <span class="layer-tag">תחום + סיבה</span>
+          <span class="layer-tag">קופה + שב"ן + ביטוח</span>
+          <span class="layer-tag">דחיפות</span>
+          <span class="layer-tag">חוסם עיקרי</span>
+          <span class="layer-tag">המלצת ניתוב</span>
+        </div>
+      </div>
+
+      <div class="layer-card accent-amber reveal reveal-delay-3">
+        <div class="layer-num">LAYER 03</div>
+        <div class="layer-title">🔀 Multi-Specialty Routing</div>
+        <div class="layer-desc">במקום תשובה גנרית, הסוכן מזהה את התחום הרפואי מהשיחה ומנתב לרופא המדויק — בהתאם לתחום, זמינות ושפה.</div>
+        <div class="layer-tags">
+          <span class="layer-tag">קטרקט</span>
+          <span class="layer-tag">גלאוקומה</span>
+          <span class="layer-tag">רשתית</span>
+          <span class="layer-tag">קרנית</span>
+          <span class="layer-tag">עפעפיים</span>
+          <span class="layer-tag">ייעוץ כללי</span>
+        </div>
+      </div>
+
+      <div class="layer-card accent-red reveal reveal-delay-4">
+        <div class="layer-num">LAYER 07</div>
+        <div class="layer-title">🔁 Post-Visit Loop</div>
+        <div class="layer-desc">QABU לא מסיים תפקידו בתיאום הייעוץ. הוא חוזר למטופל ב-4 שלבים מוגדרים — ומעלה את שיעור ההמרה לניתוח.</div>
+        <div class="layer-tags">
+          <span class="layer-tag">24 שעות לאחר ייעוץ</span>
+          <span class="layer-tag">שבוע ללא תיאום</span>
+          <span class="layer-tag">48 שעות לפני ניתוח</span>
+          <span class="layer-tag">שבוע לאחר ניתוח</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ──────────────────────── ROUTING TABLE ──────────────────────── -->
+<section class="section routing-section" id="routing">
+  <div class="section-inner">
+    <div class="reveal">
+      <div class="section-eyebrow">ניתוב מתמחויות</div>
+      <h2 class="section-title">6 תחומי עיניים,<br>מסלול לכל אחד</h2>
+      <p class="section-lead">QABU מזהה מהשיחה לאיזה תחום שייכת הפנייה ומנתב לרופא המתאים — לא לתור ג'נרי.</p>
+    </div>
+
+    <div class="routing-table-wrap reveal">
+      <table class="routing-table">
+        <thead>
+          <tr>
+            <th>תחום</th>
+            <th>תסמינים אופייניים</th>
+            <th>בדיקות רלוונטיות</th>
+            <th>CTA</th>
+            <th>רמת סיכון</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>👁️ קטרקט</strong></td>
+            <td>טשטוש, סנוור, הילות בלילה</td>
+            <td>ביומטריה, OCT, מיפוי קרנית</td>
+            <td>ייעוץ קטרקט</td>
+            <td><span class="risk-badge risk-med">בינונית</span></td>
+          </tr>
+          <tr>
+            <td><strong>🔬 גלאוקומה</strong></td>
+            <td>לחץ בעין, ירידה בשדה ראייה</td>
+            <td>OCT עצב, שדה ראייה, לחץ</td>
+            <td>מומחה גלאוקומה</td>
+            <td><span class="risk-badge risk-high">גבוהה</span></td>
+          </tr>
+          <tr>
+            <td><strong>🧬 רשתית</strong></td>
+            <td>כתמים, הבזקי אור, עיוות</td>
+            <td>OCT רשתית, אנגיוגרפיה</td>
+            <td>מומחה רשתית</td>
+            <td><span class="risk-badge risk-vhigh">גבוהה מאוד</span></td>
+          </tr>
+          <tr>
+            <td><strong>🔷 קרנית</strong></td>
+            <td>קרטוקונוס, עיוות ראייה</td>
+            <td>מיפוי קרנית, טופוגרפיה</td>
+            <td>מומחה קרנית</td>
+            <td><span class="risk-badge risk-med">בינונית</span></td>
+          </tr>
+          <tr>
+            <td><strong>👁️ עפעפיים</strong></td>
+            <td>צניחת עפעף, שקיות</td>
+            <td>הערכה קלינית</td>
+            <td>רופא עפעפיים</td>
+            <td><span class="risk-badge risk-low">נמוכה-בינונית</span></td>
+          </tr>
+          <tr>
+            <td><strong>📋 ייעוץ כללי</strong></td>
+            <td>ירידה בראייה לא מוסברת</td>
+            <td>תלוי ברופא</td>
+            <td>ייעוץ כללי</td>
+            <td><span class="risk-badge risk-med">תלוי בתסמין</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ──────────────────────── ADAPTIVE CONVERSION ──────────────────────── -->
+<section class="section" style="background:var(--surface);">
+  <div class="section-inner">
+    <div class="reveal">
+      <div class="section-eyebrow">Adaptive Conversion</div>
+      <h2 class="section-title">לא כל מטופל<br>שומע אותו CTA</h2>
+      <p class="section-lead">המערכת מזהה מה מונע את המטופל מלהתקדם ומשנה גישה בהתאם. חמישה חוסמים, חמישה מסלולי שכנוע.</p>
+    </div>
+
+    <div class="conversion-grid reveal">
+      <div class="conv-card">
+        <div class="conv-blocker">💰 חשש מחיר</div>
+        <div class="conv-signal">"כמה זה עולה?" / "כבר השוויתי מחירים"</div>
+        <div class="conv-cta">→ CTA_COST_CHECK</div>
+        <div class="conv-example">אוכל לבדוק מה מכוסה אצלך בקופה לפני שמחליטים</div>
+      </div>
+      <div class="conv-card">
+        <div class="conv-blocker">😨 חשש ניתוחי</div>
+        <div class="conv-signal">"מפחד", "מסוכן", "כואב"</div>
+        <div class="conv-cta">→ CTA_REASSURE</div>
+        <div class="conv-example">ד"ר X מבצע אלפי ניתוחים. ייעוץ ראשוני לא מחייב כלום</div>
+      </div>
+      <div class="conv-card">
+        <div class="conv-blocker">❓ חוסר ידע</div>
+        <div class="conv-signal">שאלות בסיסיות, "לא הבנתי"</div>
+        <div class="conv-cta">→ CTA_SOFT_INFO</div>
+        <div class="conv-example">אשלח לך סיכום קצר לפני שקובעים — מה הכי מטריד אותך?</div>
+      </div>
+      <div class="conv-card">
+        <div class="conv-blocker">✅ בשל ומוכן</div>
+        <div class="conv-signal">שאלות על זמינות, ציון ימים נוחים</div>
+        <div class="conv-cta">→ CTA_BOOK_LINK</div>
+        <div class="conv-example">מצוין. אפשר לקבוע ייעוץ עם ד"ר X — באיזה יום נוח?</div>
+      </div>
+      <div class="conv-card">
+        <div class="conv-blocker">🔍 בודק בלבד</div>
+        <div class="conv-signal">"רק בודק", "לא דחוף"</div>
+        <div class="conv-cta">→ CTA_NURTURE</div>
+        <div class="conv-example">אין שום בעיה. אפשר לשמור פרטים ולחזור כשמרגישים מוכנים</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ──────────────────────── INTENTS ──────────────────────── -->
+<section class="section intent-section">
+  <div class="section-inner">
+    <div class="reveal">
+      <div class="section-eyebrow">Intent Map</div>
+      <h2 class="section-title">39+ כוונות מוגדרות</h2>
+      <p class="section-lead">QABU מזהה כוונות בארבע קטגוריות — רפואי, כלכלי, לוגיסטי, דחוף. כל כוונה מובילה לתשובה ולמסלול שונה.</p>
+    </div>
+
+    <div class="intent-tags reveal">
+      <span class="intent-tag medical">ייעוץ קטרקט</span>
+      <span class="intent-tag medical">ניתוח גלאוקומה</span>
+      <span class="intent-tag medical">מומחה רשתית</span>
+      <span class="intent-tag medical">בדיקת קרנית</span>
+      <span class="intent-tag medical">טיפול עפעפיים</span>
+      <span class="intent-tag medical">ירידה בראייה</span>
+      <span class="intent-tag medical">עדשות פרמיום</span>
+      <span class="intent-tag medical">OCT</span>
+      <span class="intent-tag financial">כיסוי מכבי</span>
+      <span class="intent-tag financial">שב"ן זהב</span>
+      <span class="intent-tag financial">מאוחדת הסדר</span>
+      <span class="intent-tag financial">ביטוח פרטי</span>
+      <span class="intent-tag financial">כמה זה עולה</span>
+      <span class="intent-tag financial">השתתפות עצמית</span>
+      <span class="intent-tag logistic">שעות פעילות</span>
+      <span class="intent-tag logistic">סניף תל אביב</span>
+      <span class="intent-tag logistic">איך מגיעים</span>
+      <span class="intent-tag logistic">רופא ספציפי</span>
+      <span class="intent-tag logistic">מחיר תור</span>
+      <span class="intent-tag logistic">ביטול תיאום</span>
+      <span class="intent-tag logistic">שינוי תאריך</span>
+      <span class="intent-tag urgent">כאב חד בעין</span>
+      <span class="intent-tag urgent">אבדן ראייה פתאומי</span>
+      <span class="intent-tag urgent">הבזקי אור פתאומיים</span>
+      <span class="intent-tag urgent">פציעת עין</span>
+      <span class="intent-tag urgent">עין אדומה חמורה</span>
+      <span class="intent-tag medical">מעקב לאחר ניתוח</span>
+      <span class="intent-tag medical">טיפות לאחר ניתוח</span>
+      <span class="intent-tag logistic">האם קבלתי ביטוח</span>
+      <span class="intent-tag medical">קרטוקונוס</span>
+    </div>
+
+    <div class="intent-legend reveal">
+      <div class="intent-legend-item">
+        <div class="intent-legend-dot" style="background:var(--teal)"></div>
+        רפואי — תחומים וניתוחים
+      </div>
+      <div class="intent-legend-item">
+        <div class="intent-legend-dot" style="background:var(--amber)"></div>
+        כלכלי — ביטוחים וקופות
+      </div>
+      <div class="intent-legend-item">
+        <div class="intent-legend-dot" style="background:var(--accent)"></div>
+        לוגיסטי — תיאומים ומיקום
+      </div>
+      <div class="intent-legend-item">
+        <div class="intent-legend-dot" style="background:var(--red)"></div>
+        דחוף — הפנייה מיידית
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ──────────────────────── FLOW ──────────────────────── -->
+<section class="section flow-section" id="flow">
+  <div class="section-inner">
+    <div class="reveal">
+      <div class="section-eyebrow">Flow השיחה</div>
+      <h2 class="section-title">9 שלבים,<br>שיחה אחת</h2>
+      <p class="section-lead">כל שיחה עוברת תשעה שלבים מוגדרים — מפתיחה ועד תקציר לנציג. אין שלב שניתן לדלג עליו.</p>
+    </div>
+
+    <div class="flow-steps">
+      <div class="flow-step reveal reveal-delay-1">
+        <div class="flow-step-inner">
+          <div class="flow-step-num">01</div>
+          <div class="flow-step-title">פתיחה</div>
+          <div class="flow-step-action">QABU מציג עצמו בשם עין טל ומזמין לפנייה</div>
+          <span class="flow-step-output">Brand Voice Active</span>
+        </div>
+      </div>
+      <div class="flow-step reveal reveal-delay-2">
+        <div class="flow-step-inner">
+          <div class="flow-step-num">02</div>
+          <div class="flow-step-title">זיהוי כוונה</div>
+          <div class="flow-step-action">מזהה Intent מהפנייה — תחום, קטגוריה, רמת חום</div>
+          <span class="flow-step-output">Intent ID + Category</span>
+        </div>
+      </div>
+      <div class="flow-step reveal reveal-delay-3">
+        <div class="flow-step-inner">
+          <div class="flow-step-num">03</div>
+          <div class="flow-step-title">שליפת ידע</div>
+          <div class="flow-step-action">שולף בלוק ידע מאושר מה-KB — לא תוכן חופשי</div>
+          <span class="flow-step-output">Curated KB Response</span>
+        </div>
+      </div>
+      <div class="flow-step reveal reveal-delay-1">
+        <div class="flow-step-inner">
+          <div class="flow-step-num">04</div>
+          <div class="flow-step-title">ניתוב תחום</div>
+          <div class="flow-step-action">מזהה תחום ומתאים לרופא הנכון</div>
+          <span class="flow-step-output">Doctor Match + Schedule</span>
+        </div>
+      </div>
+      <div class="flow-step reveal reveal-delay-2">
+        <div class="flow-step-inner">
+          <div class="flow-step-num">05</div>
+          <div class="flow-step-title">שאלת המשך</div>
+          <div class="flow-step-action">שאלה שמקדמת ואוספת מידע — קופה, ביטוח, רופא</div>
+          <span class="flow-step-output">CRM Field Captured</span>
+        </div>
+      </div>
+      <div class="flow-step reveal reveal-delay-3">
+        <div class="flow-step-inner">
+          <div class="flow-step-num">06</div>
+          <div class="flow-step-title">זיהוי חוסמים</div>
+          <div class="flow-step-action">מנתח מה מונע קדימה ומסמן תג חוסם</div>
+          <span class="flow-step-output">Blocker Tag</span>
+        </div>
+      </div>
+      <div class="flow-step reveal reveal-delay-1">
+        <div class="flow-step-inner">
+          <div class="flow-step-num">07</div>
+          <div class="flow-step-title">בדיקת חירום</div>
+          <div class="flow-step-action">סורק 100% מהשיחות לסימני אזהרה — בלי יוצא מן הכלל</div>
+          <span class="flow-step-output" style="background:#fee2e2;color:#dc2626;">Emergency Check 100%</span>
+        </div>
+      </div>
+      <div class="flow-step reveal reveal-delay-2">
+        <div class="flow-step-inner">
+          <div class="flow-step-num">08</div>
+          <div class="flow-step-title">הצעת ייעוץ</div>
+          <div class="flow-step-action">CTA מותאם לפרופיל שנאסף — ספציפי לרופא ולמסלול</div>
+          <span class="flow-step-output">Personalized CTA</span>
+        </div>
+      </div>
+      <div class="flow-step reveal reveal-delay-3">
+        <div class="flow-step-inner">
+          <div class="flow-step-num">09</div>
+          <div class="flow-step-title">תקציר לנציג</div>
+          <div class="flow-step-action">מייצר פרופיל מטופל מלא — Patient Intelligence Layer</div>
+          <span class="flow-step-output">CRM Profile Ready</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ──────────────────────── INSURANCE ──────────────────────── -->
+<section class="section insurance-section">
+  <div class="section-inner">
+    <div class="reveal">
+      <div class="section-eyebrow">קופות וביטוחים</div>
+      <h2 class="section-title">מידע מסגרת ברור,<br>לא "לא יכול לדעת"</h2>
+      <p class="section-lead">הגישה החדשה: נותנים כיוון ברור שמוריד חרדה — ומפנים לנציג לאישור הפרט הספציפי. מטופל שמקבל "לא יכול לדעת" שלוש פעמים — עוזב.</p>
+    </div>
+
+    <div class="insurance-table-wrap reveal">
+      <table class="insurance-table">
+        <thead>
+          <tr>
+            <th>גורם מבטח</th>
+            <th>מסלול כללי</th>
+            <th>ניסוח מאושר לסוכן</th>
+            <th>מה הנציג מאשר</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="kupah-name">מכבי שב"ן זהב/כסף</span></td>
+            <td>קטרקט עם השתתפות עצמית</td>
+            <td><span class="approved-text">אצל מכבי ניתן בדרך כלל לבצע קטרקט דרך שב"ן עם השתתפות עצמית — לאישור המסלול המדויק נבדוק יחד עם הנציג</span></td>
+            <td>הסכום המדויק + תאריכי תוקף</td>
+          </tr>
+          <tr>
+            <td><span class="kupah-name">מאוחדת שב"ן</span></td>
+            <td>קטרקט עם הסדרים</td>
+            <td><span class="approved-text">מאוחדת עובדת עם עין טל — לפרטי ההסדר המדויק, הנציג שלנו יבדוק</span></td>
+            <td>אישור הסדר + מסלול</td>
+          </tr>
+          <tr>
+            <td><span class="kupah-name">כללית שב"ן</span></td>
+            <td>קטרקט עם הפניה</td>
+            <td><span class="approved-text">כללית מחברת לניתוחי קטרקט — הנציג יבדוק מה הנוסח המדויק לפי הביטוח שלך</span></td>
+            <td>הפניה + אישור</td>
+          </tr>
+          <tr>
+            <td><span class="kupah-name">ביטוח פרטי</span></td>
+            <td>תלוי בפוליסה</td>
+            <td><span class="approved-text">חברת ביטוח פרטית בדרך כלל מכסה ניתוחי קטרקט — מה שם חברת הביטוח שלך?</span></td>
+            <td>בדיקת פוליסה ספציפית</td>
+          </tr>
+          <tr>
+            <td><span class="kupah-name">ללא ביטוח / פרטי מלא</span></td>
+            <td>תשלום עצמי</td>
+            <td><span class="approved-text">קיים גם מסלול פרטי מלא — הנציג יסביר על העלויות ואפשרויות התשלום</span></td>
+            <td>תמחור + תנאי תשלום</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="quote-block reveal">
+      <div class="quote-block-text">העיקרון: נותנים מידע מסגרת ברור שמוריד חרדה, ומפנים לנציג לאישור הפרט הספציפי. לא "לא יכולים לדעת" — אלא "הנה הכיוון, הנציג יאשר את הפרט".</div>
+      <div class="quote-block-source">QABU Blueprint v2 | עיקרון ניסוח ביטוחים</div>
+    </div>
+  </div>
+</section>
+
+<!-- ──────────────────────── POST VISIT ──────────────────────── -->
+<section class="section postvisit-section">
+  <div class="section-inner">
+    <div class="reveal">
+      <div class="section-eyebrow">Post-Visit Loop</div>
+      <h2 class="section-title">QABU לא נגמר<br>בתיאום הייעוץ</h2>
+      <p class="section-lead">ארבעה שלבים של שמירת קשר — לאחר ייעוץ, לפני ניתוח, לאחר ניתוח. כל שלב עם מסר, מטרה וערוץ מוגדרים.</p>
+    </div>
+
+    <div class="postvisit-timeline">
+      <div class="pv-card reveal reveal-delay-1" data-num="1">
+        <div class="pv-trigger">TRIGGER: לאחר ייעוץ 24 שעות</div>
+        <div class="pv-title">🔔 Follow-up ראשוני</div>
+        <div class="pv-msg">"היית אצלנו אתמול — יש שאלות? הרופא ממליץ על השלב הבא?"</div>
+        <div class="pv-goal">Retention + Follow-up</div>
+        <div class="pv-channel">📲 WhatsApp</div>
+      </div>
+      <div class="pv-card reveal reveal-delay-2" data-num="2">
+        <div class="pv-trigger">TRIGGER: שבוע ללא תיאום ניתוח</div>
+        <div class="pv-title">💬 המרה לניתוח</div>
+        <div class="pv-msg">"עדיין שוקל? אוכל לעזור בבדיקת ביטוח או תיאום מחדש"</div>
+        <div class="pv-goal">המרה לניתוח</div>
+        <div class="pv-channel">📲 WhatsApp / SMS</div>
+      </div>
+      <div class="pv-card reveal reveal-delay-3" data-num="3">
+        <div class="pv-trigger">TRIGGER: 48 שעות לפני ניתוח</div>
+        <div class="pv-title">📋 תזכורת מקדימה</div>
+        <div class="pv-msg">"תזכורת: הניתוח עוד יומיים. מה להביא: כרטיס קופה, מלווה"</div>
+        <div class="pv-goal">הפחתת no-show</div>
+        <div class="pv-channel">📲 WhatsApp</div>
+      </div>
+      <div class="pv-card reveal reveal-delay-4" data-num="4">
+        <div class="pv-trigger">TRIGGER: שבוע לאחר ניתוח</div>
+        <div class="pv-title">❤️ שביעות רצון</div>
+        <div class="pv-msg">"איך מרגישים? חשוב להשתמש בטיפות. יש שאלות — אנחנו כאן"</div>
+        <div class="pv-goal">שביעות רצון + ביקורת</div>
+        <div class="pv-channel">📲 WhatsApp</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ──────────────────────── KPIs ──────────────────────── -->
+<section class="section kpi-section" id="kpis">
+  <div class="section-inner">
+    <div class="reveal">
+      <div class="section-eyebrow">מדידה</div>
+      <h2 class="section-title">KPIs כמו<br>ערוץ שיווק אמיתי</h2>
+      <p class="section-lead">QABU נמדד בדיוק כמו קמפיין — נפח, המרה, איכות ליד, עומס מוקד. יעדי פיילוט ויעדי 6 חודש מוגדרים מראש.</p>
+    </div>
+
+    <div class="kpi-grid reveal">
+      <div class="kpi-card">
+        <div class="kpi-label">📊 נפח שיחות</div>
+        <div class="kpi-num">&gt;50</div>
+        <div class="kpi-target">פיילוט: 50/שבוע → <span>&gt;200/שבוע בחודש 6</span></div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">🎯 זיהוי Intent</div>
+        <div class="kpi-num">85%</div>
+        <div class="kpi-target">פיילוט: 85%+ → <span>92%+ בחודש 6</span></div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">⚡ המרה לליד</div>
+        <div class="kpi-num">40%</div>
+        <div class="kpi-target">פיילוט: 40%+ → <span>55%+ בחודש 6</span></div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">📋 איכות ליד</div>
+        <div class="kpi-num">70%</div>
+        <div class="kpi-target">פיילוט: 70% מלא → <span>85%+ בחודש 6</span></div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">📞 עומס מוקד</div>
+        <div class="kpi-num">&lt;60%</div>
+        <div class="kpi-target">פיילוט: &lt;60% → <span>&lt;35% בחודש 6</span></div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">📅 תיאומי ייעוץ</div>
+        <div class="kpi-num">35%</div>
+        <div class="kpi-target">פיילוט: 35% מליד → <span>50%+ בחודש 6</span></div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">🛡️ זיהוי חירום</div>
+        <div class="kpi-num">100%</div>
+        <div class="kpi-target"><span>100% תמיד</span> — ללא יוצא מן הכלל</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">⏱️ זמן תגובה</div>
+        <div class="kpi-num">&lt;5s</div>
+        <div class="kpi-target">פיילוט: &lt;5 שניות → <span>&lt;3 שניות בחודש 6</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ──────────────────────── SAFETY ──────────────────────── -->
+<section class="section safety-section">
+  <div class="section-inner">
+    <div class="reveal">
+      <div class="section-eyebrow">בטיחות רפואית</div>
+      <h2 class="section-title">גבולות שאינם<br>ניתנים לשינוי</h2>
+    </div>
+
+    <div class="safety-grid">
+      <div class="safety-rules reveal">
+        <div class="safety-rule">
+          <div class="safety-rule-icon">🚫</div>
+          <div>
+            <div class="safety-rule-title">לא מאבחן</div>
+            <div class="safety-rule-desc">QABU לעולם לא קובע אבחנה רפואית. הוא מנתב לרופא — לא מחליף אותו.</div>
+          </div>
+        </div>
+        <div class="safety-rule">
+          <div class="safety-rule-icon">🚫</div>
+          <div>
+            <div class="safety-rule-title">לא קובע התאמה לניתוח</div>
+            <div class="safety-rule-desc">שאלות על התאמה לניתוח מועברות לרופא בלבד. אין תשובה אוטומטית.</div>
+          </div>
+        </div>
+        <div class="safety-rule">
+          <div class="safety-rule-icon">🚫</div>
+          <div>
+            <div class="safety-rule-title">לא מבטיח תוצאה</div>
+            <div class="safety-rule-desc">אין הבטחות תוצאה. כל ניסוח שיווקי עובר דרך בלוק ידע מאושר.</div>
+          </div>
+        </div>
+        <div class="safety-rule">
+          <div class="safety-rule-icon">🚫</div>
+          <div>
+            <div class="safety-rule-title">לא מאשר זכאות סופית</div>
+            <div class="safety-rule-desc">זכאות ביטוחית מאושרת רק על ידי נציג — QABU נותן כיוון בלבד.</div>
+          </div>
+        </div>
+        <div class="safety-rule">
+          <div class="safety-rule-icon">🚨</div>
+          <div>
+            <div class="safety-rule-title">חירום = הפנייה מיידית</div>
+            <div class="safety-rule-desc">כאשר מזוהים סימני חירום — אבדן ראייה, כאב חד, הבזקים — QABU מפנה לערוץ חירום ולא ממשיך את השיחה הרגילה.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="safety-critical reveal reveal-delay-2">
+        <div class="safety-critical-title">הגבולות הקריטיים של QABU</div>
+        <div class="safety-limits">
+          <div class="safety-limit">
+            <span class="x">✕</span>
+            <span>לא מאבחן מצב עיניים בשום צורה</span>
+          </div>
+          <div class="safety-limit">
+            <span class="x">✕</span>
+            <span>לא קובע התאמה לניתוח או לבדיקה</span>
+          </div>
+          <div class="safety-limit">
+            <span class="x">✕</span>
+            <span>לא מבטיח תוצאה רפואית ספציפית</span>
+          </div>
+          <div class="safety-limit">
+            <span class="x">✕</span>
+            <span>לא מאשר זכאות ביטוחית סופית</span>
+          </div>
+          <div class="safety-limit">
+            <span class="x">✕</span>
+            <span>לא ממשיך מסלול רגיל בסימני חירום</span>
+          </div>
+        </div>
+        <p style="color:rgba(255,255,255,0.4);font-size:13px;margin-top:20px;line-height:1.6;">גבולות אלה אינם ניתנים לשינוי בשום תצורה של המערכת — בכל ערוץ, בכל שיחה, בכל תרחיש.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ──────────────────────── TIMELINE ──────────────────────── -->
+<section class="section timeline-section" id="timeline">
+  <div class="section-inner">
+    <div class="reveal">
+      <div class="section-eyebrow">תכנית הטמעה</div>
+      <h2 class="section-title">6 שבועות<br>להשקה מוכנה</h2>
+      <p class="section-lead">תהליך הטמעה מובנה — מאפיון ועד אינטגרציות. כל שבוע עם משימות, תוצרים ואחראים מוגדרים.</p>
+    </div>
+
+    <div class="timeline reveal">
+      <div class="tl-item">
+        <div class="tl-week">
+          <div class="tl-week-num">01</div>
+          <div class="tl-week-label">שבוע</div>
+        </div>
+        <div class="tl-name">אפיון</div>
+        <ul class="tl-tasks">
+          <li>מטרות עסקיות</li>
+          <li>מיפוי שירותים</li>
+          <li>מיפוי רופאים</li>
+          <li>הגדרת ערוצים</li>
+        </ul>
+      </div>
+      <div class="tl-item">
+        <div class="tl-week">
+          <div class="tl-week-num">02</div>
+          <div class="tl-week-label">שבוע</div>
+        </div>
+        <div class="tl-name">מאגרי ידע</div>
+        <ul class="tl-tasks">
+          <li>כרטיסי רופאים</li>
+          <li>Medical KB</li>
+          <li>Insurance KB</li>
+          <li>FAQ מאושר</li>
+        </ul>
+      </div>
+      <div class="tl-item">
+        <div class="tl-week">
+          <div class="tl-week-num">03</div>
+          <div class="tl-week-label">שבוע</div>
+        </div>
+        <div class="tl-name">Prompts</div>
+        <ul class="tl-tasks">
+          <li>System Prompt</li>
+          <li>Conversion Layer</li>
+          <li>CTA מותאמים</li>
+          <li>Escalation Rules</li>
+        </ul>
+      </div>
+      <div class="tl-item">
+        <div class="tl-week">
+          <div class="tl-week-num">04</div>
+          <div class="tl-week-label">שבוע</div>
+        </div>
+        <div class="tl-name">סימולציה</div>
+        <ul class="tl-tasks">
+          <li>100-150 שיחות בדיקה</li>
+          <li>בדיקת חירום</li>
+          <li>Adaptive CTA</li>
+          <li>תיקוני KB</li>
+        </ul>
+      </div>
+      <div class="tl-item">
+        <div class="tl-week">
+          <div class="tl-week-num">05</div>
+          <div class="tl-week-label">שבוע</div>
+        </div>
+        <div class="tl-name">פיילוט</div>
+        <ul class="tl-tasks">
+          <li>ערוץ אחד בלבד</li>
+          <li>קטרקט + גלאוקומה</li>
+          <li>כל ליד לנציג</li>
+          <li>דוח ביצועים</li>
+        </ul>
+      </div>
+      <div class="tl-item">
+        <div class="tl-week">
+          <div class="tl-week-num">06</div>
+          <div class="tl-week-label">שבוע</div>
+        </div>
+        <div class="tl-name">הרחבה</div>
+        <ul class="tl-tasks">
+          <li>תחומים נוספים</li>
+          <li>WhatsApp + טפסים</li>
+          <li>CRM Integration</li>
+          <li>Analytics Dashboard</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ──────────────────────── NEXT STEPS ──────────────────────── -->
+<section class="section nextsteps-section">
+  <div class="section-inner">
+    <div class="reveal">
+      <div class="section-eyebrow">הצעדים הבאים</div>
+      <h2 class="section-title">עצור כאן.</h2>
+      <p class="section-lead">אל תמשיך לשלב 2 לפני שהצעדים האלה הושלמו. הם הבסיס שכל השאר נשען עליו.</p>
+    </div>
+
+    <div class="nextsteps-grid">
+      <div class="ns-card reveal reveal-delay-1">
+        <div class="ns-num">01</div>
+        <div class="ns-title">מלאו כרטיסי רופאים לכל רופא פעיל</div>
+        <div class="ns-why">בלי זה הניתוב לרופא ספציפי לא יעבוד — זו נקודת הכשל המיידית ביותר.</div>
+        <div class="ns-who">↗ תפעול — שבוע 2</div>
+      </div>
+      <div class="ns-card reveal reveal-delay-2">
+        <div class="ns-num">02</div>
+        <div class="ns-title">אשרו נוסחי ביטוח לכל קופה פעילה</div>
+        <div class="ns-why">בלי זה הסוכן יחזור ל"לא יכול לדעת" ומטופלים ינטשו.</div>
+        <div class="ns-who">↗ תפעול — שבוע 2</div>
+      </div>
+      <div class="ns-card reveal reveal-delay-3">
+        <div class="ns-num">03</div>
+        <div class="ns-title">הגדירו שדות CRM לתקציר Patient Intelligence</div>
+        <div class="ns-why">בלי זה הנציג מקבל שיחה גולמית ולא פרופיל מסווג.</div>
+        <div class="ns-who">↗ מוקד — שבוע 2</div>
+      </div>
+      <div class="ns-card reveal reveal-delay-4">
+        <div class="ns-num">04</div>
+        <div class="ns-title">אשרו מפת Intents מול הצוות הרפואי</div>
+        <div class="ns-why">לוודא שהכיסוי מלא לכל הפניות האמיתיות שמגיעות.</div>
+        <div class="ns-who">↗ שיווק + רפואי — שבוע 1</div>
+      </div>
+      <div class="ns-card reveal reveal-delay-1">
+        <div class="ns-num">05</div>
+        <div class="ns-title">הגדירו Feedback Loop — מי בודק שיחות שנכשלו</div>
+        <div class="ns-why">בלי זה אין שיפור מתמיד — המערכת תדרדר עם הזמן.</div>
+        <div class="ns-who">↗ שיווק — שבוע 1</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ──────────────────────── CTA ──────────────────────── -->
+<section class="cta-section" id="contact">
+  <div class="cta-inner">
+    <h2 class="cta-title reveal">מוכנים להפעיל את QABU?</h2>
+    <p class="cta-desc reveal">Blueprint מוכן. 7 שכבות. 39+ Intents. 6 שבועות לפיילוט. המטופלים הבאים שלכם לא ממתינים לשעות פעילות.</p>
+    <div class="cta-btns reveal">
+      <a href="#timeline" class="btn-cta-primary">
+        → לתכנית ההטמעה
+      </a>
+      <a href="#layers" class="btn-cta-secondary">
+        לצפייה בארכיטקטורה
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ──────────────────────── FOOTER ──────────────────────── -->
+<footer>
+  <a href="#" class="footer-logo">
+    <div class="footer-logo-mark">
+      <span style="font-family:'Space Mono',monospace;font-size:12px;font-weight:700;color:rgba(255,255,255,0.6);">Q</span>
+    </div>
+    <span class="footer-logo-text">QABU</span>
+  </a>
+  <div class="footer-right">
+    עין טל | סוכן תיאום רפואי-שיווקי | Blueprint v2.0
+  </div>
+</footer>
+
+<script>
+  // Nav scroll
+  const nav = document.getElementById('main-nav');
+  window.addEventListener('scroll', () => {
+    nav.classList.toggle('scrolled', window.scrollY > 40);
+  });
+
+  // Scroll reveal
+  const reveals = document.querySelectorAll('.reveal');
+  const obs = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.classList.add('visible');
+        obs.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
+  reveals.forEach(el => obs.observe(el));
+
+  // Chat replay animation
+  function replayChatAnim() {
+    const msgs = document.querySelectorAll('.chat-msg');
+    msgs.forEach((m, i) => {
+      m.style.opacity = '0';
+      m.style.transform = 'translateY(10px)';
+      m.style.animation = 'none';
+      setTimeout(() => {
+        m.style.animation = `msg-in 0.4s ease forwards`;
+        m.style.animationDelay = `${i * 0.6}s`;
+      }, 50);
+    });
+  }
+
+  // Replay on scroll into view
+  const chatObs = new IntersectionObserver((entries) => {
+    if (entries[0].isIntersecting) {
+      replayChatAnim();
+    }
+  }, { threshold: 0.3 });
+  const chatMockup = document.querySelector('.chat-mockup');
+  if (chatMockup) chatObs.observe(chatMockup);
+</script>
+</body>
+</html>

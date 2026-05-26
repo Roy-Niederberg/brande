@@ -411,7 +411,6 @@ Phase 3 work until there's a second paying client.
   not-yet-deployed or partially-deployed subdomains.
 - [roy] [P4] **Cloudflare-only origin firewall.** Only allow Cloudflare IP
   ranges at the origin VMs (security hardening).
-
 ### Skills
 
 - [roy] [defer] **UI skill with brand colors.** Make the brand-colors palette
@@ -462,7 +461,7 @@ Phase 3 work until there's a second paying client.
 - [roy] [P4] **Build Qabu for Qabu.** Sub-tasks:
   - [x] Logo
   - [ ] Video demo
-  - [ ] Buy `qabu.co.il` (in addition to `.net`)
+  - [x] Buy `qabu.co.il` (in addition to `.net`)
   - [ ] Qabu JS interface: movie clip, phone-number form, payment form
   - [ ] Links to demos
 - [roy] [defer] **Create `Qabu` for Vered, Irena, and a third demo** to
