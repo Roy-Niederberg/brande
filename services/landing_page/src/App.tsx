@@ -40,7 +40,7 @@ function Navbar({ dark, setDark }: { dark: boolean, setDark: (v: boolean) => voi
     <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isScrolled ? 'bg-[var(--bg)]/90 backdrop-blur-md shadow-sm py-4' : 'bg-transparent py-6'}`}>
       <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
         <div dir="ltr" className={`flex items-baseline ${isScrolled ? 'text-[var(--heading)]' : 'text-white'}`}>
-          <svg width="33" height="33" viewBox="-603 -603 1206 1206" xmlns="http://www.w3.org/2000/svg" className={`self-center ${locale === 'he' ? 'scale-x-[-1]' : ''}`}>
+          <svg width="33" height="33" viewBox="-603 -603 1206 1206" xmlns="http://www.w3.org/2000/svg" className="self-center">
             <path fill="currentColor" transform="rotate(135)" d="M -43.934 -600 L -43.934 0 C -102.948 -160.66 -102.944 -248.528 -175.736 -175.736 A 248.528 248.528 0 1 0 43.934 -244.614 L 43.934 -804.594 C 87.868 -512.132 248.528 -600 424.264 -424.264 A 600 600 0 1 1 -43.934 -600" />
           </svg>
           <span className="text-2xl font-bold tracking-tight ms-0.5">ab&ucirc;</span>
