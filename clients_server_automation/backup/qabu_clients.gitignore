@@ -1,0 +1,12 @@
+# Ignore everything by default
+*
+
+# But traverse into directories (so deeper whitelist rules can match)
+!*/
+
+# Keep this file
+!.gitignore
+
+# Back up every client's data/ and private/ contents
+!*/data/**
+!*/private/**

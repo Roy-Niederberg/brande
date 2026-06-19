@@ -1,0 +1,12 @@
+[Unit]
+Description=Qabu client-data backup loop (watches clients/*/{data,private}, commits to qabu_clients git)
+After=network-online.target
+
+[Service]
+Type=simple
+ExecStart=%h/app/backup_loop.sh
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=default.target
