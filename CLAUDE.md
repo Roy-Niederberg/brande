@@ -8,7 +8,9 @@ more.
 - Owners: Roy & Nevo, based in Israel. Domain: `qabu.net` (registered on GoDaddy, DNS on Cloudflare).
 - Infra: Three VMs across two clouds — one main (Oracle) + two clients (Oracle + GCP IPv6-only). Docker everywhere. See `docs/architecture.md` § VM Strategy.
 - Repo: Private GitLab (`origin`), mirrored to GitHub (`github` remote).
-- Email: `privacy@qabu.net` → Cloudflare Email Routing → `roy.niederberg@gmail.com`
+- Email: inbound `privacy@qabu.net` → Cloudflare Email Routing → `roy.niederberg@gmail.com`.
+  Outbound via Resend API (`notifications@qabu.net`, qabu.net verified, SPF/DKIM on
+  `send.` subdomain in Cloudflare) — used by the notifier service.
 
 ## GitHub Mirror (Claude Code Mobile)
 
@@ -460,6 +462,13 @@ These are reference-heavy — see `docs/architecture.md` for full detail:
   covers prompt-composer's `$`-object data loading + crud GET/POST endpoints.
 - **§ Widget Service** — `services/widget/` serves `widget.js` on 4321 to site,
   admin, and external embeds; talks straight to prompt-composer; config options.
+- **§ Notifier Service** — per-client `services/notifier/` emails a once-a-day
+  raw digest via Resend (key: `resend_api_key` secret); sends the new lines of
+  `logs/events.jsonl` (appended by prompt-composer) verbatim, no parsing. No
+  inbound port; drains the log by renaming it to `events.sending` and deleting
+  that only after a successful send (failed sends retry next cycle). Recipients
+  in `data/notify.json` — in `data/`, not `private/`, because site serves
+  `private/` publicly.
 - **§ Client Onboarding & Provisioning** — onboarding → provisioner → conductor
   flow, the `config/` template, Docker Compose profiles (`site`, `facebook` —
   core services have none), subdomain regex `^[a-z][a-z0-9-]{3,18}[a-z]$` (must

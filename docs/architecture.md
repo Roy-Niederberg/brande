@@ -334,6 +334,69 @@ Config options: `targetElement` (selector or element, defaults to `document.body
 `direction` (RTL/LTR, defaults to `'ltr'`), `profilePic` (URL or data URI,
 defaults to Qabu logo SVG), `clientName` (header title, defaults to `'Qabû'`).
 
+## Notifier Service
+
+Per-client activity digests by email (`services/notifier/`). Design goal:
+prompt-composer stays single-responsibility — it *answers*; it only records
+the fact that it answered. The notifier interprets those facts and emails.
+
+**Event log (the API).** prompt-composer appends one JSON line per answered
+`/ask` to `logs/events.jsonl` (same `./logs` volume that holds
+`last_prompt.json`):
+
+```json
+{"ts":"2026-06-11T07:18:32.000Z","channel":"widget","model":"gemini-3.5-flash","outcome":"main"}
+```
+
+- `channel` = `body.mod` (`widget`, `facebook_comments`, `facebook_dm`) — all
+  channels covered automatically since everything flows through `/ask`.
+- `outcome` ∈ `gatekeeper` (gatekeeper replied directly), `main`,
+  `unavailable` (all retries exhausted — `model` omitted).
+- Admin-secret (trusted) test calls and `IGNORE`d comments are **not** logged.
+- The file is append-only and generic: future event types just add lines with
+  new fields; the notifier forwards the raw lines as-is, so no formatting code
+  to update. Adding a new notification source means appending JSONL, not
+  touching the producer's API.
+- Growth is ~150 B/event; rotation is accepted debt for now.
+
+**Notifier loop.** No inbound port, no services-router entry — a pure
+consumer. Once a day (hour 12, system local time) it emails the new entries
+of `events.jsonl` as raw text — no parsing. It self-reschedules with a single
+`setTimeout` to the next noon (recomputed each cycle); the process sleeps in
+between, no polling. To track "what's new" it **drains** the log rather than
+storing a byte offset: at send time it renames `events.jsonl` to
+`events.sending` (atomic — concurrent appends from prompt-composer land in a
+fresh log, never lost), emails it, and deletes `events.sending` only after a
+successful send. A failed send leaves the file in place; the next cycle skips
+the rename (so the pending batch is never clobbered) and retries it, then
+picks up freshly accumulated events the cycle after. No offset file means
+hand-editing or truncating `events.jsonl` can't desync anything.
+
+**Email.** Resend REST API (`https://api.resend.com/emails`), key in the
+`resend_api_key` secret (shared per-client secret, like the LLM keys). From
+`notifications@qabu.net`. The Resend account setup (done 2026-06-12, Roy's
+account): `qabu.net` verified as a sending domain — DKIM TXT at
+`resend._domainkey`, SPF TXT + MX on `send.qabu.net`, and a monitor-only
+DMARC record, all added manually in Cloudflare DNS (grey cloud). These live
+on the `send.` subdomain so they don't touch the `qabu.net` MX records that
+Cloudflare Email Routing uses for inbound mail. Free tier: 3k emails/month. Recipients come from `data/notify.json` (a JSON array
+of addresses, mounted read-only) — read on every send, so edits apply live
+without a restart. It lives in `data/` rather than `private/` deliberately:
+the site service serves `private/` publicly, and email lists shouldn't be
+fetchable. Subject is `Qabû — <title> — daily digest`, with `title` read from
+`private/client-config.json` (mounted read-only) on every send — no extra
+name-plumbing through conductor or env. Body is the raw log chunk, verbatim
+JSONL, one event per line:
+
+```
+{"ts":"2026-06-19T10:18:00.000Z","model":"gemini-3.5-flash","channel":"facebook_comments","outcome":"main"}
+{"ts":"2026-06-19T10:24:00.000Z","model":"gemini-3.1-flash-lite","channel":"widget","outcome":"main"}
+```
+
+SMTP was rejected because Oracle/GCP block outbound SMTP ports; HTTP POST
+from prompt-composer to the notifier was rejected because it couples the hot
+`/ask` path to the notifier's existence.
+
 ## Client Onboarding & Provisioning
 
 ### Flow
@@ -401,7 +464,7 @@ The admin "Manage Services" UI edits this file — changes take effect on next
 Secrets are organized by scope:
 
 - `secrets/client_router_secrets/` — clients-router VM (TLS, JWT, dispatcher, provisioner)
-- `secrets/clients_secrets/` — shared per-client (LLM API keys, admin secret, authorized emails)
+- `secrets/clients_secrets/` — shared per-client (LLM API keys, admin secret, authorized emails, Resend API key)
 - `secrets/main_server_secrets/` — main server (OAuth, FB app, JWT, dispatcher, onboarding)
 
 The `secrets/` directory in the repo is used by the QA docker-compose only. In

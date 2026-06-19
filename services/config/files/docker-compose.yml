@@ -9,6 +9,9 @@
 services:
 
   widget:
+    # -------------------------------------------------------------------------|
+    # Just serves the widget.js file.
+    # -------------------------------------------------------------------------|
     image:    registry.gitlab.com/rny3/brande/widget:latest
     networks: [client_network]
 
@@ -51,6 +54,21 @@ services:
                groq_1,   groq_2,   groq_3,   groq_4,
                admin_secret]
     volumes:  [./data:/app/data, ./logs:/app/logs]
+
+  notifier:
+    # -------------------------------------------------------------------------|
+    # Pure consumer — no inbound traffic, no port. Once a day (hour 12, system
+    # local time) it emails the raw new entries of ./logs/events.jsonl (appended
+    # by prompt-composer for every answered message) to the ./data/notify.json
+    # recipients via Resend (recipients + title read on every send, so edits
+    # apply live). To track "what's new" it drains the log: events.jsonl is
+    # renamed to events.sending, emailed, then deleted only after a successful
+    # send — a failed send keeps the file for next-cycle retry.
+    # -------------------------------------------------------------------------|
+    image:    registry.gitlab.com/rny3/brande/notifier:latest
+    networks: [client_network]
+    secrets:  [resend_api_key]
+    volumes:  [./logs:/app/logs, ./data:/app/data:ro, ./private:/app/private:ro]
 
   admin:
     # -------------------------------------------------------------------------|
@@ -112,4 +130,5 @@ secrets:
   groq_3:            {file: ./secrets/groq_3.secret}
   groq_4:            {file: ./secrets/groq_4.secret}
   admin_secret:      {file: ./secrets/admin_secret.secret}
+  resend_api_key:    {file: ./secrets/resend_api_key.secret}
   fb_page_access_token: {file: ./secrets/fb_page_access_token.secret}

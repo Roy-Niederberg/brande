@@ -2,4 +2,5 @@
 !config.env
 !greeting.json
 !knowledge_base.json
+!notify.json
 !system_prompts.js

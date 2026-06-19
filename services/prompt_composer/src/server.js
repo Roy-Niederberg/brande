@@ -13,6 +13,7 @@ const writeFile = (f, d) => fs.writeFileSync(`./data/${f}`, d, 'utf-8')
 const writeJSON = (f, d) => writeFile(f, JSON.stringify(d))
 const toJS = (v,d=0) => typeof v==='string' ? '`'+v.replace(/\\/g,'\\\\').replace(/`/g,'\\`').replace(/\$\{/g,'\\${')+'`' : '{\n'+Object.entries(v).map(([k,w])=>`${'  '.repeat(d+1)}${k}: ${toJS(w,d+1)}`).join(',\n')+'\n'+'  '.repeat(d)+'}'
 const writeJSObj = (f, d) => writeFile(f, `export default ${toJS(d)}\n`)
+const logEvent = e => fs.appendFileSync('./logs/events.jsonl', JSON.stringify({ts: new Date().toISOString(), ...e}) + '\n')
 
 // =============== Server Loading section =======================================================//
 const GEM_1 = fs.readFileSync('/run/secrets/gemini_1', 'utf-8').trim()
@@ -44,7 +45,7 @@ const askGroq = async (content, msgs) => {
     try {
       const res = (await llm[i].chat.completions.create(ask_obj)).choices[0].message.content
       fs.writeFileSync('./logs/last_prompt.json', JSON.stringify({...ask_obj, res}))
-      return res
+      return {res, model: llm[i + 1]}
     } catch (e) {console.error(`🚩 failed [${llm[i + 1]}] try ${i}:`, e.message)}
   }
 }
@@ -61,7 +62,7 @@ const askGemini = async (system, msgs) => {
     try {
       const res = (await llm[i].models.generateContent(ask_obj)).text
       fs.writeFileSync('./logs/last_prompt.json', JSON.stringify({...ask_obj, res}))
-      return res
+      return {res, model: llm[i + 1]}
     } catch (e) {console.error(`🚩 failed [${llm[i + 1]}] try ${i}:`, e.message)}
   }
 }
@@ -98,10 +99,13 @@ app.r('post', '/ask', async ({ body, headers }, rs) => {
   let escalate = body.skip_gk
 
   if (!escalate) {
-    const ans = await askGroq(parse(sp.gatekeeper, body.local_time), body.chat)
-    if (ans === undefined) console.error('🚩 gatekeeper exhausted all keys') 
-    else if (ans === 'IGNORE')   return rs.send("...")
-    else if (ans !== 'ESCALATE') return rs.send(ans)
+    const gk = await askGroq(parse(sp.gatekeeper, body.local_time), body.chat)
+    if (gk === undefined) console.error('🚩 gatekeeper exhausted all keys')
+    else if (gk.res === 'IGNORE')   return rs.send("...")
+    else if (gk.res !== 'ESCALATE') {
+      if (!trusted) logEvent({channel: body.mod, model: gk.model, outcome: 'gatekeeper'})
+      return rs.send(gk.res)
+    }
   }
 
   const kb = '# KNOWLEDGE BASE:\n' +
@@ -118,11 +122,15 @@ app.r('post', '/ask', async ({ body, headers }, rs) => {
 
   for (const i of [1,2]) { // 2 tries — each rotates to a fresh bucket
     const ans = await askGemini(query, body.chat)
-    if (ans) return rs.send(ans)
+    if (ans) {
+      if (!trusted) logEvent({channel: body.mod, model: ans.model, outcome: 'main'})
+      return rs.send(ans.res)
+    }
     console.log(`Gemini try ${i} failed.`)
   }
   console.error('🚩 main model exhausted all retries')
 
+  if (!trusted) logEvent({channel: body.mod, outcome: 'unavailable'})
   rs.send("The assistant is unavailable at the moment. Please try again later.")
 })
 

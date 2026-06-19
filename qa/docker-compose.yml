@@ -110,6 +110,17 @@ services:
       - ../clients/dradamblack/data:/app/data
       - ../clients/dradamblack/logs:/app/logs
 
+  dradamblack-notifier:
+    build: {context: ../services/notifier/, target: production}
+    networks:
+      dradamblack-network:
+        aliases: [notifier]
+    secrets: [resend_api_key]
+    volumes:
+      - ../clients/dradamblack/logs:/app/logs
+      - ../clients/dradamblack/data:/app/data:ro
+      - ../clients/dradamblack/private:/app/private:ro
+
   dradamblack-admin:
     build: {context: ../services/admin/, target: production}
     networks:
@@ -170,6 +181,17 @@ services:
     volumes:
       - ../clients/drlipokatz/data:/app/data
       - ../clients/drlipokatz/logs:/app/logs
+
+  drlipokatz-notifier:
+    build: {context: ../services/notifier/, target: production}
+    networks:
+      drlipokatz-network:
+        aliases: [notifier]
+    secrets: [resend_api_key]
+    volumes:
+      - ../clients/drlipokatz/logs:/app/logs
+      - ../clients/drlipokatz/data:/app/data:ro
+      - ../clients/drlipokatz/private:/app/private:ro
 
   drlipokatz-admin:
     build: {context: ../services/admin/, target: production}
@@ -240,3 +262,4 @@ secrets:
   admin_secret:       {file: ../secrets/clients_secrets/admin_secret.secret}
   authorized_emails:  {file: ../secrets/clients_secrets/authorized_emails.json}
   fb_page_access_token: {file: ../secrets/clients_secrets/fb_page_access_token.secret}
+  resend_api_key:     {file: ../secrets/clients_secrets/resend_api_key.secret}

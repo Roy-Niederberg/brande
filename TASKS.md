@@ -64,37 +64,32 @@ Phase 3 work until there's a second paying client.
 
 ### Source of Truth & client-data lifecycle
 
-- [roy] [P0] **MVP backup doesn't survive VM reboot — add a reboot-survival
-  shim.** The backup MVP runs as `tmux new -d -s backup ~/app/backup_loop.sh`
-  in a user-owned tmux session on the eintal client VM. If the VM reboots
-  (planned maintenance, kernel patch, crash), tmux dies and the watcher is
-  silently gone until someone notices a stale `git log` — at which point
-  there's no backup for that window. The proper fix is the
-  `services/backup/` Dockerized service (tracked separately below) which
-  restarts via Docker's restart policy. Until that ships, do one of:
-  - `crontab -e` → `@reboot tmux new -d -s backup ~/app/backup_loop.sh`
-    (simplest, no systemd unit needed; uses Roy's existing user crontab)
-  - or a tiny systemd *user* unit at `~/.config/systemd/user/qabu-backup.service`
-    with `Restart=always` and `loginctl enable-linger brande`.
-
-  **Why:** silent backup death is worse than no backup — you think you're
-  protected and you're not. Window of risk = uptime between reboots, which
-  on Oracle VMs can be weeks of complacency followed by an unexpected
-  reboot. (added 2026-05-21, while verifying the MVP works end-to-end —
-  watcher loop confirmed to commit/push on create/modify/delete of
-  whitelisted files, but reboot-survival was the one gap not addressed.)
+- [roy] [P3] **ofirfichman (GCP VM) has no backup.** The backup loop is only
+  installed on the Oracle client VM (drlipokatz + eintal). ofirfichman lives
+  on the GCP IPv6-only VM, which runs no backup service, so its client data is
+  still on an unprotected VM volume — `rsync_clients.sh` is the only way to
+  capture it. To fix, install the same automation from
+  `clients_server_automation/backup/` on the GCP VM (scripts → `~/app/`, clone
+  `qabu_clients` + drop in the whitelist `.gitignore`, install the user systemd
+  unit with `loginctl enable-linger`). **Not critical:** ofirfichman is a demo
+  (real architect friend of Roy's, used for QA), not a paying client — losing
+  its data would be annoying, not damaging. Do it before any real client lands
+  on the GCP VM. (added 2026-06-19, while reviewing whether the backup made
+  `rsync_clients.sh` redundant — surfaced that the GCP VM is the one deployed
+  client not covered by the new backup.)
 
 - [both] [P0] **Replace the MVP backup with a proper `services/backup/` Node
-  service.** An MVP is live on the eintal client VM as of 2026-05-19: a tmux
-  session running `find data private -type f | entr -d ...` inside
-  `~/app/clients/eintal/`, which rsyncs into a cloned GitLab repo
-  (`rny3/qabu_clients`) and commits + pushes on every change. SSH deploy key
-  at `~/.ssh/qabu_backup`, write-enabled in GitLab. It works but:
-  (a) only covers eintal — not drlipokatz, yomialpurrer, or the GCP VM's
-  ofirfichman; (b) needs `entr` and `git` installed on the host, violating
-  the everything-in-Docker rule; (c) tmux doesn't survive VM reboot — needs
-  manual reattach; (d) no debounce — a burst of admin saves yields multiple
-  commits.
+  service.** An MVP is live on the Oracle client VM: a systemd *user* service
+  (`qabu-backup.service`, `Restart=always`, linger enabled — survives reboot)
+  running `find clients/*/{data,private} -type f | entr -dn ...`, which rsyncs
+  into a cloned GitLab repo (`rny3/qabu_clients`) and commits + pushes on every
+  change. SSH deploy key at `~/.ssh/qabu_backup`, write-enabled in GitLab. The
+  automation is checked into `clients_server_automation/backup/`. It now covers
+  every client on the Oracle VM (drlipokatz + eintal) and survives reboot, but:
+  (a) ofirfichman on the GCP VM is still uncovered (tracked separately above);
+  (b) needs `entr` and `git` installed on the host, violating the
+  everything-in-Docker rule; (c) no debounce — a burst of admin saves yields
+  multiple commits.
 
   **Why:** unprotected client VM volumes are CLAUDE.md "Source of Truth"
   gap #1. The MVP unblocks signing eintal as the first paying client without
@@ -261,6 +256,22 @@ Phase 3 work until there's a second paying client.
     before committing end-to-end. (added 2026-04-26)
 
 ### Onboarding, infra, deploy
+
+- [claude] [P0] **Deploy the notifier to existing clients (VM compose edits).**
+  Resend account is set up (domain verified, key in
+  `secrets/clients_secrets/resend_api_key.secret` locally — still needs
+  copying to the VMs).
+  The compose template (`services/config/files/docker-compose.yml`) only
+  affects *new* clients; the three deployed clients' compose files live on
+  the VMs and are authoritative. For each of drlipokatz + eintal (Oracle,
+  `brande@129.159.159.251`) and ofirfichman (GCP): add the `notifier` service
+  block + `resend_api_key` secret to `~/app/clients/<sub>/docker-compose.yml`,
+  drop the secret file in `~/app/clients/<sub>/secrets/`, create
+  `~/app/clients/<sub>/data/notify.json` (JSON array of recipient emails,
+  e.g. `["roy.niederberg@gmail.com"]`), then
+  `docker compose pull && up -d`. Also pull the new `prompt_composer` image
+  (it now appends `logs/events.jsonl`). Blocked by the Resend account task
+  above. (added 2026-06-11)
 
 - [roy] [P1] **Auto-create DNS records via Cloudflare API on scaffold.** Today,
   someone manually adds an A record after onboarding. The conductor (or

@@ -44,6 +44,12 @@ services:
     volumes:
       - ../services/prompt_composer/src:/app/src:ro
 
+  dradamblack-notifier:
+    image: qabu-notifier-dev
+    build: {context: ../services/notifier/, target: development}
+    volumes:
+      - ../services/notifier/src:/app/src:ro
+
   dradamblack-admin:
     image: qabu-admin-dev
     build: {context: ../services/admin/, target: development}
@@ -71,6 +77,12 @@ services:
     build: {context: ../services/prompt_composer/, target: development}
     volumes:
       - ../services/prompt_composer/src:/app/src:ro
+
+  drlipokatz-notifier:
+    image: qabu-notifier-dev
+    build: {context: ../services/notifier/, target: development}
+    volumes:
+      - ../services/notifier/src:/app/src:ro
 
   drlipokatz-admin:
     image: qabu-admin-dev
