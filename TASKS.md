@@ -257,6 +257,22 @@ Phase 3 work until there's a second paying client.
 
 ### Onboarding, infra, deploy
 
+- [claude] [P3] **Conductor treats a partial stack as healthy.** While bringing
+  up yomialpurrer + dradamblack (2026-06-20), only the 4 core (no-profile)
+  services started on the first conductor reconcile; the `site` + `facebook`
+  profile services never came up until a manual `docker compose --env-file
+  private/config.env up -d`. Root cause is `stack_running()` in
+  `clients_server_automation/conductor/src/main.cpp` — it returns true if **any**
+  container is running (`ps -q --status running | grep -q .`), so once the core
+  services are up the conductor considers the stack healthy and never re-runs
+  `start_stack`. A stack that starts partially (or where a profiled service later
+  crashes and isn't restarted) is silently left degraded. The 60s reconcile loop
+  won't repair it. Fix: make the health check compare running services against
+  the set compose *expects* given the env-file profiles (e.g. diff `ps
+  --services --status running` against `config --services`), and re-run
+  `start_stack` when any expected service is missing. (added 2026-06-20, after
+  the first bring-up of both demos came up core-only and needed a manual re-up.)
+
 - [claude] [P0] **Deploy the notifier to existing clients (VM compose edits).**
   Resend account is set up (domain verified, key in
   `secrets/clients_secrets/resend_api_key.secret` locally — still needs

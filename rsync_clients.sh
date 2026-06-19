@@ -3,7 +3,7 @@ set -euo pipefail
 
 usage() {
   echo "Usage: $0 <client>"
-  echo "Clients: drlipokatz eintal yomialpurrer ofirfichman"
+  echo "Clients: drlipokatz eintal yomialpurrer dradamblack ofirfichman"
 }
 
 client="${1:-}"
@@ -13,7 +13,7 @@ if [[ -z "$client" ]]; then
 fi
 
 case "$client" in
-  drlipokatz|eintal|yomialpurrer)
+  drlipokatz|eintal|yomialpurrer|dradamblack)
     host="brande@129.159.159.251"
     ;;
   ofirfichman)

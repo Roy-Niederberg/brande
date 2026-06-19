@@ -236,8 +236,7 @@ Three VMs, picked across clouds to avoid single-vendor lock-in:
 - **Main** (Oracle, `brande@129.159.134.3`) — singleton. Landing page, auth,
   FB dispatcher, onboarding. Scales vertically.
 - **Clients #1** (Oracle, `brande@129.159.159.251`) — multi-tenant: drlipokatz,
-  eintal. (`dradamblack` and `yomialpurrer` are kept locally but not currently
-  deployed — see Client Profiles.)
+  eintal, yomialpurrer, dradamblack.
 - **Clients #2** (GCP, IPv6-only) — multi-tenant, currently just ofirfichman.
 
 Multi-tenant (not VM-per-client) is a cost concession, not the ideal — it
@@ -408,17 +407,14 @@ prompt design patterns:
   queries, direct booking CTA for surgery-ready users.
 
 **yomialpurrer** — Hebrew demo, **fictional doctor**. Second specialty option for
-eintal's multi-doctor routing demo. Paired with `drlipokatz`. **Not currently
-deployed** — files are kept locally under `clients/yomialpurrer/`; spin back up
-on the Oracle client VM when the multi-doctor routing demo is needed.
+eintal's multi-doctor routing demo. Paired with `drlipokatz`. Deployed on the
+Oracle client VM (`129.159.159.251`).
 
 **dradamblack** — English demo client. Cataract surgery clinic (Dr. Adam Black —
 **fictional doctor**). English translation of `drlipokatz` with US medical context
 (insurance instead of HMO, USD instead of ILS, NY address). Same prompt design
 patterns, same KB structure. Exists so English-speaking prospects can see Qabu
-in their language. **Not currently deployed** — files are kept locally under
-`clients/dradamblack/` for future use; spin it back up on a client VM when an
-English demo is needed.
+in their language. Deployed on the Oracle client VM (`129.159.159.251`).
 
 **ofirfichman** — Real architect, friend of Roy's. Site is real; helps test and
 QA the platform under a real non-clinic use case. Only client hosted on the GCP

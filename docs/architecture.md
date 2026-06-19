@@ -11,8 +11,7 @@ Three VMs, picked across clouds to avoid single-vendor lock-in:
 - **Main** (Oracle, `brande@129.159.134.3`) — singleton. Landing page, auth,
   FB dispatcher, onboarding. Scales vertically.
 - **Clients #1** (Oracle, `brande@129.159.159.251`) — multi-tenant: drlipokatz,
-  eintal, yomialpurrer. (`dradamblack` is kept locally but not currently
-  deployed — see Client Profiles in `CLAUDE.md`.)
+  eintal, yomialpurrer, dradamblack.
 - **Clients #2** (GCP, IPv6-only) — multi-tenant, currently just ofirfichman.
   Doubles as an IPv6-only hosting testbed.
 
