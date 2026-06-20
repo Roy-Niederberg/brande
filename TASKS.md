@@ -326,8 +326,8 @@ Phase 3 work until there's a second paying client.
   manually. Pull at runtime instead — no rsync, no machine dependency.
   (added 2026-03-28)
 
-- [roy] [P0] **GCP VM (ofirfichman) wildcard cert will fail to renew on
-  2026-07-19 — ~2 months out.** While debugging why ofirfichman was down on
+- [roy] [P0] **GCP VM (ofirfichman) wildcard certs can't auto-renew — next
+  manual deadline 2026-08-25 (qabu.net), 2026-09-18 (qabu.co.il).** While debugging why ofirfichman was down on
   2026-05-17 (turned out to be a frozen VM, fixed by console restart + manual
   `docker compose up -d` in `~/app/clients/ofirfichman/`), I discovered
   `app-clients-router-1` is logging continuous ACME renewal failures:
@@ -351,6 +351,36 @@ Phase 3 work until there's a second paying client.
   every reboot requires manually bringing the client stack up. Worth
   installing conductor here once the binary is rebuilt (see the P0
   conductor task above). (added 2026-05-17)
+
+  **Update 2026-06-20 — mitigation done + root cause refined + new dependency.**
+  (1) Manual cert copy done (option (a), by hand once): streamed both wildcard
+  certs from the Oracle client VM (`129.159.159.251`, which auto-renews fine)
+  into the GCP Caddy store at
+  `/data/caddy/certificates/acme-v02.api.letsencrypt.org-directory/`
+  (`docker exec tar` out of Oracle → through local → `tar` into GCP, since the
+  two VMs can't reach each other directly), then `docker compose restart
+  clients-router`. Reset expiries: **`*.qabu.net` → Aug 25 2026**, **`*.qabu.co.il`
+  → Sep 18 2026**. So the cert is no longer the immediate fire, but this is now a
+  recurring ~60-day hand-copy chore until a permanent fix lands.
+  (2) **Root-cause correction to the note above:** ACME is NOT purely IPv4-only
+  anymore — `acme-v02.api.letsencrypt.org` resolves to an IPv6 address
+  (`2606:4700:60::…`, it's behind Cloudflare) and the host reaches it fine
+  (`curl -6 → 200`). The actual blocker is **Docker IPv6 is disabled on this VM**
+  (`docker network inspect bridge` → `EnableIPv6=false`; the clients-router
+  container has only `172.19.0.3`, no `inet6`), so Caddy-in-container can only
+  dial IPv4, which the IPv6-only host can't route. This adds a cleaner **option
+  (d): enable Docker IPv6** (`/etc/docker/daemon.json`: `"ipv6": true`,
+  `"ip6tables": true`, `"fixed-cidr-v6"`, then restart dockerd + recreate
+  containers) → Caddy then ACMEs and auto-renews **both** zones natively over
+  IPv6, killing the copy chore for good. **This is the agreed next step ("A now,
+  B later").** Caveat: verify the other ofirfichman containers (site, admin,
+  prompt-composer, widget, services-router) survive the daemon restart. Note
+  this does NOT fix the registry-pull task above — `registry.gitlab.com` has no
+  AAAA at all, so image pulls still need NAT64/a mirror (that's why the
+  clients_router image had to be shipped via `docker save | ssh | docker load`).
+  (3) **New dependency:** `ofirfichman.qabu.co.il` is now served from this VM too
+  (part of the *.qabu.co.il rollout), so the chore / fix now covers TWO wildcard
+  certs, not one. Cloudflare record for it: AAAA `2600:1900:4040:704::`, proxied.
 
 - [roy] [P0] **Rebuild and redeploy conductor binary.** Three pending source
   fixes: (1) `setbuf(stdout, NULL)` so logs show in journalctl, (2) remove
