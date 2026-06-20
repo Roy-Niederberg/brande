@@ -1,6 +1,6 @@
 #!/bin/bash
 
-PASS="✅" FAIL="❌" SKIP="⚠️ "
+PASS="✅" FAIL="❌" SKIP="⚠️ " NONE="⚪"
 errors=0
 total=0
 healthy=0
@@ -46,6 +46,18 @@ for dir in "$CLIENTS_DIR"/*/; do
     echo "  $PASS /"
   else
     echo "  $SKIP / (status=$s — site profile may be off)"
+  fi
+
+  # .qabu.co.il — optional Hebrew-branded mirror. Absent is NOT an error: it
+  # just means this client has no co.il record/routing yet. Neutral marker, no
+  # effect on fails/errors. widget.js proves the *.qabu.co.il block routes.
+  ils="$c.qabu.co.il"
+  s=$(status "https://$ils/widget.js")
+  ct=$(ctype "https://$ils/widget.js")
+  if [ "$s" = 200 ] && [[ "$ct" == *javascript* ]]; then
+    echo "  $PASS .co.il widget.js"
+  else
+    echo "  $NONE .co.il (none — status=$s)"
   fi
 
   [ $fails -eq 0 ] && ((healthy++))

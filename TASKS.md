@@ -273,21 +273,30 @@ Phase 3 work until there's a second paying client.
   `start_stack` when any expected service is missing. (added 2026-06-20, after
   the first bring-up of both demos came up core-only and needed a manual re-up.)
 
-- [claude] [P0] **Deploy the notifier to existing clients (VM compose edits).**
-  Resend account is set up (domain verified, key in
-  `secrets/clients_secrets/resend_api_key.secret` locally — still needs
-  copying to the VMs).
-  The compose template (`services/config/files/docker-compose.yml`) only
-  affects *new* clients; the three deployed clients' compose files live on
-  the VMs and are authoritative. For each of drlipokatz + eintal (Oracle,
-  `brande@129.159.159.251`) and ofirfichman (GCP): add the `notifier` service
-  block + `resend_api_key` secret to `~/app/clients/<sub>/docker-compose.yml`,
-  drop the secret file in `~/app/clients/<sub>/secrets/`, create
-  `~/app/clients/<sub>/data/notify.json` (JSON array of recipient emails,
-  e.g. `["roy.niederberg@gmail.com"]`), then
-  `docker compose pull && up -d`. Also pull the new `prompt_composer` image
-  (it now appends `logs/events.jsonl`). Blocked by the Resend account task
-  above. (added 2026-06-11)
+- [roy] [P2] **GCP client VM has no IPv4 egress — can't pull from the registry.**
+  The GCP VM (`brande@2600:1900:4040:704::`, ofirfichman) is IPv6-only and
+  `registry.gitlab.com` is IPv4-only (resolves to `35.227.35.254`, no native
+  AAAA). The VM has working IPv6 egress but **no IPv4 path at all** (no NAT64
+  route for `64:ff9b::/96`, no daemon.json registry mirror, `curl https://1.1.1.1`
+  times out). It pulled fine ~4 weeks ago, so whatever IPv4/NAT64 egress existed
+  has since broken. Consequence: ofirfichman is stuck on its old images and
+  **could not get the notifier** — its compose was left reverted (no notifier)
+  to stay consistent with what can actually run; the `resend_api_key.secret` and
+  `data/notify.json` ARE already staged on the VM, so once egress is restored the
+  fix is just: re-add the notifier block to
+  `~/app/clients/ofirfichman/docker-compose.yml` (see
+  `services/config/files/docker-compose.yml` — but keep ofir's `site` with NO
+  `profiles:` gate and no `config.env`) and `docker compose pull && up -d`. Fix
+  the egress at the GCP/networking layer (re-enable Cloud NAT for IPv4 to the
+  VM, or set up a NAT64 gateway, or configure a registry mirror reachable over
+  IPv6). (added 2026-06-20, while trying to bring all clients to latest + add
+  the notifier — the 4 Oracle clients succeeded, ofirfichman blocked here.)
+
+  Notifier deployment status: ✅ done on the 4 Oracle clients (drlipokatz,
+  eintal, yomialpurrer, dradamblack) — all running latest images + notifier,
+  recipients default to `["roy.niederberg@gmail.com"]` in each
+  `data/notify.json`, edit there to change. ⛔ ofirfichman blocked on the egress
+  issue above.
 
 - [roy] [P1] **Auto-create DNS records via Cloudflare API on scaffold.** Today,
   someone manually adds an A record after onboarding. The conductor (or
