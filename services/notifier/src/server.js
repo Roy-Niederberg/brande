@@ -6,6 +6,8 @@ import fs from 'fs'
 // sent verbatim. To track "what's new" it drains the log — at send time events.jsonl is renamed
 // to events.sending (atomic, so concurrent appends land in a fresh log), emailed, then deleted
 // only after a successful send. A failed send keeps events.sending for next-cycle retry.
+// It is a HEARTBEAT: the send always fires every 24h, even with an empty log (empty mail). That
+// way silence in Roy's inbox always means a real failure, not just a quiet client.
 // ------------------------------------------------------------------------------------------------
 const API_KEY   = fs.readFileSync('/run/secrets/resend_api_key', 'utf-8').trim()
 const SEND_HOUR = 12
@@ -21,7 +23,7 @@ const send = async text => {
     method: 'POST',
     headers: {Authorization: `Bearer ${API_KEY}`, 'Content-Type': 'application/json'},
     body: JSON.stringify({from: 'Qabu <notifications@qabu.net>', to,
-      subject: `Qabû — ${title} — daily digest`, text})
+      subject: `Qabû — ${title} — daily digest`, text: text || '\n'}) // Resend 422s on '' — coerce
   })
   if (!res.ok) throw new Error(`Resend ${res.status}: ${await res.text()}`)
 }
@@ -36,12 +38,10 @@ const msUntilNextSend = () => {
 const tick = async () => {
   try {
     if (!fs.existsSync(SENDING) && fs.existsSync(EVENTS)) fs.renameSync(EVENTS, SENDING)
-    if (fs.existsSync(SENDING)) {
-      const text = fs.readFileSync(SENDING, 'utf-8')
-      if (text.trim()) await send(text)
-      fs.unlinkSync(SENDING) // only after a successful send — a throw above keeps it for retry
-      console.log('Sent daily digest')
-    }
+    const text = fs.existsSync(SENDING) ? fs.readFileSync(SENDING, 'utf-8') : ''
+    await send(text)                                   // always fires — empty mail = "no activity"
+    if (fs.existsSync(SENDING)) fs.unlinkSync(SENDING)  // only after a successful send; a throw keeps it for retry
+    console.log('Sent daily digest')
   } catch (e) { console.error('🚩', e.message) }
   setTimeout(tick, msUntilNextSend())
 }
