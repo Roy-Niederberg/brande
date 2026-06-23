@@ -94,6 +94,13 @@ did.
 
 - Short, simple code. Aim for ~80 line files, ~100 char lines.
 - Every line must justify its place. Avoid unnecessary abstractions.
+- **No environment-specific values baked into source.** Never hardcode usernames,
+  home directories, absolute host paths, IPs, ports, or hostnames that vary by
+  machine/user into code. Derive them at runtime (`$HOME`, `getpwuid`, env vars,
+  `process.cwd()`) or pass them in via config/args/compose. The code must run
+  unchanged as any user on any host. (Cautionary tale: the conductor compiled
+  `/home/brande/app/...` into its C++ constants, binding the binary to one
+  username — renaming the user would have meant a recompile. Don't repeat that.)
 - Minimize third-party dependencies.
 - Whitelist `.gitignore` (not blacklist).
 - Everything runs in Docker - no node/npm/python on the host.
@@ -317,7 +324,15 @@ See `docs/client-server-setup.md` for provisioning a new client VM from scratch
 
 ## Repo Scripts
 
-Four shell scripts live at the repo root, all run from a local dev machine:
+Five shell scripts live at the repo root, all run from a local dev machine:
+
+- **`setup_server.sh`** — base host setup for a **new** Oracle VM (run once, before
+  the steps in `docs/client-server-setup.md`). Takes `<cloud-user>@<host>` (e.g.
+  `ubuntu@1.2.3.4`), SSHes in, and provisions the `brande` user (password-sudo +
+  your SSH key + docker group), makes `ufw` the sole firewall owner (22/80/443,
+  purging Oracle's stock iptables), and installs Docker. Idempotent; prompts
+  interactively for the `brande` sudo password at the end. Does NOT do role setup
+  (registry login, conductor, clients-router) — that's the rest of the doc.
 
 - **`check_main.sh`** — health-checks `qabu.net` endpoints: landing page, static
   assets, `/privacy`, `/terms`, `/auth/*`, `/onboarding`, `/facebook` dispatcher,
@@ -344,9 +359,11 @@ Four shell scripts live at the repo root, all run from a local dev machine:
   up the new image. Empty SHA column = image was built before `build.sh` started
   labeling, or built off-flow.
 
-When adding a new client VM or subdomain, all four scripts need updating
+When adding a new client VM or subdomain, the four fleet scripts (`check_main.sh`,
+`check_clients.sh`, `rsync_clients.sh`, `check_versions.sh`) need updating
 (`rsync_clients.sh` per-client list especially — it's hand-maintained;
-`check_versions.sh` has a per-VM list at the top).
+`check_versions.sh` has a per-VM list at the top). `setup_server.sh` is generic
+and takes the target as an argument, so it needs no per-VM edits.
 
 ## Landing Page
 

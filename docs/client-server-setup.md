@@ -4,15 +4,72 @@ How to provision a new Qabu client VM from scratch on Oracle Cloud.
 
 ## Prerequisites
 
-- Oracle Cloud VM running Ubuntu (22.04+)
-- SSH key access from your dev machine
-- A `brande` user on the VM
+- Oracle Cloud VM running Ubuntu (24.04 LTS)
+- SSH key access from your dev machine (the default `ubuntu`/`opc` user is fine —
+  the `brande` user is created in step 0)
 - GitLab personal access token (for pulling Docker images)
 - Cloudflare API token (for wildcard TLS)
 - Secrets ready: `jwt_signing_key`, `fb_dispatcher_secret`, `provision_secret`,
   `cloudflare_api_token` (must match main server)
 
+## 0. Base OS & firewall — `setup_server.sh`
+
+From your dev machine, against a fresh Ubuntu 24.04 box you can SSH into as the
+default cloud user (`ubuntu`, which has passwordless sudo):
+
+```sh
+./setup_server.sh ubuntu@<vm-ip>
+```
+
+It's idempotent (safe to re-run) and does the whole host baseline. What it does:
+
+- **OS check** — warns if not 24.04 (won't auto-upgrade; see note below).
+- **`brande` user** — created with password-protected sudo. The default `ubuntu`
+  user has *passwordless* sudo; we want a real password prompt, so `brande` goes
+  in the `sudo` group. You're prompted for the password at the very end over an
+  interactive `ssh -t`, so it never touches the script/args/history. The user is
+  also added to the `docker` group and gets the SSH key you logged in with (copied
+  from the cloud user's `authorized_keys`, via `$SUDO_USER` — not root's, which on
+  Oracle images is a decoy "log in as ubuntu" message).
+- **Firewall — `ufw` as sole owner.** Oracle images ship a stock iptables ruleset
+  (loaded at boot by `iptables-persistent`) that `REJECT`s everything but 22. The
+  script purges `iptables-persistent`/`netfilter-persistent` and lets ufw manage
+  the host, allowing 22/80/443 on both IPv4 and IPv6.
+- **Docker** — installs Docker CE (arm64/amd64 auto-detected by get.docker.com).
+
+After it runs, `brande` must re-login before the docker group takes effect.
+
+Caveat — **Docker bypasses ufw.** Published container ports (`-p`) punch through
+ufw via the FORWARD/DNAT path, so a `-p 0.0.0.0:PORT` is reachable even if ufw
+doesn't list it. Fine for Caddy's 80/443 (we *want* those public); just don't rely
+on ufw to hide a published port — bind internal-only ports to `127.0.0.1`.
+
+### Still manual (the script can't / shouldn't do these)
+
+- **OCI Security List (cloud firewall).** ufw is only the host layer; OCI's network
+  layer also gates 80/443. Console: **Networking → VCN → Security Lists → Default →
+  Add Ingress Rules** for TCP 80 + 443, source `0.0.0.0/0`, stateful. It attaches
+  to the *subnet*, so a VM added to a subnet that already serves web traffic
+  **inherits** the rules — confirm with a curl from outside the cloud:
+  **"connection refused"** = both firewalls open (nothing listening yet, which is
+  fine); **timeout** = a firewall is still blocking, go add the ingress rule.
+  (The two ARM VMs landed in the AMD VMs' subnet and inherited 80/443 — no console
+  change was needed.)
+- **OS upgrade.** If the box isn't on 24.04, upgrade in place with
+  `sudo do-release-upgrade` **inside `tmux`/`screen`** (a dropped SSH session
+  mid-upgrade can brick it; it also parks at interactive prompts — reattach to
+  answer them). The OCI console keeps showing the *original* image version
+  afterward — cosmetic, ignore it.
+
+The default `ubuntu` user is left in place as a **break-glass** account (key-only
+SSH, passwordless sudo). On a key-only box it's not a meaningful risk, and it's
+your way back in if `brande` ever breaks — don't delete it. Lock it if you want it
+inert: `sudo usermod -L -s /usr/sbin/nologin ubuntu`.
+
 ## 1. Install Docker
+
+Already done by `setup_server.sh` (step 0) — it installs Docker CE and adds
+`brande` to the `docker` group. Only needed if you set the box up by hand:
 
 ```sh
 ssh brande@<vm>

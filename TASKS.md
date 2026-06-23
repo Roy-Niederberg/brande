@@ -257,6 +257,43 @@ Phase 3 work until there's a second paying client.
 
 ### Onboarding, infra, deploy
 
+- [roy] [P3] **Two free ARM (Ampere A1) VMs provisioned on Oracle — not yet
+  usable for Qabu.** While discussing Oracle's Always Free tier (2026-06-21) we
+  confirmed the ARM Ampere allocation (4 OCPU / 24 GB) is a *separate* pool from
+  the two AMD `E2.1.Micro` always-free instances. Roy grabbed Ampere capacity
+  (the hard part — `Out of host capacity` is the usual blocker) and created two
+  `VM.Standard.A1.Flex` VMs in AD-1, both Ubuntu (upgraded in place to 24.04.4
+  LTS — supported to Apr 2029 — `aarch64`, running, free):
+    - **arm1** — `129.159.154.37` (priv `10.0.0.102`), **3 OCPU / 18 GB**.
+    - **arm2-small** — `129.159.141.23` (priv `10.0.0.190`), **1 OCPU / 6 GB**.
+  Together they consume the **entire** 4 OCPU / 24 GB ARM pool — no room for a
+  3rd ARM free instance, and the monthly budget (3,000 OCPU-hrs / 18,000 GB-hrs)
+  is ~99% used running both 24/7 (≈2,976 OCPU-hrs). **Near-zero margin**: any
+  resize-up or a temporary 5th instance tips into billed usage. TODO: set a
+  Billing → Budgets alert (~$1) as a tripwire.
+  Notes / gotchas:
+    1. **Blocker to deploying Qabu here: `linux/arm64` images.** Both boxes are
+       `aarch64`; current images are x86. Need multi-arch via `docker buildx
+       --platform linux/amd64,linux/arm64 --push` (reworks `services/build.sh`,
+       needs a buildx builder) OR build natively on the ARM box. Solve this
+       before any deploy effort.
+    2. **Two firewall layers** before they serve traffic: OCI VCN Security
+       List/NSG (open 80/443) **and** the host's default iptables (Oracle images
+       block everything but SSH at the OS level too — classic "opened 443 in OCI
+       but nothing connects" trap).
+    3. **OCI console still shows Ubuntu 20.04** for both — cosmetic only. The
+       image field is launch-time metadata and does NOT update on an in-place
+       `do-release-upgrade`; the real OS (22.04, confirmed via `/etc/os-release`)
+       is the source of truth. Ignore the console label.
+    4. **Why in-place upgrade, not recreate:** pool is maxed so you can't
+       create-before-terminate; terminating to recreate would gamble the Ampere
+       capacity that's scarce. Upgrade-in-place keeps the instance + capacity.
+  Opportunity: these are capable boxes (esp. the 3/18 arm1) sitting free. They
+  enable moving toward the **VM-per-client** ideal that `CLAUDE.md` calls out
+  (multi-tenant is "a cost concession, not the ideal") — a real upgrade over the
+  cramped 1 OCPU / 1 GB Oracle micros — once the arm64 image story is solved.
+  (added 2026-06-21, after provisioning + upgrading both ARM VMs.)
+
 - [claude] [P3] **Conductor treats a partial stack as healthy.** While bringing
   up yomialpurrer + dradamblack (2026-06-20), only the 4 core (no-profile)
   services started on the first conductor reconcile; the `site` + `facebook`
