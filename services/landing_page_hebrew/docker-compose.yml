@@ -1,0 +1,8 @@
+services:
+  landing-page-hebrew:
+    build:
+      context: .
+      target: production
+    ports:
+      - "8088:80"
+    restart: unless-stopped

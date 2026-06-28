@@ -365,26 +365,40 @@ When adding a new client VM or subdomain, the four fleet scripts (`check_main.sh
 `check_versions.sh` has a per-VM list at the top). `setup_server.sh` is generic
 and takes the target as an argument, so it needs no per-VM edits.
 
-## Landing Page
+## Landing Pages
 
-The landing page (`services/landing_page/`) is a React/Vite/Tailwind app that
-runs as a separate Docker service on the main server. Build & push:
+There are two landing-page services, each a separate Docker service on the main
+server:
+
+- **English** — `services/landing_page/` (React/Vite/Tailwind), served at the
+  `qabu.net` catch-all (`landing-page:80`).
+- **Hebrew** — `services/landing_page_hebrew/` (static `index.html` + nginx),
+  served at `qabu.co.il` (`landing-page-hebrew:80`).
+
+**Always build with `services/build.sh`** — never a bare `docker build`/`docker
+push`. build.sh tags `:latest` *and* `:<short-SHA>` and stamps the
+`org.opencontainers.image.revision` label that `check_versions.sh` reads. A
+manual `docker build -t ...:latest` skips the SHA tag and the label, so the VM's
+running image becomes untraceable (empty SHA column in `check_versions.sh`).
+Because build.sh reads `git rev-parse HEAD`, **commit your changes first** so the
+label points at the commit whose content is actually in the image.
 
 ```sh
-docker build --no-cache -t registry.gitlab.com/rny3/brande/landing_page:latest services/landing_page/
-docker push registry.gitlab.com/rny3/brande/landing_page:latest
+services/build.sh landing_page          # English (qabu.net)
+services/build.sh landing_page_hebrew    # Hebrew (qabu.co.il)
 ```
 
-Deploy:
+Deploy (service name = `landing-page` or `landing-page-hebrew`):
 ```sh
 ssh brande@129.159.134.3 'cd ~/app && docker compose pull landing-page && docker compose up -d landing-page'
 ```
 
-Routing: the main router Caddyfile proxies the catch-all to `landing-page:80`.
-`/privacy` and `/terms` are still served from `/srv` as static files.
+Routing: the main router Caddyfile proxies the `qabu.net` catch-all to
+`landing-page:80` and `qabu.co.il` to `landing-page-hebrew:80`. `/privacy` and
+`/terms` are still served from `/srv` as static files.
 
-Static assets (videos, images) go in `services/landing_page/public/` — Vite
-copies them to `dist/` as-is during build.
+Static assets (videos, images) for the English app go in
+`services/landing_page/public/` — Vite copies them to `dist/` as-is during build.
 
 ## Client Config & Assets
 
