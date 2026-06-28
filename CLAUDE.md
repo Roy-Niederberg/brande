@@ -17,20 +17,25 @@ more.
 Claude Code on mobile works with GitHub. The GitHub repo is a mirror — GitLab
 is the single source of truth. Never merge on GitHub UI.
 
-Add the remote (one-time):
-```sh
-git remote add github git@github.com:roy-niederberg/brande.git
-```
+**The mirror is automatic.** GitLab push-mirrors `main` to GitHub, so pushing to
+GitLab (`git push origin`) syncs GitHub on its own. Never `git push github`
+manually — there's no need, and the `github` remote isn't required for the
+mirror direction.
 
-When Claude Code creates a branch on GitHub, merge locally:
+When Claude Code on mobile creates a branch on GitHub, pull it back into GitLab:
 ```sh
 git fetch github                                    # 1. fetch new branches
 git branch -r --list 'github/*'                     # 2. see what's new
 git diff origin/main...github/<branch>              # 3. review changes
 git merge github/<branch>                           # 4. merge into main
-git push origin                                     # 5. push to GitLab
-git push github --delete <branch>                   # 6. clean up remote branch
+git push origin                                     # 5. push to GitLab → auto-mirrors to GitHub
+git push github --delete <branch>                   # 6. delete the GitHub-only branch
 ```
+Step 6 is the **one** legitimate direct push to GitHub: that branch exists only
+on GitHub, so the mirror (GitLab→GitHub only) never sees it and can't clean it
+up. This is cleanup, not the routine sync.
+(Steps 1 and 6 need the `github` remote: `git remote add github
+git@github.com:roy-niederberg/brande.git`.)
 
 ## Setup (new machine)
 
