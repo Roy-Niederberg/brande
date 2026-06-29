@@ -180,10 +180,13 @@ order:
    flow overwrites the live file. Drafts exist in localStorage, but once
    published there's no "previous version" anywhere.
 3. **No audit log.** Multi-admin clients will eventually want who-changed-what.
-4. **`clients/` is checked into git.** Legacy clients (drlipokatz, eintal,
-   dradamblack, yomialpurrer, ofirfichman) all have committed copies that drift
-   from the VM. Onboarding-created clients (the new flow) correctly don't enter
-   git. Long-term, `clients/` should be gitignored and only the template
+4. **`clients/` is checked into git.** Committed clients (drlipokatz, eintal,
+   eintal-hadassah, dradamblack, yomialpurrer, ofirfichman) all have copies that
+   drift from the VM. Onboarding-created clients (the new flow) correctly don't
+   enter git — but eintal-hadassah (added 2026-06) was built repo-first and
+   scaffolded/pushed to the VM by hand rather than via onboarding, so it joined
+   the committed group deliberately (we pre-built its KB + prompts locally).
+   Long-term, `clients/` should be gitignored and only the template
    (`services/config/files/`) stays in git.
 5. **Admin UI gaps force git+rsync edits** for things that should be
    admin-editable: background images, og-meta, capabilities (`run()` logic is
@@ -248,7 +251,7 @@ Three VMs, picked across clouds to avoid single-vendor lock-in:
 - **Main** (Oracle, `brande@129.159.134.3`) — singleton. Landing page, auth,
   FB dispatcher, onboarding. Scales vertically.
 - **Clients #1** (Oracle, `brande@129.159.159.251`) — multi-tenant: drlipokatz,
-  eintal, yomialpurrer, dradamblack.
+  eintal, eintal-hadassah, yomialpurrer, dradamblack.
 - **Clients #2** (GCP, IPv6-only) — multi-tenant, currently just ofirfichman.
 
 Multi-tenant (not VM-per-client) is a cost concession, not the ideal — it
@@ -419,7 +422,7 @@ testing interface.
 
 ## Client Profiles
 
-All five clients are demos. None are paying customers yet.
+All six clients are demos. None are paying customers yet.
 
 **eintal** — Prospective first real customer. Real multi-doctor clinic, currently
 running as a demo against their real site. The headline feature being demoed is
@@ -451,6 +454,17 @@ Oracle client VM (`129.159.159.251`).
 (insurance instead of HMO, USD instead of ILS, NY address). Same prompt design
 patterns, same KB structure. Exists so English-speaking prospects can see Qabu
 in their language. Deployed on the Oracle client VM (`129.159.159.251`).
+
+**eintal-hadassah** — Hebrew demo client for the **refractive / glasses-removal
+(laser) surgery** branch of Ein Tal, modeled on the real site
+`eintal-hadassah.com` (an Ein Tal × Hadassah Ein Kerem collaboration). Site-only
+(no Facebook), with the basic template gatekeeper + main prompts and a starter KB
+seeded from the clinic site (LASIK/INTRALASIK/PRK, branches, surgeons, HMO
+agreements) — a placeholder for Nevo to fill in. Site iframe points at
+`eintal-hadassah.com` via `client-config.json` `siteUrl`. Deployed on the Oracle
+client VM (`129.159.159.251`) and featured as a live-agent card on the Hebrew
+landing page (`qabu.co.il/#examples`). A sibling clinic of eintal, not one of
+eintal's routed specialists.
 
 **ofirfichman** — Real architect, friend of Roy's. Site is real; helps test and
 QA the platform under a real non-clinic use case. Only client hosted on the GCP
