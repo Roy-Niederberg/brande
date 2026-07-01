@@ -280,8 +280,9 @@ Note: Facebook dispatcher → client forwarding won't work end-to-end in QA
 ### Building images
 
 `services/build.sh` builds and pushes a single service image to the GitLab
-registry. It lives inside `services/` so service-name tab completion works
-naturally (service directories are its siblings).
+registry, multi-arch (`linux/amd64` + `linux/arm64` — for ARM client VMs). It
+lives inside `services/` so service-name tab completion works naturally
+(service directories are its siblings).
 
 ```sh
 services/build.sh <service>             # e.g. services/build.sh prompt_composer
@@ -289,9 +290,29 @@ services/build.sh -t <tag> <service>    # also tag with <tag>
 ```
 
 For each build it:
-- Runs `docker build --target production`.
+- Runs `docker buildx build --target production --platform linux/amd64,linux/arm64 --push`.
+  Multi-platform builds can't load into the local image store, so build+push
+  happen in one step (unlike a plain `docker build`).
 - Labels the image with `org.opencontainers.image.revision=<full SHA>`.
-- Tags and pushes `latest` + `<short SHA>` (and `<tag>` if `-t` is given).
+- Tags and pushes `latest` + `<short SHA>` (and `<tag>` if `-t` is given), as a
+  single multi-arch manifest list per tag — `docker compose pull` on either an
+  x86 or ARM VM automatically grabs the matching layer.
+- Self-heals QEMU arm64 emulation: checks
+  `/proc/sys/fs/binfmt_misc/qemu-aarch64` and re-registers it (via
+  `docker run --privileged --rm multiarch/qemu-user-static --reset -p yes`) if
+  missing — this registration doesn't survive a host reboot.
+
+**One-time per machine**: `docker buildx create --use --bootstrap` (creates a
+`docker-container` buildx builder backed by a BuildKit container — persists
+across reboots, `build.sh` doesn't need this repeated). Base images
+(`node:22-alpine`, `caddy:2.10.2-alpine`) are already multi-arch, so no
+Dockerfile changes are needed for arm64 support.
+
+Cross-arch builds are QEMU-emulated, not native — fine for these light
+services (`npm ci` ran ~6x slower under arm64 emulation but still <20s), but
+worth watching if a service's dependency tree grows heavy. If emulation ever
+becomes the bottleneck, the next step up is a native ARM buildx builder node
+over SSH to a real ARM box, not more emulation tuning.
 
 The build/deploy flow has changed a lot and will keep changing — treat this
 section as a snapshot of what exists now, not a long-term contract.
