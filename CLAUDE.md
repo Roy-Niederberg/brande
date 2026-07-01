@@ -45,19 +45,6 @@ via `/plugin install <name>` (currently: `typescript-lsp@claude-plugins-official
 Local skills live in `.claude/skills/` (checked into the repo via a whitelist
 `.gitignore`) and are auto-discovered — no install step needed.
 
-## Skills
-
-Two skills exist (`qabu-prompt-engineer-gemini`, `qabu-prompt-engineer-openai`),
-both with `disable-model-invocation: true` in their frontmatter — they will not
-auto-fire and are effectively **dormant**. They're kept for future use; revisit
-when actively iterating on prompts. Skill content itself is fine — only the
-auto-invocation is off.
-
-When a skill is re-enabled (remove `disable-model-invocation` or set to `false`):
-before responding to any request, check the available skills list. If there is
-even a 1% chance a skill applies, invoke it with the Skill tool before doing
-anything else.
-
 ## Communication Style
 
 Be brutally honest — push back when ideas seem wrong. Don't be a yes-man,
