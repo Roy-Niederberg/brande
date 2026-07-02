@@ -22,5 +22,6 @@
 !/check_clients.sh
 !/check_versions.sh
 !/rsync_clients.sh
+!/setup_server.sh
 
 # Excluding other files will be done in the files directory itself!
