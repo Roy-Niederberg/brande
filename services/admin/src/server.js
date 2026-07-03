@@ -5,6 +5,7 @@ import express from 'express'
 fs.cpSync('/app/views/index.html', '/app/ui/index.html')
 fs.cpSync('/app/views/loader.js', '/app/ui/loader.js')
 fs.cpSync('/app/views/page', '/app/ui/page', { recursive: true })
+fs.cpSync('/app/views/favicon.ico', '/app/ui/favicon.ico')
 
 const PROMPT_COMPOSER_URL = 'http://prompt-composer:4321'
 const app = express()
