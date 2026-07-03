@@ -257,6 +257,25 @@ Phase 3 work until there's a second paying client.
 
 ### Onboarding, infra, deploy
 
+- [roy] [P1] **Nevo review: aram-ent KB + prompts (rewritten 2026-07-03 by
+  Claude from aram-ent.co.il).** The KB (11 entries), system prompts (widget +
+  facebook), greeting and og-meta were rebuilt from the real site — clinic
+  info, 2 branches, doctors list, URG.ENT urgent-care center (hours, *6343,
+  published prices), HMO/insurance arrangements (מכבי/מאוחדת/לאומית per their
+  FAQ), surgery flow. Nevo should verify medical wording, the doctor list, the
+  emergency-routing guidance (life-threatening → 101/ER vs urgent-ENT →
+  URG.ENT), and whether quoting URG.ENT prices in chat is desirable. Deployed
+  to the VM and live. (added 2026-07-03)
+
+- [roy] [P1] **Oracle client VM is over conductor capacity — onboarding to it
+  now always fails.** `conductor/src/main.cpp` has `MAX_TIER = 5` and refuses
+  `create_client` when `dir_count() + tier > MAX_TIER`. With aram-ent the VM
+  has 6 client dirs, so any future onboarding create on this VM returns
+  `err 507` (this is likely also why aram-ent had to be added by hand,
+  2026-07-03). Decide: raise the cap, make it configurable (it's compiled in),
+  or point onboarding at the GCP VM / a new VM. Ties into the onboarding
+  long-tail "capacity rules" item. (added 2026-07-03)
+
 - [claude] [P1] **Conductor didn't react to a config.env change on the Oracle
   VM.** During the telegram-agent prod deploy (2026-07-03) we rewrote
   `clients/drlipokatz/private/config.env` (added the `telegram` profile) and
@@ -269,7 +288,20 @@ Phase 3 work until there's a second paying client.
   backup tooling?), where does conductor stdout go (nothing in journald —
   started outside systemd?), and reproduce with a `touch`/rewrite while
   strace-ing. Consider having conductor log to a file so failures are ever
-  visible. (added 2026-07-03)
+  visible. **Second data point (2026-07-03, aram-ent):** aram-ent was created
+  on the VM with `COMPOSE_PROFILES=site` in `private/config.env`, yet the
+  `site` container was never created — https://aram-ent.qabu.net/ 502'd for
+  ~2 days until we manually ran `docker compose --env-file private/config.env
+  up -d`. Either the same dead-watch bug, or the stack was brought up manually
+  without `--env-file` (a manual `docker compose up` silently drops all
+  profiles — foot-gun worth documenting in CLAUDE.md's deploy section).
+  Related weakness found reading `main.cpp`: `reconcile()` only calls
+  `start_stack` when *zero* containers run (`stack_running` = "any container
+  up"), so a partially-up stack (missing profile services) is never healed —
+  even a working watch can't fix a stack that diverged while conductor was
+  down. Consider making reconcile compare expected services
+  (`compose config --services` with env-file) against running ones.
+  (added 2026-07-03)
 
 - [roy] [P1] **Enable the Telegram agent for a first client (drlipokatz).**
   The `services/telegram_agent/` service is built (2026-07-02 conversation:
