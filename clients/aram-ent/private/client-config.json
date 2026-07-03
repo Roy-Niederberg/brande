@@ -1,0 +1,14 @@
+{
+    "profilePic": "",
+    "lang": "he",
+    "direction": "rtl",
+    "title": "ARAM ENT @ Qabu",
+    "backgroundImage": "background.png",
+    "overlayTitle": "א.ר.ם",
+    "font": {
+        "family": "Rubik",
+        "url": "https://fonts.googleapis.com/css2?family=Rubik:wght@700&display=swap"
+    },
+    "siteUrl": "https://www.aram-ent.co.il/",
+    "socialLinks": []
+}
