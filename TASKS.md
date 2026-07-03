@@ -257,6 +257,35 @@ Phase 3 work until there's a second paying client.
 
 ### Onboarding, infra, deploy
 
+- [roy] [P1] **Enable the Telegram agent for a first client (drlipokatz).**
+  The `services/telegram_agent/` service is built (2026-07-02 conversation:
+  per-client Claude Code in a container, one Telegram group per client with
+  Roy + Nevo + `<client>-claude`, read-only Phase 1 — full design in
+  `docs/architecture.md` § Telegram Agent). Code, compose template, QA wiring
+  and docs are done; what's left is the manual per-client enablement, which
+  only Roy can do:
+  1. BotFather: `/newbot` → `drlipokatz_qabu_bot` (prod) AND
+     `drlipokatz_qa_qabu_bot` (QA — decided 2026-07-03: dedicated QA bot,
+     never the prod token; one poller per token + QA mustn't touch prod
+     integrations). `/setprivacy` → Disable on BOTH. Prod token goes only to
+     the VM; QA token only to local `secrets/clients_secrets/`.
+  2. Run `claude setup-token` (1-year subscription OAuth token — decided
+     2026-07-03 to use Roy's Claude subscription, not an API key) → save as
+     `secrets/clients_secrets/claude_credential.secret` locally (QA) and copy
+     both secrets to `~/app/clients/drlipokatz/secrets/` on the Oracle VM
+     (`telegram_bot_token.secret`, `claude_credential.secret`). The secret
+     also accepts a console API key (`sk-ant-api...`) — auto-detected by
+     prefix — if subscription limits ever pinch.
+  3. `services/build.sh telegram_agent`, create the group (Roy + Nevo + bot),
+     message it, read the ignored-user log line for the two user ids, put them
+     in `data/telegram.json` on the VM, add `telegram` to `COMPOSE_PROFILES`
+     in `private/config.env`.
+  Why: this is the "Telegram owner channel" P1 item from QABU-PLAN (note: the
+  plan said single shared bot; we deliberately switched to instance-per-client
+  for a cleaner trust boundary — one container sees one client's data). Write
+  support (KB edits from the phone) is Phase 2 and blocked on the diff-confirm
+  flow + backups. (added 2026-07-02)
+
 - [roy] [P3] **Two free ARM (Ampere A1) VMs provisioned on Oracle — not yet
   usable for Qabu.** While discussing Oracle's Always Free tier (2026-06-21) we
   confirmed the ARM Ampere allocation (4 OCPU / 24 GB) is a *separate* pool from

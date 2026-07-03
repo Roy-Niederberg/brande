@@ -396,6 +396,96 @@ SMTP was rejected because Oracle/GCP block outbound SMTP ports; HTTP POST
 from prompt-composer to the notifier was rejected because it couples the hot
 `/ask` path to the notifier's existence.
 
+## Telegram Agent
+
+Per-client Claude Code over Telegram (`services/telegram_agent/`). Roy & Nevo
+share one Telegram group per enabled client (Roy + Nevo + `<client>-claude`)
+and ask it about that client's logs, events, prompts and KB from a phone
+("which model replied just now?", "did anyone write today?").
+
+**Shape.** One container per client, part of the client's docker-compose under
+the `telegram` profile (like `site`/`facebook` — most clients won't have it).
+Like the notifier it's a pure consumer: no inbound port, it long-polls
+Telegram's `getUpdates`. Telegram allows **one poller per bot token**, which
+is why instance-per-client forces one BotFather bot per client — that also
+gives each group its own named bot member. (QABU-PLAN P1 originally sketched
+a single shared bot service; instance-per-client replaced that: simpler trust
+boundary — a container can only ever see one client's data — at the cost of a
+manual BotFather step per enablement.)
+
+**Read-only, twice.** The agent must not be able to write (client data has no
+backups yet) or exfiltrate (logs contain untrusted end-customer text — prompt
+injection). Two independent fences:
+
+1. Docker: `data/`, `logs/`, `private/` are mounted `:ro`.
+2. Agent SDK: `allowedTools: [Read, Grep, Glob]` and an explicit
+   `disallowedTools` for Bash/Write/Edit/WebFetch/WebSearch/Task — no shell,
+   no writes, no network egress from the model's hands.
+
+When write support comes, it goes through prompt-composer's admin-secret CRUD
+API (same path as admin publish), never raw file writes — plus a
+diff-confirmation step in the chat before applying.
+
+**Sessions.** Telegram is stateless; Claude Code sessions aren't. The service
+maps `chat_id → session_id` in a JSON file on the `telegram-claude` named
+volume (which also holds `/root/.claude` session transcripts), so follow-up
+questions keep context across container restarts. Each resumed turn forks a
+new session id — the map is updated every turn. `/new` resets a chat's
+session.
+
+**Auth.** `data/telegram.json` holds `{"users": [<telegram user ids>]}` —
+read per message, so edits apply live. Messages from anyone else are ignored
+and logged with their user/chat id (`docker logs` on the container is how you
+discover your own id during setup). It lives in `data/`, not `private/`,
+because the site serves `private/` publicly. For the bot to see all group
+messages, disable BotFather privacy mode (`/setprivacy` → Disable) before
+adding it to the group.
+
+**Secrets.** Two per client in `./secrets/`: `telegram_bot_token.secret`
+(per-client BotFather token — NOT shared) and `claude_credential.secret`
+(shared across clients, lives in `secrets/clients_secrets/` like the other
+LLM keys). The credential accepts either flavor and the service auto-detects
+by prefix:
+
+- `sk-ant-oat...` — a subscription OAuth token from `claude setup-token`
+  (1-year, Pro/Max/Team; inference-only scope). Runs on Roy's Claude
+  subscription — no API billing, but shares his rolling usage limits with his
+  own Claude Code sessions, and all client bots share the one token. The
+  current choice.
+- `sk-ant-api...` — a console API key (pay-per-token). The fallback if
+  subscription limits pinch, and REQUIRED if this ever becomes customer-facing
+  (Anthropic's Agent SDK terms forbid offering claude.ai login/limits in a
+  product; internal CI/scripts use via setup-token is the sanctioned case).
+
+The service sets exactly one of `CLAUDE_CODE_OAUTH_TOKEN` /
+`ANTHROPIC_API_KEY` on the Agent SDK's `env` option (never the container
+environment) — the API key outranks the OAuth token in Claude Code's
+credential precedence, so setting both would silently ignore the token.
+
+**Enabling for a client** (manual, like FB page setup):
+
+1. BotFather: `/newbot` → name `<client>-claude`, username
+   `<client>_qabu_bot`; then `/setprivacy` → Disable. Save the token.
+2. Run `claude setup-token` locally (or create a console API key), then copy
+   `telegram_bot_token.secret` + `claude_credential.secret` into
+   `~/app/clients/<sub>/secrets/` on the VM.
+3. Create the group, add Roy, Nevo and the bot.
+4. Send a message, read the ignored-user log line for the user ids, put them
+   in `data/telegram.json` (admin has no UI for this yet — known gap).
+5. Add `telegram` to `COMPOSE_PROFILES` in `private/config.env` (the
+   conductor picks it up) or `docker compose --profile telegram up -d`.
+
+**QA.** One agent in the QA compose (`drlipokatz-telegram-agent`, behind
+`docker compose --profile telegram up`) with its own dedicated BotFather bot
+(`drlipokatz_qa_qabu_bot`, token in `secrets/clients_secrets/`) — never the
+prod token: Telegram allows one poller per token, and QA shouldn't touch prod
+integrations (same reasoning as mock-facebook). Telegram is QA-tested on
+drlipokatz only; the service is identical across clients.
+
+**Model & cost.** Defaults to `claude-sonnet-5` (override with the
+`CLAUDE_MODEL` env var). Every message is an agentic Claude Code turn over
+the mounted files — fine for two owners, not exposed to end customers.
+
 ## Client Onboarding & Provisioning
 
 ### Flow

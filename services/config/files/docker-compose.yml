@@ -70,6 +70,21 @@ services:
     secrets:  [resend_api_key]
     volumes:  [./logs:/app/logs, ./data:/app/data:ro, ./private:/app/private:ro]
 
+  telegram-agent:
+    # -------------------------------------------------------------------------|
+    # A Claude Code instance for THIS client, reachable from a Telegram group
+    # chat (Roy + Nevo + <client>-claude). Long-polls Telegram — no inbound
+    # port. Telegram allows one poller per bot token, so every client with this
+    # profile needs its own BotFather bot (token in ./secrets/). Allowed user
+    # ids live in ./data/telegram.json. READ-ONLY: :ro mounts + no write tools.
+    # -------------------------------------------------------------------------|
+    image:    registry.gitlab.com/rny3/brande/telegram_agent:latest
+    networks: [client_network]
+    secrets:  [telegram_bot_token, claude_credential]
+    volumes:  [./data:/app/data:ro, ./logs:/app/logs:ro, ./private:/app/private:ro,
+               telegram-claude:/root/.claude]
+    profiles: [telegram]
+
   admin:
     # -------------------------------------------------------------------------|
     # Admin interface to manage the SP/KB and to test it. Uses the production
@@ -114,6 +129,7 @@ services:
 
 volumes:
   ui:
+  telegram-claude:   # Claude Code sessions — chat context survives restarts
 
 networks:
   client_network:
@@ -132,3 +148,5 @@ secrets:
   admin_secret:      {file: ./secrets/admin_secret.secret}
   resend_api_key:    {file: ./secrets/resend_api_key.secret}
   fb_page_access_token: {file: ./secrets/fb_page_access_token.secret}
+  telegram_bot_token:   {file: ./secrets/telegram_bot_token.secret}
+  claude_credential:    {file: ./secrets/claude_credential.secret}

@@ -523,10 +523,17 @@ These are reference-heavy — see `docs/architecture.md` for full detail:
   that only after a successful send (failed sends retry next cycle). Recipients
   in `data/notify.json` — in `data/`, not `private/`, because site serves
   `private/` publicly.
+- **§ Telegram Agent** — per-client `services/telegram_agent/`: Claude Code in a
+  container, one Telegram group per enabled client (Roy + Nevo + `<client>-claude`),
+  for asking about logs/events/KB from a phone. Profile `telegram`, one BotFather
+  bot per client (Telegram allows one poller per token), read-only (`:ro` mounts +
+  Read/Grep/Glob only). Allowed user ids in `data/telegram.json`. Future writes go
+  via prompt-composer admin CRUD, with in-chat diff confirmation.
 - **§ Client Onboarding & Provisioning** — onboarding → provisioner → conductor
-  flow, the `config/` template, Docker Compose profiles (`site`, `facebook` —
-  core services have none), subdomain regex `^[a-z][a-z0-9-]{3,18}[a-z]$` (must
-  stay in sync between onboarding and conductor).
+  flow, the `config/` template, Docker Compose profiles (`site`, `facebook`,
+  `telegram` — core services have none), subdomain regex
+  `^[a-z][a-z0-9-]{3,18}[a-z]$` (must stay in sync between onboarding and
+  conductor).
 - **§ Secrets** — `secrets/` layout (client_router / clients / main_server scopes),
   and the cross-VM shared secrets that must match (`jwt_signing_key`,
   `fb_dispatcher_secret`, `provision_secret`, `cloudflare_api_token`).

@@ -193,6 +193,21 @@ services:
       - ../clients/drlipokatz/data:/app/data:ro
       - ../clients/drlipokatz/private:/app/private:ro
 
+  drlipokatz-telegram-agent:
+    # Needs real secrets (own BotFather bot + Anthropic key) — off by default:
+    #   docker compose --profile telegram up
+    build: {context: ../services/telegram_agent/, target: production}
+    networks:
+      drlipokatz-network:
+        aliases: [telegram-agent]
+    secrets: [telegram_bot_token, claude_credential]
+    volumes:
+      - ../clients/drlipokatz/data:/app/data:ro
+      - ../clients/drlipokatz/logs:/app/logs:ro
+      - ../clients/drlipokatz/private:/app/private:ro
+      - drlipokatz-telegram-claude:/root/.claude
+    profiles: [telegram]
+
   drlipokatz-admin:
     build: {context: ../services/admin/, target: production}
     networks:
@@ -239,6 +254,7 @@ volumes:
   onboarding_data:
   dradamblack-ui:
   drlipokatz-ui:
+  drlipokatz-telegram-claude:
 
 secrets:
   # Main server
@@ -263,3 +279,8 @@ secrets:
   authorized_emails:  {file: ../secrets/clients_secrets/authorized_emails.json}
   fb_page_access_token: {file: ../secrets/clients_secrets/fb_page_access_token.secret}
   resend_api_key:     {file: ../secrets/clients_secrets/resend_api_key.secret}
+  # sk-ant-oat... (claude setup-token, subscription) or sk-ant-api... (console key)
+  claude_credential:  {file: ../secrets/clients_secrets/claude_credential.secret}
+  # Dedicated QA bot (drlipokatz_qa_qabu_bot) — NEVER the prod token: one poller
+  # per token, and QA must not touch prod integrations (mock-facebook philosophy)
+  telegram_bot_token: {file: ../secrets/clients_secrets/telegram_bot_token.secret}
