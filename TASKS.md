@@ -257,6 +257,20 @@ Phase 3 work until there's a second paying client.
 
 ### Onboarding, infra, deploy
 
+- [claude] [P1] **Conductor didn't react to a config.env change on the Oracle
+  VM.** During the telegram-agent prod deploy (2026-07-03) we rewrote
+  `clients/drlipokatz/private/config.env` (added the `telegram` profile) and
+  the conductor — running, pid confirmed — never ran pull/up; we deployed
+  manually. `main.cpp` adds an IN_CLOSE_WRITE|IN_MOVED_TO watch on `private/`
+  and filters for the name `config.env`, so a bash `printf >` over ssh should
+  have fired it. Matters because the admin "Manage Services" button relies on
+  exactly this path to apply profile changes. Investigate: is the watch still
+  alive after 5+ weeks of uptime (inotify wd leak / dir replaced by rsync or
+  backup tooling?), where does conductor stdout go (nothing in journald —
+  started outside systemd?), and reproduce with a `touch`/rewrite while
+  strace-ing. Consider having conductor log to a file so failures are ever
+  visible. (added 2026-07-03)
+
 - [roy] [P1] **Enable the Telegram agent for a first client (drlipokatz).**
   The `services/telegram_agent/` service is built (2026-07-02 conversation:
   per-client Claude Code in a container, one Telegram group per client with
