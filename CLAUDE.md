@@ -6,7 +6,8 @@ customer questions from a knowledge base, plus a widget, Facebook, WhatsApp and
 more.
 
 - Owners: Roy & Nevo, based in Israel. Domain: `qabu.net` (registered on GoDaddy, DNS on Cloudflare).
-- Infra: Three VMs across two clouds — one main (Oracle) + two clients (Oracle + GCP IPv6-only). Docker everywhere. See `docs/architecture.md` § VM Strategy.
+- Infra: Two VMs, both Oracle — one main + one clients. Docker everywhere. See
+  `docs/architecture.md` § VM Strategy.
 - Repo: Private GitLab (`origin`), mirrored to GitHub (`github` remote).
 - Email: inbound `privacy@qabu.net` → Cloudflare Email Routing → `roy.niederberg@gmail.com`.
   Outbound via Resend API (`notifications@qabu.net`, qabu.net verified, SPF/DKIM on
@@ -168,7 +169,7 @@ order:
    published there's no "previous version" anywhere.
 3. **No audit log.** Multi-admin clients will eventually want who-changed-what.
 4. **`clients/` is checked into git.** Committed clients (drlipokatz, eintal,
-   eintal-hadassah, dradamblack, yomialpurrer, ofirfichman, aram-ent) all have
+   eintal-hadassah, dradamblack, yomialpurrer, aram-ent) all have
    copies that drift from the VM. Onboarding-created clients (the new flow) correctly don't
    enter git — but eintal-hadassah (added 2026-06) was built repo-first and
    scaffolded/pushed to the VM by hand rather than via onboarding, so it joined
@@ -233,13 +234,19 @@ reference read on demand. New "how it works" detail goes in `docs/`, not here.
 
 ## VM Strategy
 
-Three VMs, picked across clouds to avoid single-vendor lock-in:
+Two VMs, both Oracle:
 
 - **Main** (Oracle, `brande@129.159.134.3`) — singleton. Landing page, auth,
   FB dispatcher, onboarding. Scales vertically.
 - **Clients #1** (Oracle, `brande@129.159.159.251`) — multi-tenant: drlipokatz,
   eintal, eintal-hadassah, yomialpurrer, dradamblack, aram-ent.
-- **Clients #2** (GCP, IPv6-only) — multi-tenant, currently just ofirfichman.
+
+A second, GCP IPv6-only clients VM (`Clients #2`) hosted the `ofirfichman` demo
+client from 2026-06 to 2026-07-04; retired because it created more operational
+problems (IPv6-only egress/cert headaches, see the retired TASKS.md items) than
+value as a single demo client. Multi-cloud is still the long-term goal to avoid
+single-vendor lock-in — see `docs/architecture.md` § VM Strategy — just not
+active today.
 
 Multi-tenant (not VM-per-client) is a cost concession, not the ideal — it
 creates the **clients-router ↔ services-router tension**: clients-router does
@@ -482,10 +489,6 @@ from the real site — clinic info, branches, doctors, URG.ENT urgent-care cente
 HMO arrangements — pending Nevo's review (see TASKS.md). Added by hand on the
 Oracle client VM (`129.159.159.251`), not via onboarding: the VM was already at
 the conductor's `MAX_TIER` capacity cap (also in TASKS.md).
-
-**ofirfichman** — Real architect, friend of Roy's. Site is real; helps test and
-QA the platform under a real non-clinic use case. Only client hosted on the GCP
-VM (IPv6-only) rather than the Oracle client VM.
 
 ## Caddy Routing
 

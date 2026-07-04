@@ -6,14 +6,18 @@ and points here. Read the relevant section before touching any of these areas.
 
 ## VM Strategy
 
-Three VMs, picked across clouds to avoid single-vendor lock-in:
+Two VMs, both Oracle:
 
 - **Main** (Oracle, `brande@129.159.134.3`) — singleton. Landing page, auth,
   FB dispatcher, onboarding. Scales vertically.
 - **Clients #1** (Oracle, `brande@129.159.159.251`) — multi-tenant: drlipokatz,
-  eintal, eintal-hadassah, yomialpurrer, dradamblack.
-- **Clients #2** (GCP, IPv6-only) — multi-tenant, currently just ofirfichman.
-  Doubles as an IPv6-only hosting testbed.
+  eintal, eintal-hadassah, yomialpurrer, dradamblack, aram-ent.
+
+A second VM, **Clients #2** (GCP, IPv6-only), hosted the `ofirfichman` demo
+client from 2026-06 to 2026-07-04. Retired: the IPv6-only egress caused
+recurring problems (no NAT64 path to the IPv4-only GitLab registry, ACME
+cert-renewal failures once Cloud NAT was removed) that outweighed the value of
+one demo client. Terminated rather than fixed further.
 
 ### Why multi-tenant (not VM-per-client)
 
@@ -23,8 +27,8 @@ per-client geolocation and vertical scale, dead-simple onboarding (create VM,
 pull images, start). That was the original plan.
 
 We went multi-tenant because VMs cost money and we want to try many clients
-cheaply — Oracle free tier gives two VMs, GCP gives one. Multi-tenant creates
-real complications:
+cheaply — Oracle free tier gives two VMs. Multi-tenant creates real
+complications:
 
 - A second docker-compose network per VM.
 - A fuzzy split between `clients-router` and each client's `services-router`.
@@ -47,18 +51,21 @@ or auth decision.**
 
 ### Multi-cloud
 
-Oracle + GCP today, Azure possibly later. Goal: **platform portability** —
-we should be able to rebuild Qabu on any single cloud in a reasonable time.
-Scattering clients across clouds is a side-effect of free-tier limits, not a
-strategy; all clients of a given kind should be movable together.
+Oracle only today (a GCP VM was tried 2026-06 to 2026-07, retired — see § VM
+Strategy); Azure possibly later. Goal: **platform portability** — we should be
+able to rebuild Qabu on any single cloud in a reasonable time. Scattering
+clients across clouds is a side-effect of free-tier limits, not a strategy;
+all clients of a given kind should be movable together.
 
 ### IPv6 per client (considered, not adopted)
 
 Tempting because IPv6 space is effectively free — one address per client
 without buying VMs. But it doesn't actually eliminate the clients-router:
 Facebook webhooks, Meta API, and most corporate networks still need an IPv4
-front door. The GCP IPv6-only VM (ofirfichman) proves the hosting model works;
-it doesn't remove the need for a central routing layer.
+front door. The retired GCP IPv6-only VM (§ VM Strategy) proved the hosting
+model works, but also proved the IPv4-egress problems (registry pulls, ACME
+renewal) aren't worth it for a single demo client — it doesn't remove the need
+for a central routing layer.
 
 ## Caddy Routing
 

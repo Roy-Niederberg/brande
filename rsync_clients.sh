@@ -3,7 +3,7 @@ set -euo pipefail
 
 usage() {
   echo "Usage: $0 <client>"
-  echo "Clients: drlipokatz eintal eintal-hadassah yomialpurrer dradamblack aram-ent ofirfichman"
+  echo "Clients: drlipokatz eintal eintal-hadassah yomialpurrer dradamblack aram-ent"
 }
 
 client="${1:-}"
@@ -15,9 +15,6 @@ fi
 case "$client" in
   drlipokatz|eintal|eintal-hadassah|yomialpurrer|dradamblack|aram-ent)
     host="brande@129.159.159.251"
-    ;;
-  ofirfichman)
-    host="brande@[2600:1900:4040:704::]"
     ;;
   *)
     echo "Unknown or undeployed client: $client" >&2

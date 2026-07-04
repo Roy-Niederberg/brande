@@ -5,7 +5,6 @@
 VMS=(
   "main          brande@129.159.134.3"
   "clients-1     brande@129.159.159.251"
-  "clients-2     brande@2600:1900:4040:704::"
 )
 
 REMOTE='docker ps --format "{{.Names}}|{{.Image}}|{{.Label \"org.opencontainers.image.revision\"}}|{{.Status}}" \

@@ -64,20 +64,6 @@ Phase 3 work until there's a second paying client.
 
 ### Source of Truth & client-data lifecycle
 
-- [roy] [P3] **ofirfichman (GCP VM) has no backup.** The backup loop is only
-  installed on the Oracle client VM (drlipokatz + eintal). ofirfichman lives
-  on the GCP IPv6-only VM, which runs no backup service, so its client data is
-  still on an unprotected VM volume — `rsync_clients.sh` is the only way to
-  capture it. To fix, install the same automation from
-  `clients_server_automation/backup/` on the GCP VM (scripts → `~/app/`, clone
-  `qabu_clients` + drop in the whitelist `.gitignore`, install the user systemd
-  unit with `loginctl enable-linger`). **Not critical:** ofirfichman is a demo
-  (real architect friend of Roy's, used for QA), not a paying client — losing
-  its data would be annoying, not damaging. Do it before any real client lands
-  on the GCP VM. (added 2026-06-19, while reviewing whether the backup made
-  `rsync_clients.sh` redundant — surfaced that the GCP VM is the one deployed
-  client not covered by the new backup.)
-
 - [both] [P0] **Replace the MVP backup with a proper `services/backup/` Node
   service.** An MVP is live on the Oracle client VM: a systemd *user* service
   (`qabu-backup.service`, `Restart=always`, linger enabled — survives reboot)
@@ -86,9 +72,8 @@ Phase 3 work until there's a second paying client.
   change. SSH deploy key at `~/.ssh/qabu_backup`, write-enabled in GitLab. The
   automation is checked into `clients_server_automation/backup/`. It now covers
   every client on the Oracle VM (drlipokatz + eintal) and survives reboot, but:
-  (a) ofirfichman on the GCP VM is still uncovered (tracked separately above);
-  (b) needs `entr` and `git` installed on the host, violating the
-  everything-in-Docker rule; (c) no debounce — a burst of admin saves yields
+  (a) needs `entr` and `git` installed on the host, violating the
+  everything-in-Docker rule; (b) no debounce — a burst of admin saves yields
   multiple commits.
 
   **Why:** unprotected client VM volumes are CLAUDE.md "Source of Truth"
@@ -136,7 +121,7 @@ Phase 3 work until there's a second paying client.
   gap #2 (the git history gives basic version history / rollback for free).
   (added 2026-04-19, MVP shipped & task rewritten 2026-05-19)
 - [roy] [defer] **Decide what happens to demo clients currently in git**
-  (`dradamblack`, `drlipokatz`, `eintal`, `yomialpurrer`, `ofirfichman`).
+  (`dradamblack`, `drlipokatz`, `eintal`, `yomialpurrer`).
   Either keep them as seed fixtures under `services/config/files/` or `seeds/`,
   or remove them from git entirely and re-seed in QA from the template. Tied
   to CLAUDE.md "Source of Truth" gap #4. (added 2026-04-19)
@@ -273,8 +258,8 @@ Phase 3 work until there's a second paying client.
   has 6 client dirs, so any future onboarding create on this VM returns
   `err 507` (this is likely also why aram-ent had to be added by hand,
   2026-07-03). Decide: raise the cap, make it configurable (it's compiled in),
-  or point onboarding at the GCP VM / a new VM. Ties into the onboarding
-  long-tail "capacity rules" item. (added 2026-07-03)
+  or point onboarding at a new VM. Ties into the onboarding long-tail
+  "capacity rules" item. (added 2026-07-03)
 
 - [claude] [P1] **Conductor didn't react to a config.env change on the Oracle
   VM.** During the telegram-agent prod deploy (2026-07-03) we rewrote
@@ -385,31 +370,6 @@ Phase 3 work until there's a second paying client.
   `start_stack` when any expected service is missing. (added 2026-06-20, after
   the first bring-up of both demos came up core-only and needed a manual re-up.)
 
-- [roy] [P2] **GCP client VM has no IPv4 egress — can't pull from the registry.**
-  The GCP VM (`brande@2600:1900:4040:704::`, ofirfichman) is IPv6-only and
-  `registry.gitlab.com` is IPv4-only (resolves to `35.227.35.254`, no native
-  AAAA). The VM has working IPv6 egress but **no IPv4 path at all** (no NAT64
-  route for `64:ff9b::/96`, no daemon.json registry mirror, `curl https://1.1.1.1`
-  times out). It pulled fine ~4 weeks ago, so whatever IPv4/NAT64 egress existed
-  has since broken. Consequence: ofirfichman is stuck on its old images and
-  **could not get the notifier** — its compose was left reverted (no notifier)
-  to stay consistent with what can actually run; the `resend_api_key.secret` and
-  `data/notify.json` ARE already staged on the VM, so once egress is restored the
-  fix is just: re-add the notifier block to
-  `~/app/clients/ofirfichman/docker-compose.yml` (see
-  `services/config/files/docker-compose.yml` — but keep ofir's `site` with NO
-  `profiles:` gate and no `config.env`) and `docker compose pull && up -d`. Fix
-  the egress at the GCP/networking layer (re-enable Cloud NAT for IPv4 to the
-  VM, or set up a NAT64 gateway, or configure a registry mirror reachable over
-  IPv6). (added 2026-06-20, while trying to bring all clients to latest + add
-  the notifier — the 4 Oracle clients succeeded, ofirfichman blocked here.)
-
-  Notifier deployment status: ✅ done on the 4 Oracle clients (drlipokatz,
-  eintal, yomialpurrer, dradamblack) — all running latest images + notifier,
-  recipients default to `["roy.niederberg@gmail.com"]` in each
-  `data/notify.json`, edit there to change. ⛔ ofirfichman blocked on the egress
-  issue above.
-
 - [roy] [P1] **Auto-create DNS records via Cloudflare API on scaffold.** Today,
   someone manually adds an A record after onboarding. The conductor (or
   provisioner) should call the Cloudflare API after a successful scaffold.
@@ -437,62 +397,6 @@ Phase 3 work until there's a second paying client.
 - [roy] [defer] **Migrate secrets to Infisical.** Currently rsynced to VMs
   manually. Pull at runtime instead — no rsync, no machine dependency.
   (added 2026-03-28)
-
-- [roy] [P0] **GCP VM (ofirfichman) wildcard certs can't auto-renew — next
-  manual deadline 2026-08-25 (qabu.net), 2026-09-18 (qabu.co.il).** While debugging why ofirfichman was down on
-  2026-05-17 (turned out to be a frozen VM, fixed by console restart + manual
-  `docker compose up -d` in `~/app/clients/ofirfichman/`), I discovered
-  `app-clients-router-1` is logging continuous ACME renewal failures:
-  `context deadline exceeded` reaching `acme-v02.api.letsencrypt.org`.
-  Root cause: Roy removed Cloud NAT from the GCP project to stop being
-  billed for the static IPv4. The VM is IPv6-only, and Let's Encrypt's
-  ACME endpoints are IPv4-only — so Caddy can no longer fetch/renew the
-  wildcard cert. The cached `*.qabu.net` cert in the `router_data` volume is
-  valid until **2026-07-19 19:34 UTC**. After that, every HTTPS request to
-  `ofirfichman.qabu.net` will fail TLS and Cloudflare will start serving
-  errors. Three options to pick from (discussed but not chosen): (a) renew
-  on the main server (which has IPv4) and rsync the cert into the GCP
-  `router_data` volume on a schedule, (b) switch to a Cloudflare Origin
-  Certificate — issued by CF, doesn't need public ACME at all, just
-  install once and good for 15 years, (c) re-enable Cloud NAT around
-  renewal time only. Option (b) is the cleanest if we want to keep this VM
-  free-tier long-term. Note: ofirfichman is a demo (Roy's architect
-  friend) so downtime here isn't customer-facing, but the same problem
-  will hit any future GCP IPv6-only VM. Also, this VM has **no conductor
-  at all** (no `~/app/conductor` binary, no `qabu-conductor.service`) — so
-  every reboot requires manually bringing the client stack up. Worth
-  installing conductor here once the binary is rebuilt (see the P0
-  conductor task above). (added 2026-05-17)
-
-  **Update 2026-06-20 — mitigation done + root cause refined + new dependency.**
-  (1) Manual cert copy done (option (a), by hand once): streamed both wildcard
-  certs from the Oracle client VM (`129.159.159.251`, which auto-renews fine)
-  into the GCP Caddy store at
-  `/data/caddy/certificates/acme-v02.api.letsencrypt.org-directory/`
-  (`docker exec tar` out of Oracle → through local → `tar` into GCP, since the
-  two VMs can't reach each other directly), then `docker compose restart
-  clients-router`. Reset expiries: **`*.qabu.net` → Aug 25 2026**, **`*.qabu.co.il`
-  → Sep 18 2026**. So the cert is no longer the immediate fire, but this is now a
-  recurring ~60-day hand-copy chore until a permanent fix lands.
-  (2) **Root-cause correction to the note above:** ACME is NOT purely IPv4-only
-  anymore — `acme-v02.api.letsencrypt.org` resolves to an IPv6 address
-  (`2606:4700:60::…`, it's behind Cloudflare) and the host reaches it fine
-  (`curl -6 → 200`). The actual blocker is **Docker IPv6 is disabled on this VM**
-  (`docker network inspect bridge` → `EnableIPv6=false`; the clients-router
-  container has only `172.19.0.3`, no `inet6`), so Caddy-in-container can only
-  dial IPv4, which the IPv6-only host can't route. This adds a cleaner **option
-  (d): enable Docker IPv6** (`/etc/docker/daemon.json`: `"ipv6": true`,
-  `"ip6tables": true`, `"fixed-cidr-v6"`, then restart dockerd + recreate
-  containers) → Caddy then ACMEs and auto-renews **both** zones natively over
-  IPv6, killing the copy chore for good. **This is the agreed next step ("A now,
-  B later").** Caveat: verify the other ofirfichman containers (site, admin,
-  prompt-composer, widget, services-router) survive the daemon restart. Note
-  this does NOT fix the registry-pull task above — `registry.gitlab.com` has no
-  AAAA at all, so image pulls still need NAT64/a mirror (that's why the
-  clients_router image had to be shipped via `docker save | ssh | docker load`).
-  (3) **New dependency:** `ofirfichman.qabu.co.il` is now served from this VM too
-  (part of the *.qabu.co.il rollout), so the chore / fix now covers TWO wildcard
-  certs, not one. Cloudflare record for it: AAAA `2600:1900:4040:704::`, proxied.
 
 - [roy] [P0] **Rebuild and redeploy conductor binary.** Three pending source
   fixes: (1) `setbuf(stdout, NULL)` so logs show in journalctl, (2) remove
