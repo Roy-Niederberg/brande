@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex">
+  <title>Qabû</title>
+  <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;600&family=Heebo:wght@300;600&display=swap" rel="stylesheet">
+  <style>
+    :root { --bg: #FAF4E8; --text: #5D6D7E; --brand: #85C1E9; --accent: #1B4F72; }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #1C2127; --text: #FAF4E8; --brand: #2A4359; --accent: #85C1E9; }
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: 'Raleway', 'Heebo', sans-serif; font-weight: 300;
+      min-height: 100vh; min-height: 100dvh;
+      display: flex; align-items: center; justify-content: center;
+      overflow-x: hidden;
+    }
+    .watermark { position: fixed; top: -40%; left: -30%; pointer-events: none; opacity: 0.06; }
+    .watermark svg { width: 140vh; height: 140vh; fill: var(--accent); }
+    main {
+      display: flex; flex-direction: column; align-items: center; gap: 28px;
+      text-align: center; padding: 40px 24px; max-width: 900px;
+    }
+    .addr {
+      font-size: clamp(28px, 7vw, 64px); line-height: 1.15;
+      direction: ltr; unicode-bidi: isolate; white-space: nowrap;
+    }
+    .addr b { color: var(--accent); font-weight: 600; }
+    h1 { font-size: clamp(22px, 4vw, 36px); font-weight: 300; }
+    .pitch { font-size: clamp(16px, 2.5vw, 21px); line-height: 1.6; max-width: 560px; }
+    .btn {
+      padding: 18px 72px; font-size: 24px; font-weight: 600; text-decoration: none;
+      background: #85C1E9; color: #1B4F72; border-radius: 8px; transition: opacity 0.2s;
+    }
+    .btn:hover { opacity: 0.85; }
+    .more { color: var(--text); font-size: 16px; }
+    @media (max-width: 500px) { .btn { padding: 14px 48px; font-size: 20px; } }
+  </style>
+</head>
+<body>
+  <div class="watermark">
+    <svg viewBox="-603 -603 1206 1206" xmlns="http://www.w3.org/2000/svg">
+      <path transform="rotate(135)" d="M -43.934 -600 L -43.934 0 C -102.948 -160.66 -102.944 -248.528 -175.736 -175.736 A 248.528 248.528 0 1 0 43.934 -244.614 L 43.934 -804.594 C 87.868 -512.132 248.528 -600 424.264 -424.264 A 600 600 0 1 1 -43.934 -600"/>
+    </svg>
+  </div>
+  <main>
+    <div class="addr"><b id="sub"></b><span id="domain"></span></div>
+    <h1 id="headline"></h1>
+    <p class="pitch" id="pitch"></p>
+    <a class="btn" id="cta"></a>
+    <a class="more" id="more"></a>
+  </main>
+  <script>
+    const host = location.hostname
+    const sub = host.split('.')[0]
+    const he = host.endsWith('.co.il')
+
+    const t = he ? {
+      headline: 'הכתובת הזאת פנויה.',
+      pitch: 'היא יכולה להיות הסוכן החכם של העסק שלכם — עונה ללקוחות 24/7 מתוך מאגר הידע שלכם, באתר, בפייסבוק ובווטסאפ.',
+      cta: 'לתפוס את הכתובת', more: 'מה זה Qabû?'
+    } : {
+      headline: 'This address is available.',
+      pitch: 'It could be your business’s AI agent — answering customers 24/7 from your own knowledge base, on your website, Facebook and WhatsApp.',
+      cta: 'Claim this address', more: 'What is Qabû?'
+    }
+
+    if (he) { document.documentElement.lang = 'he'; document.documentElement.dir = 'rtl' }
+    document.title = host + ' — Qabû'
+    document.getElementById('sub').textContent = sub
+    document.getElementById('domain').textContent = host.slice(sub.length)
+
+    // Shrink the address to fit one line (long subdomains would otherwise wrap).
+    const addr = document.querySelector('.addr')
+    const fit = () => {
+      addr.style.fontSize = ''
+      const max = Math.min(innerWidth, 900) - 48
+      let px = parseFloat(getComputedStyle(addr).fontSize)
+      while (addr.scrollWidth > max && px > 16) addr.style.fontSize = --px + 'px'
+    }
+    fit()
+    document.fonts.ready.then(fit)
+    addEventListener('resize', fit)
+    document.getElementById('headline').textContent = t.headline
+    document.getElementById('pitch').textContent = t.pitch
+    const cta = document.getElementById('cta')
+    cta.textContent = t.cta
+    cta.href = 'https://qabu.net/onboarding?subdomain=' + encodeURIComponent(sub)
+    const more = document.getElementById('more')
+    more.textContent = t.more
+    more.href = he ? 'https://qabu.co.il' : 'https://qabu.net'
+  </script>
+</body>
+</html>

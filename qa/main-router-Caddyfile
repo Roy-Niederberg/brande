@@ -35,3 +35,19 @@ http://qa.qabu.net {
 		reverse_proxy landing-page:80
 	}
 }
+
+# Unmatched subdomains → "claim this subdomain" pitch page (see prod Caddyfile).
+# (*.qa.qabu.co.il previews the Hebrew version; needs the wildcard → 127.0.0.1
+# record in the qabu.co.il zone, same as the qabu.net one.)
+http://*.qa.qabu.net, http://*.qa.qabu.co.il {
+	handle /favicon.ico {
+		root * /srv
+		file_server
+	}
+
+	handle {
+		rewrite * /index.html
+		root * /srv/claim
+		file_server
+	}
+}

@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <base href="/onboarding/">
-  <title>Qabu Onboarding</title>
+  <title>Qabû Onboarding</title>
   <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300&display=swap" rel="stylesheet">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -58,7 +58,7 @@
       <input id="subdomain" maxlength="20" autocomplete="off" spellcheck="false" autofocus>
       <span>.qabu.net</span>
     </div>
-    <button id="create" disabled>Let's Qabu!</button>
+    <button id="create" disabled>Let's Qabû!</button>
     <div id="message"></div>
   </div>
   <script>
@@ -67,9 +67,11 @@
     const msg = document.getElementById('message')
     let re = null
 
+    input.value = new URLSearchParams(location.search).get('subdomain') || ''
+
     fetch('subdomain-regex')
       .then(r => r.json())
-      .then(d => re = new RegExp(d.pattern))
+      .then(d => { re = new RegExp(d.pattern); input.dispatchEvent(new Event('input')) })
 
     const sizer = document.createElement('span')
     Object.assign(sizer.style, {position:'absolute',visibility:'hidden',whiteSpace:'pre'})

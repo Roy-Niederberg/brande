@@ -242,6 +242,28 @@ Phase 3 work until there's a second paying client.
 
 ### Onboarding, infra, deploy
 
+- [roy] [P2] **Deploy the "claim this subdomain" pitch page + wildcard-DNS
+  switchover to the main VM.** While planning multi-VM client hosting (new ARM
+  VMs), we decided `*.qabu.net → client VM` was a mistake: the wildcard should
+  point at the *main* VM, with per-client exact DNS records (like `.co.il`
+  already has) routing each client to its own VM. Unmatched subdomains then
+  hit main and get a sales pitch ("my-cool-business.qabu.net is available —
+  claim it"), not a 404. The code is done (2026-07-04): pitch page at
+  `services/main_router/srv/claim/index.html` (one static file, EN/HE
+  auto-switch on hostname, CTA → `qabu.net/onboarding?subdomain=<sub>` which
+  now prefills), wildcard blocks in `services/main_router/src/Caddyfile` +
+  `qa/main-router-Caddyfile`. To go live: (1) commit, `services/build.sh
+  main_router` + `services/build.sh client_onboarding`; (2) copy `srv/claim/`
+  to main VM `~/app/srv/` (it's a bind mount, not baked into the image);
+  (3) deploy both services on main; (4) in Cloudflare, add exact A records
+  for every live client (`drlipokatz`, `eintal`, `eintal-hadassah`,
+  `yomialpurrer`, `dradamblack`, `aram-ent` → 129.159.159.251), verify each
+  resolves, *then* repoint `*.qabu.net` → 129.159.134.3 and add
+  `*.qabu.co.il` → 129.159.134.3; (5) run `check_main.sh` + `check_clients.sh`
+  and curl a nonsense subdomain on both TLDs. Order matters: repointing the
+  wildcard before the exact records exist takes every client down.
+  (added 2026-07-04)
+
 - [roy] [P1] **Nevo review: aram-ent KB + prompts (rewritten 2026-07-03 by
   Claude from aram-ent.co.il).** The KB (11 entries), system prompts (widget +
   facebook), greeting and og-meta were rebuilt from the real site — clinic

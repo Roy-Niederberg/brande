@@ -114,6 +114,12 @@ did.
   them, so changes there affect everything. When discussing features, always verify
   they work for both English and Hebrew clients and don't break Facebook flows.
 
+## Brand Name
+
+Write **Qabû** (with the circumflex) in user-facing text — page titles, buttons,
+headlines, marketing copy, both EN and HE. Plain `qabu` stays in domains, code,
+paths, and identifiers.
+
 ## Brand Colors
 
 ### Light mode

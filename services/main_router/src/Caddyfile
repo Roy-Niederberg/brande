@@ -68,3 +68,23 @@ qabu.co.il {
 
 	reverse_proxy landing-page-hebrew:80
 }
+
+# Unmatched subdomains: wildcard DNS points here (client subdomains have
+# more-specific records that win). Serves the "claim this subdomain" pitch
+# page, which language-switches on hostname client-side.
+*.qabu.net, *.qabu.co.il {
+	tls {
+		dns cloudflare {env.CLOUDFLARE_API_TOKEN}
+	}
+
+	handle /favicon.ico {
+		root * /srv
+		file_server
+	}
+
+	handle {
+		rewrite * /index.html
+		root * /srv/claim
+		file_server
+	}
+}
