@@ -168,8 +168,8 @@ order:
    published there's no "previous version" anywhere.
 3. **No audit log.** Multi-admin clients will eventually want who-changed-what.
 4. **`clients/` is checked into git.** Committed clients (drlipokatz, eintal,
-   eintal-hadassah, dradamblack, yomialpurrer, ofirfichman) all have copies that
-   drift from the VM. Onboarding-created clients (the new flow) correctly don't
+   eintal-hadassah, dradamblack, yomialpurrer, ofirfichman, aram-ent) all have
+   copies that drift from the VM. Onboarding-created clients (the new flow) correctly don't
    enter git — but eintal-hadassah (added 2026-06) was built repo-first and
    scaffolded/pushed to the VM by hand rather than via onboarding, so it joined
    the committed group deliberately (we pre-built its KB + prompts locally).
@@ -238,7 +238,7 @@ Three VMs, picked across clouds to avoid single-vendor lock-in:
 - **Main** (Oracle, `brande@129.159.134.3`) — singleton. Landing page, auth,
   FB dispatcher, onboarding. Scales vertically.
 - **Clients #1** (Oracle, `brande@129.159.159.251`) — multi-tenant: drlipokatz,
-  eintal, eintal-hadassah, yomialpurrer, dradamblack.
+  eintal, eintal-hadassah, yomialpurrer, dradamblack, aram-ent.
 - **Clients #2** (GCP, IPv6-only) — multi-tenant, currently just ofirfichman.
 
 Multi-tenant (not VM-per-client) is a cost concession, not the ideal — it
@@ -430,7 +430,7 @@ testing interface.
 
 ## Client Profiles
 
-All six clients are demos. None are paying customers yet.
+All seven clients are demos. None are paying customers yet.
 
 **eintal** — Prospective first real customer. Real multi-doctor clinic, currently
 running as a demo against their real site. The headline feature being demoed is
@@ -473,6 +473,15 @@ agreements) — a placeholder for Nevo to fill in. Site iframe points at
 client VM (`129.159.159.251`) and featured as a live-agent card on the Hebrew
 landing page (`qabu.co.il/#examples`). A sibling clinic of eintal, not one of
 eintal's routed specialists.
+
+**aram-ent** — Hebrew demo for **א.ר.ם**, a real private multi-specialty ENT /
+head-and-neck / oral-maxillofacial medical center, running as a demo against
+their real site (`aram-ent.co.il`, set as `siteUrl`). Site-only (no Facebook).
+KB (11 entries), system prompts, greeting and og-meta were rebuilt 2026-07-03
+from the real site — clinic info, branches, doctors, URG.ENT urgent-care center,
+HMO arrangements — pending Nevo's review (see TASKS.md). Added by hand on the
+Oracle client VM (`129.159.159.251`), not via onboarding: the VM was already at
+the conductor's `MAX_TIER` capacity cap (also in TASKS.md).
 
 **ofirfichman** — Real architect, friend of Roy's. Site is real; helps test and
 QA the platform under a real non-clinic use case. Only client hosted on the GCP
