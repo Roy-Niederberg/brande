@@ -497,19 +497,32 @@ the mounted files — fine for two owners, not exposed to end customers.
 
 ### Flow
 
-1. User goes to `qabu.net/onboarding`, authenticates via Google OAuth
-2. Enters a subdomain name, client validates format
-3. Onboarding checks if subdomain is taken (`https://{sub}.qabu.net/taken`)
-4. Tries VMs in order (`v1.qabu.net`, `v2.qabu.net`, ...) via `POST /scaffold`
-5. Provisioner validates `X-Provision-Secret`, delegates to conductor via Unix socket
-6. Conductor creates client directory (copies from `config/` template), starts stack
-7. On success: redirects to `https://{sub}.qabu.net/admin`
+1. User goes to `qabu.net/onboarding` (public — no auth), enters a subdomain
+   name, client validates format
+2. "Let's Qabû!" opens an invitation-code popup (experiment phase is
+   invite-only); code is checked via public `POST /validate-invite`
+3. On a valid code the browser redirects to Google OAuth
+   (`/auth/login?return_to=/onboarding/?subdomain=...&invite=...`); back from
+   sign-in the page auto-resumes creation
+4. `POST /create-client` (the only route behind `forward_auth` in the main
+   router) re-validates the invite code server-side, then checks if the
+   subdomain is taken (`https://{sub}.qabu.net/taken`)
+5. Tries VMs in order (`v1.qabu.net`, `v2.qabu.net`, ...) via `POST /scaffold`
+6. Provisioner validates `X-Provision-Secret`, delegates to conductor via Unix socket
+7. Conductor creates client directory (copies from `config/` template), starts stack
+8. On success: redirects to `https://{sub}.qabu.net/admin`
 
 ### Services
 
 - **client-onboarding** (`services/client_onboarding/`) — Express app on main
-  server at `qabu.net/onboarding`. Auth via Google OAuth + `onboarding_emails`
-  allowlist. Subdomain validation: `^[a-z][a-z0-9-]{3,18}[a-z]$` (5–20 chars).
+  server at `qabu.net/onboarding`. Page is public; `create-client` requires
+  Google OAuth (Caddy `forward_auth`) + a valid invitation code (replaced the
+  old `onboarding_emails` allowlist). Codes are 9-char `[A-Z0-9]`, one per
+  line in a bind-mounted `data/invite_codes.txt` (never in git — hand-edited:
+  `~/app/data/invite_codes.txt` on the main VM,
+  `secrets/main_server_secrets/invite_codes.txt` in QA), **single-use**: the
+  service deletes a code from the file after a successful creation. Subdomain
+  validation: `^[a-z][a-z0-9-]{3,18}[a-z]$` (5–20 chars).
 - **provisioner** (`services/provisioner/`) — thin proxy on client VM, receives
   `POST /scaffold` (authenticated by `X-Provision-Secret`), talks to conductor
   via Unix socket at `/run/qabu/conductor.sock`.

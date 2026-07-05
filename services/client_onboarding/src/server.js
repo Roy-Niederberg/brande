@@ -1,15 +1,24 @@
 import express from 'express'
-import { readFile } from 'fs/promises'
+import { readFile, writeFile } from 'fs/promises'
 const app = express()
 const secret = (await readFile('/run/secrets/provision_secret', 'utf8')).trim()
-const emails = JSON.parse(await readFile('/run/secrets/onboarding_emails', 'utf8')).emails
+
+// Experiment phase: creation is invitation-only. Codes live in a bind-mounted
+// file (never in git), one 9-char [A-Z0-9] code per line, added by hand.
+// Single-use: a code is deleted from the file after a successful creation.
+const CODES_FILE = 'data/invite_codes.txt'
+const CODE_RE = /^[A-Z0-9]{9}$/
+const normCode = c => String(c ?? '').trim().toUpperCase()
+const readCodes = async () => (await readFile(CODES_FILE, 'utf8').catch(() => ''))
+  .split('\n').map(normCode).filter(l => CODE_RE.test(l))
+const validInvite = async c => (await readCodes()).includes(normCode(c))
+const consumeInvite = async c => {
+  const lines = (await readFile(CODES_FILE, 'utf8')).split('\n')
+  await writeFile(CODES_FILE, lines.filter(l => normCode(l) !== normCode(c)).join('\n'))
+}
 
 app.r = (vrb,u,f)=>app[vrb](u,async (rq,rs,nxt)=>{try{await f(rq,rs,nxt)} catch(e) {nxt(e)}})
 
-app.use((rq, rs, nx) => {
-  if (!emails.includes(rq.headers['x-auth-email'])) return rs.sendStatus(403)
-  nx()
-})
 app.use(express.json())
 
 // Subdomain rule: 5-20 chars, lowercase letters/digits/hyphens, start+end with letter.
@@ -17,6 +26,7 @@ app.use(express.json())
 const SUBDOMAIN_RE = /^[a-z][a-z0-9-]{3,18}[a-z]$/
 app.r('get', '/', (_, rs) => rs.sendFile('views/index.html', {root: './src'}))
 app.r('get', '/subdomain-regex', (_, rs) => rs.json({pattern: SUBDOMAIN_RE.source}))
+app.r('post', '/validate-invite', async (rq, rs) => rs.json({valid: await validInvite(rq.body.code)}))
 
 async function scaffold(s, tier) {
   for (let i = 1; ; i++) {
@@ -39,8 +49,12 @@ async function scaffold(s, tier) {
   }
 }
 
+// Caddy forward_auth already gates this route (Google sign-in); the header
+// check is defense in depth for direct in-network access.
 app.r('post', '/create-client', async (rq, rs) => {
-  const { subdomain, tier = 1 } = rq.body
+  const { subdomain, invite, tier = 1 } = rq.body
+  if (!rq.headers['x-auth-email']) return rs.sendStatus(401)
+  if (!await validInvite(invite)) return rs.sendStatus(403)
 
   const s = subdomain.toLowerCase()
   if (!SUBDOMAIN_RE.test(s)) return rs.sendStatus(400)
@@ -53,6 +67,9 @@ app.r('post', '/create-client', async (rq, rs) => {
 
   const vm = await scaffold(s, tier)
   if (!vm) return rs.sendStatus(507)
+
+  // Client exists now — a consume failure must not fail the request, just log.
+  await consumeInvite(invite).catch(e => console.error('invite consume failed:', e.message))
 
   // we should wait and check if the client is up and running and only then return it.
   rs.json({ subdomain: s, vm })

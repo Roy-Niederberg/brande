@@ -7,15 +7,17 @@ http://qa.qabu.net {
 		reverse_proxy auth:3456
 	}
 
-	handle_path /onboarding* {
+	# Mirrors prod: only create-client is behind auth, the page is public.
+	handle /onboarding/create-client {
 		forward_auth auth:3456 {
 			uri /verify
 			copy_headers X-Auth-Email X-Auth-Name
-			@unauth status 401
-			handle_response @unauth {
-				redir http://qa.qabu.net:8080/auth/login?return_to={scheme}://{hostport}/onboarding{uri} 302
-			}
 		}
+		uri strip_prefix /onboarding
+		reverse_proxy client-onboarding:4321
+	}
+
+	handle_path /onboarding* {
 		reverse_proxy client-onboarding:4321
 	}
 

@@ -22,15 +22,19 @@ qabu.net {
 		reverse_proxy auth:3456
 	}
 
-	handle_path /onboarding* {
+	# Only client creation needs sign-in; the page itself (subdomain pick +
+	# invite popup) is public. Unauthenticated POST gets the auth 401 back
+	# and the page JS redirects to /auth/login.
+	handle /onboarding/create-client {
 		forward_auth auth:3456 {
 			uri /verify
 			copy_headers X-Auth-Email X-Auth-Name
-			@unauth status 401
-			handle_response @unauth {
-				redir https://qabu.net/auth/login?return_to={scheme}://{host}/onboarding{uri} 302
-			}
 		}
+		uri strip_prefix /onboarding
+		reverse_proxy client-onboarding:4321
+	}
+
+	handle_path /onboarding* {
 		reverse_proxy client-onboarding:4321
 	}
 

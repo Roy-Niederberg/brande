@@ -14,6 +14,7 @@ check() {
 }
 
 status()   { curl -s -o /dev/null -w "%{http_code}"    "$1"; }
+post()     { curl -s -o /dev/null -w "%{http_code}" -X POST -H 'Content-Type: application/json' -d "$2" "$1"; }
 location() { curl -s -o /dev/null -w "%{redirect_url}" "$1"; }
 body()     { curl -s "$1"; }
 
@@ -26,7 +27,8 @@ check "Privacy page"        200 "$(status https://qabu.net/privacy)"
 check "Terms page"          200 "$(status https://qabu.net/terms)"
 check "Auth /verify"        401 "$(status https://qabu.net/auth/verify)"
 check "Auth /login"         302 "$(status https://qabu.net/auth/login)"
-check "Onboarding"          302 "$(status https://qabu.net/onboarding)"
+check "Onboarding (public)" 200 "$(status https://qabu.net/onboarding)"
+check "Onboarding create-client unauth" 401 "$(post https://qabu.net/onboarding/create-client '{}')"
 check "FB page signup"      302 "$(status https://qabu.net/facebook-page-signup)"
 check "FB dispatcher"       403 "$(status https://qabu.net/facebook)"
 
@@ -39,11 +41,14 @@ else
   ((errors++))
 fi
 
-onboarding_url=$(location https://qabu.net/onboarding)
-if [[ "$onboarding_url" == *"/auth/login"* ]]; then
-  echo "$PASS Onboarding → /auth/login (forward_auth)"
+# Invite validation is public and must reject a bogus code (proves the node
+# service is reachable without auth and the invite gate is on).
+invite_resp=$(curl -s -X POST -H 'Content-Type: application/json' -d '{"code":"bogus"}' \
+              https://qabu.net/onboarding/validate-invite)
+if [[ "$invite_resp" == *'"valid":false'* ]]; then
+  echo "$PASS Onboarding invite gate rejects bogus code"
 else
-  echo "$FAIL Onboarding → expected /auth/login redirect, got: $onboarding_url"
+  echo "$FAIL Onboarding invite gate — expected valid:false, got: $invite_resp"
   ((errors++))
 fi
 

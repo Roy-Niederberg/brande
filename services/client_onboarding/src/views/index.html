@@ -38,6 +38,42 @@
     @keyframes spin { to { transform: rotate(360deg); } }
     .spinner { width: 20px; height: 20px; animation: spin 1s linear infinite; }
     .spinner path { fill: #1B4F72; }
+    #overlay {
+      position: fixed; inset: 0; background: rgba(93, 109, 126, 0.45);
+      backdrop-filter: blur(3px); display: flex; align-items: center; justify-content: center;
+    }
+    #overlay[hidden] { display: none; }
+    .modal {
+      background: #FAF4E8; border: 2px solid #85C1E9; border-radius: 16px;
+      padding: 36px 40px; max-width: 440px; width: calc(100vw - 48px);
+      display: flex; flex-direction: column; gap: 16px; text-align: center;
+      box-shadow: 0 20px 60px rgba(27, 79, 114, 0.25);
+    }
+    .modal h2 { color: #1B4F72; font-weight: 600; font-size: 26px; }
+    .modal p { color: #5D6D7E; font-size: 16px; line-height: 1.5; }
+    .code-entry {
+      position: relative; display: flex; gap: 6px; align-items: center; justify-content: center;
+    }
+    .code-entry input {
+      position: absolute; inset: 0; opacity: 0; font-size: 16px; cursor: pointer;
+    }
+    .cell {
+      width: 38px; height: 48px; border: 2px solid #85C1E9; border-radius: 8px;
+      background: #fff; color: #5D6D7E; font-size: 24px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .cell.active { border-color: #1B4F72; }
+    .dash { color: #5D6D7E; font-size: 24px; }
+    @media (max-width: 500px) {
+      .code-entry { gap: 3px; }
+      .cell { width: 27px; height: 36px; font-size: 17px; border-radius: 6px; }
+      .dash { font-size: 17px; }
+    }
+    .modal-actions { display: flex; gap: 12px; justify-content: center; }
+    .modal-actions button { padding: 12px 32px; font-size: 18px; }
+    #invite-go { background: #1B4F72; color: #FAF4E8; }
+    #invite-cancel { background: transparent; color: #5D6D7E; border: 2px solid #85C1E9; }
+    #invite-msg { min-height: 20px; font-size: 15px; }
     @media (max-width: 500px) {
       .input-row { flex-wrap: wrap; justify-content: center; }
       .input-row input { width: 180px; max-width: 85vw; font-size: 38px; padding: 8px 14px; }
@@ -61,17 +97,48 @@
     <button id="create" disabled>Let's Qabû!</button>
     <div id="message"></div>
   </div>
+  <div id="overlay" hidden>
+    <div class="modal">
+      <h2>Invitation only — for now</h2>
+      <p>Qabû is in an early experimental phase, so creating an agent currently
+         requires an invitation code. Enter yours below and we'll take you to sign in.</p>
+      <div class="code-entry">
+        <input id="invite-code" autocomplete="off" spellcheck="false" autocapitalize="characters">
+        <span class="cell"></span><span class="cell"></span><span class="cell"></span>
+        <span class="dash">-</span>
+        <span class="cell"></span><span class="cell"></span><span class="cell"></span>
+        <span class="dash">-</span>
+        <span class="cell"></span><span class="cell"></span><span class="cell"></span>
+      </div>
+      <div id="invite-msg" class="error"></div>
+      <div class="modal-actions">
+        <button id="invite-cancel">Cancel</button>
+        <button id="invite-go">Continue</button>
+      </div>
+    </div>
+  </div>
   <script>
     const input = document.getElementById('subdomain')
     const btn = document.getElementById('create')
     const msg = document.getElementById('message')
+    const overlay = document.getElementById('overlay')
+    const inviteInput = document.getElementById('invite-code')
+    const inviteMsg = document.getElementById('invite-msg')
+    const inviteGo = document.getElementById('invite-go')
     let re = null
 
-    input.value = new URLSearchParams(location.search).get('subdomain') || ''
+    const params = new URLSearchParams(location.search)
+    input.value = params.get('subdomain') || ''
+    let inviteCode = params.get('invite') || ''
 
     fetch('subdomain-regex')
       .then(r => r.json())
-      .then(d => { re = new RegExp(d.pattern); input.dispatchEvent(new Event('input')) })
+      .then(d => {
+        re = new RegExp(d.pattern)
+        input.dispatchEvent(new Event('input'))
+        // Back from Google sign-in with an invite in the URL: continue creating.
+        if (inviteCode && re.test(input.value)) create()
+      })
 
     const sizer = document.createElement('span')
     Object.assign(sizer.style, {position:'absolute',visibility:'hidden',whiteSpace:'pre'})
@@ -91,7 +158,13 @@
       msg.textContent = ''
     })
 
-    btn.addEventListener('click', async () => {
+    // Send the user through Google sign-in, then back here with the invite kept in the URL.
+    const toSignIn = () => {
+      const ret = `${location.origin}/onboarding/?subdomain=${encodeURIComponent(input.value)}&invite=${encodeURIComponent(inviteCode)}`
+      location.href = `/auth/login?return_to=${encodeURIComponent(ret)}`
+    }
+
+    async function create() {
       btn.disabled = true
       msg.className = ''
       msg.innerHTML = '<svg class="spinner" viewBox="-603 -603 1206 1206"><path transform="rotate(135)" d="M -43.934 -600 L -43.934 0 C -102.948 -160.66 -102.944 -248.528 -175.736 -175.736 A 248.528 248.528 0 1 0 43.934 -244.614 L 43.934 -804.594 C 87.868 -512.132 248.528 -600 424.264 -424.264 A 600 600 0 1 1 -43.934 -600"/></svg>'
@@ -99,25 +172,74 @@
         const resp = await fetch('create-client', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({subdomain: input.value})
+          body: JSON.stringify({subdomain: input.value, invite: inviteCode})
         })
         if (resp.ok) {
           const d = await resp.json()
           document.querySelector('.form').innerHTML = `<div id="message" class="success">${d.subdomain}.qabu.net is live!</div>`
           setTimeout(() => location.href = `https://${d.subdomain}.qabu.net/admin`, 5000)
           return
-        } else {
-          const errors = {400: 'Invalid subdomain', 409: 'Subdomain already taken', 507: 'No available servers'}
-          msg.textContent = errors[resp.status] || 'Something went wrong'
-          msg.className = 'error'
-          btn.disabled = false
         }
+        if (resp.status === 401) return toSignIn()  // no/expired session — sign in and come back
+        const errors = {400: 'Invalid subdomain', 403: 'Invalid invitation code', 409: 'Subdomain already taken', 507: 'No available servers'}
+        msg.textContent = errors[resp.status] || 'Something went wrong'
+        msg.className = 'error'
+        btn.disabled = false
       } catch {
         msg.textContent = 'Network error'
         msg.className = 'error'
         btn.disabled = false
       }
+    }
+
+    btn.addEventListener('click', () => {
+      if (inviteCode) return create()
+      inviteMsg.textContent = ''
+      overlay.hidden = false
+      inviteInput.focus()
     })
+
+    document.getElementById('invite-cancel').addEventListener('click', () => overlay.hidden = true)
+    overlay.addEventListener('click', e => { if (e.target === overlay) overlay.hidden = true })
+
+    // The real input is invisible on top of the squares; only A-Z0-9 sticks.
+    const cells = [...document.querySelectorAll('.cell')]
+    const renderCode = () => {
+      const v = inviteInput.value
+      cells.forEach((c, i) => {
+        c.textContent = v[i] || ''
+        c.classList.toggle('active', document.activeElement === inviteInput && i === Math.min(v.length, 8))
+      })
+    }
+    inviteInput.addEventListener('input', () => {
+      inviteInput.value = inviteInput.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 9)
+      renderCode()
+    })
+    inviteInput.addEventListener('focus', renderCode)
+    inviteInput.addEventListener('blur', renderCode)
+
+    async function submitInvite() {
+      const code = inviteInput.value.trim()
+      if (!code) return inviteInput.focus()
+      inviteGo.disabled = true
+      inviteMsg.textContent = ''
+      try {
+        const resp = await fetch('validate-invite', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({code})
+        })
+        const d = await resp.json()
+        if (d.valid) { inviteCode = code; return toSignIn() }
+        inviteMsg.textContent = 'Invalid invitation code'
+      } catch {
+        inviteMsg.textContent = 'Network error'
+      }
+      inviteGo.disabled = false
+    }
+
+    inviteGo.addEventListener('click', submitInvite)
+    inviteInput.addEventListener('keydown', e => { if (e.key === 'Enter') submitInvite() })
   </script>
 </body>
 </html>

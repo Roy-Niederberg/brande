@@ -242,6 +242,36 @@ Phase 3 work until there's a second paying client.
 
 ### Onboarding, infra, deploy
 
+- [claude] [defer] **Onboarding invite codes: audit trail + expiry.** The
+  invite gate (added 2026-07-05 when the onboarding page went public) reads
+  single-use 9-char codes from a bind-mounted, gitignored
+  `data/invite_codes.txt` and deletes each code after a successful creation —
+  good enough for manual testing/demoing. What's deliberately missing: no
+  record of *who* used a code / when / for which subdomain (only the deletion
+  in the file, and the created client itself), and unused codes never expire.
+  If invites go to real prospects at scale, log consumption (code, x-auth-email,
+  subdomain, timestamp — e.g. append to a `data/invite_log.jsonl`) and consider
+  per-code expiry dates. Not worth building while codes are handed out one at
+  a time by Roy/Nevo. (added 2026-07-05)
+
+- [claude] [P1] **Onboarding must create the client's DNS record (Cloudflare
+  API) — new clients are unreachable after the wildcard switchover without
+  it.** While discussing how to tell if a subdomain is taken (2026-07-05), we
+  realized the wildcard-DNS switchover (task below) breaks onboarding: today a
+  scaffolded client is instantly live because `*.qabu.net` routes everything
+  to the client VM, but once the wildcard points at the *main* VM, a new
+  client's subdomain keeps resolving there (claim page) until an exact A
+  record → its client VM is added. Fix: after a successful scaffold, onboarding
+  (`services/client_onboarding/src/server.js`) creates the A record via the
+  Cloudflare API, pointing at the VM it scaffolded on; on `err 409`/failure,
+  no record. Check the existing `cloudflare_api_token` scopes — the cert
+  tokens need only DNS-edit, which happens to be the same permission, but
+  verify zone coverage (qabu.net; qabu.co.il records stay manual/optional).
+  Related: post-switchover, the Cloudflare zone is the only *global* registry
+  of taken subdomains across VMs (each conductor only knows its own dirs);
+  the `/taken` HTTP probe in onboarding keeps working unchanged. Must land
+  before or together with the DNS switchover. (added 2026-07-05)
+
 - [roy] [P2] **Deploy the "claim this subdomain" pitch page + wildcard-DNS
   switchover to the main VM.** While planning multi-VM client hosting (new ARM
   VMs), we decided `*.qabu.net → client VM` was a mistake: the wildcard should

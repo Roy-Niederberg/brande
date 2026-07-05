@@ -54,8 +54,8 @@ services:
   client-onboarding:
     build: {context: ../services/client_onboarding/, target: production}
     networks: [main-network]
-    secrets: [onboarding_emails, provision_secret]
-    volumes: [onboarding_data:/app/data]
+    secrets: [provision_secret]
+    volumes: [../secrets/main_server_secrets/invite_codes.txt:/app/data/invite_codes.txt]
 
   # ─── Client infra (simulates client VM shared services) ───
 
@@ -251,7 +251,6 @@ networks:
   drlipokatz-network:
 
 volumes:
-  onboarding_data:
   dradamblack-ui:
   drlipokatz-ui:
   drlipokatz-telegram-claude:
@@ -263,7 +262,6 @@ secrets:
   fb_webhook_verify_token: {file: ../secrets/main_server_secrets/fb_webhook_verify_token.secret}
   fb_app_secret:           {file: ../secrets/main_server_secrets/fb_app_secret.secret}
   fb_dispatcher_secret:    {file: ../secrets/main_server_secrets/fb_dispatcher_secret.secret}
-  onboarding_emails:       {file: ../secrets/main_server_secrets/onboarding_emails.json}
   provision_secret:        {file: ../secrets/main_server_secrets/provision_secret.secret}
 
   # Clients (shared)
