@@ -62,6 +62,18 @@ Phase 3 work until there's a second paying client.
 
 ## Open
 
+- [roy] [P4] **Revoke the unused GitLab deploy token** (`docker-login-for-server`,
+  username `gitlab+deploy-token-9617691`). While auditing which credential the
+  VMs use for `docker login registry.gitlab.com` (2026-07-06 conversation), we
+  confirmed both VMs use the *other* deploy token (`docker-login-deploy-token-for-server`,
+  custom username `brande`, `gldt-` prefix in `~/.docker/config.json`). The
+  first token was presumably an initial attempt from the same day (both created
+  Oct 24, 2025), is used by nothing, and never expires — a dangling credential
+  whose only kill switch is revocation. Revoke it in GitLab: Project → Settings
+  → Repository → Deploy tokens. Optional extra (nice-to-have, same screen):
+  issue one deploy token per VM instead of sharing one, so a compromised VM can
+  be cut off without breaking pulls on the other. (added 2026-07-06)
+
 ### Source of Truth & client-data lifecycle
 
 - [both] [P0] **Replace the MVP backup with a proper `services/backup/` Node
@@ -374,37 +386,48 @@ Phase 3 work until there's a second paying client.
   confirmed the ARM Ampere allocation (4 OCPU / 24 GB) is a *separate* pool from
   the two AMD `E2.1.Micro` always-free instances. Roy grabbed Ampere capacity
   (the hard part — `Out of host capacity` is the usual blocker) and created two
-  `VM.Standard.A1.Flex` VMs in AD-1, both Ubuntu (upgraded in place to 24.04.4
-  LTS — supported to Apr 2029 — `aarch64`, running, free):
+  `VM.Standard.A1.Flex` VMs in AD-1, both Ubuntu 24.04.4 LTS (upgraded in
+  place — supported to Apr 2029 — `aarch64`, running, free; OS verified via
+  SSH 2026-07-05, and `brande` user + key auth already provisioned on both):
     - **arm1** — `129.159.154.37` (priv `10.0.0.102`), **3 OCPU / 18 GB**.
+      Hostname `qabu-client-arm1`. Fully patched + rebooted onto current
+      kernel 2026-07-07 (after clearing a first-boot `apt-daily` hang that
+      held the apt lock for 6 days).
     - **arm2-small** — `129.159.141.23` (priv `10.0.0.190`), **1 OCPU / 6 GB**.
+      **Not available for Qabu for now** — Roy repurposed it for personal
+      (non-Qabu) use (2026-07-10). Plan around arm1 only; if Qabu ever needs
+      the capacity back, that's a discussion with Roy, not a free resource.
   Together they consume the **entire** 4 OCPU / 24 GB ARM pool — no room for a
   3rd ARM free instance, and the monthly budget (3,000 OCPU-hrs / 18,000 GB-hrs)
   is ~99% used running both 24/7 (≈2,976 OCPU-hrs). **Near-zero margin**: any
   resize-up or a temporary 5th instance tips into billed usage. TODO: set a
   Billing → Budgets alert (~$1) as a tripwire.
   Notes / gotchas:
-    1. **Blocker to deploying Qabu here: `linux/arm64` images.** Both boxes are
-       `aarch64`; current images are x86. Need multi-arch via `docker buildx
-       --platform linux/amd64,linux/arm64 --push` (reworks `services/build.sh`,
-       needs a buildx builder) OR build natively on the ARM box. Solve this
-       before any deploy effort.
+    1. ~~**Blocker: `linux/arm64` images.**~~ **Solved** — `services/build.sh`
+       now builds multi-arch (`linux/amd64` + `linux/arm64`) via buildx and
+       pushes a single manifest list per tag (see CLAUDE.md § Building images).
+       No image blocker remains for deploying to these boxes.
     2. **Two firewall layers** before they serve traffic: OCI VCN Security
        List/NSG (open 80/443) **and** the host's default iptables (Oracle images
        block everything but SSH at the OS level too — classic "opened 443 in OCI
-       but nothing connects" trap).
+       but nothing connects" trap). `setup_server.sh` handles the host layer
+       (ufw takes over, purges Oracle's stock iptables).
     3. **OCI console still shows Ubuntu 20.04** for both — cosmetic only. The
        image field is launch-time metadata and does NOT update on an in-place
-       `do-release-upgrade`; the real OS (22.04, confirmed via `/etc/os-release`)
-       is the source of truth. Ignore the console label.
+       `do-release-upgrade`; the real OS (24.04.4 LTS, confirmed via
+       `/etc/os-release` on 2026-07-05) is the source of truth. Ignore the
+       console label.
     4. **Why in-place upgrade, not recreate:** pool is maxed so you can't
        create-before-terminate; terminating to recreate would gamble the Ampere
        capacity that's scarce. Upgrade-in-place keeps the instance + capacity.
-  Opportunity: these are capable boxes (esp. the 3/18 arm1) sitting free. They
-  enable moving toward the **VM-per-client** ideal that `CLAUDE.md` calls out
-  (multi-tenant is "a cost concession, not the ideal") — a real upgrade over the
-  cramped 1 OCPU / 1 GB Oracle micros — once the arm64 image story is solved.
-  (added 2026-06-21, after provisioning + upgrading both ARM VMs.)
+  Opportunity: arm1 (3/18) is a capable box sitting free — a real upgrade over
+  the cramped 1 OCPU / 1 GB Oracle micros, and a step toward the
+  **VM-per-client** ideal that `CLAUDE.md` calls out (multi-tenant is "a cost
+  concession, not the ideal"). Note the pool of *Qabu-usable* ARM capacity is
+  now arm1 alone. With multi-arch images done and base provisioning
+  (`setup_server.sh`) already run, what remains is role setup per
+  `docs/client-server-setup.md` (registry login, conductor, clients-router,
+  secrets) + DNS. (added 2026-06-21; refreshed 2026-07-10.)
 
 - [claude] [P3] **Conductor treats a partial stack as healthy.** While bringing
   up yomialpurrer + dradamblack (2026-06-20), only the 4 core (no-profile)
@@ -429,22 +452,24 @@ Phase 3 work until there's a second paying client.
   with multiple client VMs since wildcard `*.qabu.net` only points to one IP.
   (added 2026-04-02)
 
-- [roy] [P0] **Migrate clients VM from AMD E2.1.Micro to Oracle A1.Flex (ARM)
-  + multi-arch Docker images.** Triggered by 2026-04-23 OOM hang on the 1 GB
-  AMD VM. ARM Always Free quota: 4 OCPU + 24 GB RAM (separate quota from AMD,
-  permanent). Recommended target: one 4-OCPU/24-GB A1.Flex.
-  - Verify Always Free billing mode, 200 GB storage cap math, A1 availability
-    in `il-jerusalem-1` (biggest unknown — Oracle reclaims idle A1 after 7
-    days, so don't leave new VM empty).
-  - Switch `services/build.sh` to `docker buildx --platform
-    linux/amd64,linux/arm64`. Most images use Alpine which already has ARM.
-  - Conductor (C++20) needs ARM build — compile in `arm64v8/ubuntu` or
-    natively on the new VM.
+- [roy] [P0] **Migrate clients VM from AMD E2.1.Micro to Oracle A1.Flex (ARM).**
+  Triggered by 2026-04-23 OOM hang on the 1 GB AMD VM. Status 2026-07-05:
+  the ARM capacity is secured — two A1.Flex VMs exist (arm1 3/18 +
+  arm2-small 1/6, see the "Two free ARM VMs" task above; the quota went to
+  two boxes instead of the originally recommended single 4/24) and
+  `services/build.sh` already builds+pushes multi-arch images. Remaining:
+  - Conductor (C++20) needs an ARM build — compile in `arm64v8/ubuntu` or
+    natively on the ARM box.
+  - Role setup on the target VM per `docs/client-server-setup.md` (registry
+    login, conductor, clients-router, secrets).
   - Migrate clients one at a time: rsync data, update Cloudflare DNS, compose
-    up on new, verify with `check_clients.sh`, compose down on old.
-  - Future option: split ARM quota into multiple smaller VMs for redundancy
-    (revisit per CLAUDE.md "VM Strategy").
-  - Update `docs/client-server-setup.md` afterwards. (added 2026-04-25)
+    up on new, verify with `check_clients.sh`, compose down on old. All
+    clients land on **arm1** (arm2-small went to Roy's personal use
+    2026-07-10, see the "Two free ARM VMs" task above; still ties into the
+    wildcard-DNS switchover task — per-client exact DNS records).
+  - Update `docs/client-server-setup.md` + fleet scripts (`check_clients.sh`,
+    `rsync_clients.sh`, `check_versions.sh`) afterwards. (added 2026-04-25;
+    refreshed 2026-07-05)
 
 - [roy] [defer] **Migrate secrets to Infisical.** Currently rsynced to VMs
   manually. Pull at runtime instead — no rsync, no machine dependency.

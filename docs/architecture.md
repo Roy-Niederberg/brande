@@ -6,12 +6,22 @@ and points here. Read the relevant section before touching any of these areas.
 
 ## VM Strategy
 
-Two VMs, both Oracle:
+Four VMs, all Oracle Always Free, all Ubuntu, SSH as `brande` with the same
+key (as of 2026-07-06):
 
-- **Main** (Oracle, `brande@129.159.134.3`) — singleton. Landing page, auth,
-  FB dispatcher, onboarding. Scales vertically.
-- **Clients #1** (Oracle, `brande@129.159.159.251`) — multi-tenant: drlipokatz,
-  eintal, eintal-hadassah, yomialpurrer, dradamblack, aram-ent.
+| VM         | IP              | Role                                   | Arch    | CPUs   | RAM   | OS           |
+|------------|-----------------|----------------------------------------|---------|--------|-------|--------------|
+| Main       | 129.159.134.3   | Singleton: landing pages, auth, FB dispatcher, onboarding | x86_64 | 2 vCPU | 1 GB | Ubuntu 24.04 |
+| Clients #1 | 129.159.159.251 | Multi-tenant: drlipokatz, eintal, eintal-hadassah, yomialpurrer, dradamblack, aram-ent | x86_64 | 2 vCPU | 1 GB | Ubuntu 24.04 |
+| arm1       | 129.159.154.37  | **Idle** — provisioned (`setup_server.sh` done), no role yet | aarch64 | 3 vCPU | 18 GB | Ubuntu 24.04 |
+| arm2-small | 129.159.141.23  | **Not available** — repurposed for Roy's personal (non-Qabu) use, 2026-07 | aarch64 | 1 vCPU | 6 GB | Ubuntu 24.04 |
+
+The two x86 VMs are `E2.1.Micro` (1 OCPU = 2 vCPUs via SMT); the two ARM VMs
+are `A1.Flex` and together consume the entire 4 OCPU / 24 GB ARM free pool.
+The plan is to migrate clients from the cramped Clients #1 micro to **arm1
+only** — arm2-small is off the table for now (personal use) — see the ARM
+tasks in `TASKS.md` for status and remaining steps (conductor ARM build, role
+setup, per-client migration).
 
 A second VM, **Clients #2** (GCP, IPv6-only), hosted the `ofirfichman` demo
 client from 2026-06 to 2026-07-04. Retired: the IPv6-only egress caused
