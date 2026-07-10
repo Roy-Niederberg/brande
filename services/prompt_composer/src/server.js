@@ -13,7 +13,16 @@ const writeFile = (f, d) => fs.writeFileSync(`./data/${f}`, d, 'utf-8')
 const writeJSON = (f, d) => writeFile(f, JSON.stringify(d))
 const toJS = (v,d=0) => typeof v==='string' ? '`'+v.replace(/\\/g,'\\\\').replace(/`/g,'\\`').replace(/\$\{/g,'\\${')+'`' : '{\n'+Object.entries(v).map(([k,w])=>`${'  '.repeat(d+1)}${k}: ${toJS(w,d+1)}`).join(',\n')+'\n'+'  '.repeat(d)+'}'
 const writeJSObj = (f, d) => writeFile(f, `export default ${toJS(d)}\n`)
-const logEvent = e => fs.appendFileSync('./logs/events.jsonl', JSON.stringify({ts: new Date().toISOString(), ...e}) + '\n')
+const logLine = e => JSON.stringify({ts: new Date().toISOString(), ...e}) + '\n'
+const logEvent = e => fs.appendFileSync('./logs/events.jsonl', logLine(e))
+const logChat = (id, e) => /^[\w.-]{1,128}$/.test(id ?? '') &&
+  fs.appendFileSync(`./logs/conversations/${id}.jsonl`, logLine(e))
+fs.mkdirSync('./logs/conversations', {recursive: true})
+const CHAT_RETENTION_MS = 30 * 864e5
+const sweepChats = () => fs.readdirSync('./logs/conversations').forEach(f =>
+  Date.now() - fs.statSync(`./logs/conversations/${f}`).mtimeMs > CHAT_RETENTION_MS
+    && fs.unlinkSync(`./logs/conversations/${f}`))
+sweepChats(); setInterval(sweepChats, 864e5)
 
 // =============== Server Loading section =======================================================//
 const GEM_1 = fs.readFileSync('/run/secrets/gemini_1', 'utf-8').trim()
@@ -93,6 +102,13 @@ app.r('post', '/ask', async ({ body, headers }, rs) => {
 
   const trusted = headers['x-admin-secret'] === ADMIN_SECRET
 
+  const record = (outcome, model, reply) => {
+    if (trusted) return
+    logEvent({channel: body.mod, model, outcome, conversation_id: body.conversation_id})
+    logChat(body.conversation_id,
+      {channel: body.mod, user: body.chat.at(-1).content, reply, model, outcome})
+  }
+
   const sp = trusted ? body.sp_override : $.system_prompts[body.mod]
   const kb_obj = (trusted && body.kb_override) || $.knowledge_base
 
@@ -103,7 +119,7 @@ app.r('post', '/ask', async ({ body, headers }, rs) => {
     if (gk === undefined) console.error('🚩 gatekeeper exhausted all keys')
     else if (gk.res === 'IGNORE')   return rs.send("...")
     else if (gk.res !== 'ESCALATE') {
-      if (!trusted) logEvent({channel: body.mod, model: gk.model, outcome: 'gatekeeper'})
+      record('gatekeeper', gk.model, gk.res)
       return rs.send(gk.res)
     }
   }
@@ -123,15 +139,16 @@ app.r('post', '/ask', async ({ body, headers }, rs) => {
   for (const i of [1,2]) { // 2 tries — each rotates to a fresh bucket
     const ans = await askGemini(query, body.chat)
     if (ans) {
-      if (!trusted) logEvent({channel: body.mod, model: ans.model, outcome: 'main'})
+      record('main', ans.model, ans.res)
       return rs.send(ans.res)
     }
     console.log(`Gemini try ${i} failed.`)
   }
   console.error('🚩 main model exhausted all retries')
 
-  if (!trusted) logEvent({channel: body.mod, outcome: 'unavailable'})
-  rs.send("The assistant is unavailable at the moment. Please try again later.")
+  const unavailable = "The assistant is unavailable at the moment. Please try again later."
+  record('unavailable', undefined, unavailable)
+  rs.send(unavailable)
 })
 
 app.r('get', '/last_prompt', (_, rs) => {rs.sendFile('logs/last_prompt.json', {root: '.'})})

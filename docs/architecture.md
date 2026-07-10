@@ -246,11 +246,23 @@ Request flow:
 - SP publish: admin BE `/api/system_prompts` → prompt-composer `/system_prompts`
 - Services: admin BE `/api/services` → prompt-composer `/services`
 
-### Prompt Logging
+### Prompt & Conversation Logging
 
 After each LLM call, the prompt-composer writes the full request + response to
 `logs/last_prompt.json` (overwritten each time). Readable via `GET /last_prompt`
-(proxied through admin as `GET /api/last_prompt`).
+(proxied through admin as `GET /api/last_prompt`). Deliberately global-last, not
+per-conversation — it's a "what was just sent" debugging tool, and a
+per-conversation variant would persist the full KB once per request.
+
+Each answered `/ask` also appends one line to
+`logs/conversations/<conversation_id>.jsonl`:
+`{ts, channel, user, reply, model, outcome}`, where `user` is the last chat
+message — so a file reads as the conversation transcript. Same exclusions as
+the event log: admin-trusted calls and `IGNORE`d comments are not logged. The
+id (see § Request Flags) is validated (`^[\w.-]{1,128}$`) before being used as
+a filename; requests without a valid id (e.g. mock_facebook) skip transcript
+logging. Retention: a daily sweep deletes conversation files untouched for 30
+days (`CHAT_RETENTION_MS` in `server.js`).
 
 ### System Prompts
 
@@ -326,11 +338,10 @@ for (const f of files) {
 ### Request Flags
 
 - `skip_gk: true` — skip gatekeeper (used for capability result follow-ups)
-- `conversation_id` — stable id for the conversation the request belongs to,
-  so the prompt-composer can eventually follow and log conversations across
-  requests. **Currently ignored by the prompt-composer** — every channel
-  already sends it (see TASKS.md), the consumer side is future work. Per
-  channel:
+- `conversation_id` — stable id for the conversation the request belongs to.
+  The prompt-composer stamps it on every `events.jsonl` line and groups
+  per-conversation transcripts under `logs/conversations/<id>.jsonl` (see
+  § Prompt & Conversation Logging). Per channel:
   - **widget** — random UUID minted client-side, kept in `sessionStorage`
     next to `chat_history` (same lifetime: survives reload, regenerated on
     "Clear conversation"). Admin chat uses the same widget, so it's covered.
@@ -374,19 +385,23 @@ the fact that it answered. The notifier interprets those facts and emails.
 `last_prompt.json`):
 
 ```json
-{"ts":"2026-06-11T07:18:32.000Z","channel":"widget","model":"gemini-3.5-flash","outcome":"main"}
+{"ts":"2026-06-11T07:18:32.000Z","channel":"widget","model":"gemini-3.5-flash","outcome":"main","conversation_id":"1c9e..."}
 ```
 
 - `channel` = `body.mod` (`widget`, `facebook_comments`, `facebook_dm`) — all
   channels covered automatically since everything flows through `/ask`.
 - `outcome` ∈ `gatekeeper` (gatekeeper replied directly), `main`,
   `unavailable` (all retries exhausted — `model` omitted).
+- `conversation_id` = `body.conversation_id`, verbatim (omitted if the request
+  didn't send one) — the digest reader can group lines by conversation; the
+  full transcript lives in `logs/conversations/<id>.jsonl` (see § Prompt &
+  Conversation Logging).
 - Admin-secret (trusted) test calls and `IGNORE`d comments are **not** logged.
 - The file is append-only and generic: future event types just add lines with
   new fields; the notifier forwards the raw lines as-is, so no formatting code
   to update. Adding a new notification source means appending JSONL, not
   touching the producer's API.
-- Growth is ~150 B/event; rotation is accepted debt for now.
+- Growth is ~200 B/event; rotation is accepted debt for now.
 
 **Notifier loop.** No inbound port, no services-router entry — a pure
 consumer. Once a day (hour 12, system local time) it emails the new entries
