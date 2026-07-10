@@ -68,7 +68,8 @@ const process_message = async (psid, message_text, page_id) => {
   // Get LLM response
   const llm_res = await fetch('http://prompt-composer:4321/ask', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ mod: 'facebook_dm', chat: [{ role: 'user', content: chat_history }] })
+    body: JSON.stringify({ mod: 'facebook_dm', conversation_id: conversation.id,
+      chat: [{ role: 'user', content: chat_history }] })
   })
   if (!llm_res.ok && LOG(5, `${llm_res.status} ${llm_res.statusText}`)) return
   const answer = await llm_res.text()

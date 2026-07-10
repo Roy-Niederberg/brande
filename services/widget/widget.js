@@ -22,6 +22,18 @@
     : null
   const API = config.apiEndpoint || '/prompt-composer/ask'
   const STORAGE_KEY = 'chat_history'
+  const CONV_KEY = 'chat_conversation_id'
+  // Conversation id: sent with every /ask so the prompt-composer can follow and
+  // log a conversation (widget analog of Facebook's conversation/thread ids).
+  // Lives in sessionStorage next to chat_history — same lifetime as the history.
+  let conversationId = ''
+  const startConversation = (fresh) => {
+    try { if (!fresh) conversationId = sessionStorage.getItem(CONV_KEY) || '' } catch {}
+    if (fresh || !conversationId)
+      conversationId = crypto.randomUUID?.() ||
+        `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
+    try { sessionStorage.setItem(CONV_KEY, conversationId) } catch {}
+  }
   const history = []
   let lastMsgRole = null
   let lastMsgMinute = null
@@ -346,7 +358,8 @@
     const chat = history.map(h => ({
       role: h.role === 'user' ? 'user' : 'assistant', content: h.content
     }))
-    let requestBody = { mod: 'widget', chat, local_time: new Date().toLocaleString() }
+    let requestBody = { mod: 'widget', conversation_id: conversationId, chat,
+      local_time: new Date().toLocaleString() }
     if (skipGk) requestBody.skip_gk = true
     if (config.beforeSend && typeof config.beforeSend === 'function')
       requestBody = config.beforeSend(requestBody) || requestBody
@@ -509,11 +522,13 @@
     history.length = 0
     lastMsgRole = null; lastMsgMinute = null
     sessionStorage.removeItem(STORAGE_KEY)
+    startConversation(true)
     await playGreeting()
     addGhostBubble()
   }
 
   const hasHistory = restoreHistory()
+  startConversation(!hasHistory)
 
   if (floating) {
     const launcher = document.createElement('button')

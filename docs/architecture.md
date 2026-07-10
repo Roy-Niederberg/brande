@@ -326,6 +326,19 @@ for (const f of files) {
 ### Request Flags
 
 - `skip_gk: true` — skip gatekeeper (used for capability result follow-ups)
+- `conversation_id` — stable id for the conversation the request belongs to,
+  so the prompt-composer can eventually follow and log conversations across
+  requests. **Currently ignored by the prompt-composer** — every channel
+  already sends it (see TASKS.md), the consumer side is future work. Per
+  channel:
+  - **widget** — random UUID minted client-side, kept in `sessionStorage`
+    next to `chat_history` (same lifetime: survives reload, regenerated on
+    "Clear conversation"). Admin chat uses the same widget, so it's covered.
+  - **facebook_dm** — the Graph API conversation id (`t_...`).
+  - **facebook_comments** — the level-1 comment id: the L1 thread is the
+    conversation unit whose history the service fetches and sends.
+  - **mock_facebook** — doesn't send one; its traffic is admin-trusted and
+    excluded from event logging anyway.
 
 ## Widget Service
 

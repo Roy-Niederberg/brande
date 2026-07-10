@@ -62,6 +62,20 @@ Phase 3 work until there's a second paying client.
 
 ## Open
 
+- [claude] [P2] **Make prompt-composer consume `conversation_id`** (log it in
+  `events.jsonl`, group per-conversation logs, retention). While discussing
+  conversation tracking (2026-07-10) we added a `conversation_id` field to
+  every `/ask` request as preparation: the widget mints a UUID stored in
+  `sessionStorage` beside `chat_history` (survives reload, regenerated on
+  "Clear conversation"), facebook_dm sends the Graph API conversation id,
+  facebook_comments sends the level-1 comment id (the thread whose history it
+  fetches). The prompt-composer currently ignores the field — this task is the
+  consumer side, a concrete step toward the "Better chat logging" north star.
+  See `docs/architecture.md` § Request Flags for the per-channel contract.
+  When implementing, decide whether `logEvent` gains the id (notifier digest
+  then shows it verbatim) and whether `last_prompt.json` should become
+  per-conversation. (added 2026-07-10)
+
 - [roy] [P4] **Revoke the unused GitLab deploy token** (`docker-login-for-server`,
   username `gitlab+deploy-token-9617691`). While auditing which credential the
   VMs use for `docker login registry.gitlab.com` (2026-07-06 conversation), we

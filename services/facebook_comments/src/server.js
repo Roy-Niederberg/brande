@@ -105,7 +105,9 @@ const process_comment = async (comment_id, parent_id, post_id, _page_id) => {
   const chat = [{ role: 'user', content: chat_history }]
   const llm_res = await fetch('http://prompt-composer:4321/ask', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ mod: 'facebook_comments', chat })
+    // The L1 comment thread is the conversation unit — it's exactly the
+    // history fetched above (a post can hold many independent threads).
+    body: JSON.stringify({ mod: 'facebook_comments', conversation_id: level1_comment, chat })
   })
   if (!llm_res.ok && LOG(7, `${llm_res.status} ${llm_res.statusText}`)) return
   const answer = await llm_res.text()
