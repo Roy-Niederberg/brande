@@ -14,7 +14,7 @@ const writeJSON = (f, d) => writeFile(f, JSON.stringify(d))
 const toJS = (v,d=0) => typeof v==='string' ? '`'+v.replace(/\\/g,'\\\\').replace(/`/g,'\\`').replace(/\$\{/g,'\\${')+'`' : '{\n'+Object.entries(v).map(([k,w])=>`${'  '.repeat(d+1)}${k}: ${toJS(w,d+1)}`).join(',\n')+'\n'+'  '.repeat(d)+'}'
 const writeJSObj = (f, d) => writeFile(f, `export default ${toJS(d)}\n`)
 const logLine = e => JSON.stringify({ts: new Date().toISOString(), ...e}) + '\n'
-const logEvent = e => fs.appendFileSync('./logs/events.jsonl', logLine(e))
+const logEvent = (e, file = 'events') => fs.appendFileSync(`./logs/${file}.jsonl`, logLine(e))
 const logChat = (id, e) => /^[\w.-]{1,128}$/.test(id ?? '') &&
   fs.appendFileSync(`./logs/conversations/${id}.jsonl`, logLine(e))
 fs.mkdirSync('./logs/conversations', {recursive: true})
@@ -103,8 +103,9 @@ app.r('post', '/ask', async ({ body, headers }, rs) => {
   const trusted = headers['x-admin-secret'] === ADMIN_SECRET
 
   const record = (outcome, model, reply) => {
-    if (trusted) return
-    logEvent({channel: body.mod, model, outcome, conversation_id: body.conversation_id})
+    logEvent({channel: body.mod, model, outcome, conversation_id: body.conversation_id},
+      trusted ? 'admin_events' : 'events')
+    if (trusted) return // draft-override test chats don't belong in customer transcripts
     logChat(body.conversation_id,
       {channel: body.mod, user: body.chat.at(-1).content, reply, model, outcome})
   }
@@ -117,7 +118,7 @@ app.r('post', '/ask', async ({ body, headers }, rs) => {
   if (!escalate) {
     const gk = await askGroq(parse(sp.gatekeeper, body.local_time), body.chat)
     if (gk === undefined) console.error('🚩 gatekeeper exhausted all keys')
-    else if (gk.res === 'IGNORE')   return rs.send("...")
+    else if (gk.res === 'IGNORE')   {record('ignore', gk.model); return rs.send("...")}
     else if (gk.res !== 'ESCALATE') {
       record('gatekeeper', gk.model, gk.res)
       return rs.send(gk.res)

@@ -257,8 +257,10 @@ per-conversation variant would persist the full KB once per request.
 Each answered `/ask` also appends one line to
 `logs/conversations/<conversation_id>.jsonl`:
 `{ts, channel, user, reply, model, outcome}`, where `user` is the last chat
-message — so a file reads as the conversation transcript. Same exclusions as
-the event log: admin-trusted calls and `IGNORE`d comments are not logged. The
+message — so a file reads as the conversation transcript. Admin-trusted calls
+are excluded (draft-override answers next to real transcripts would mislead;
+their *events* go to `admin_events.jsonl`, see § Notifier). `IGNORE`d messages
+do get a line (`outcome: "ignore"`, no `reply`) — it documents the silence. The
 id (see § Request Flags) is validated (`^[\w.-]{1,128}$`) before being used as
 a filename; requests without a valid id (e.g. mock_facebook) skip transcript
 logging. Retention: a daily sweep deletes conversation files untouched for 30
@@ -391,12 +393,19 @@ the fact that it answered. The notifier interprets those facts and emails.
 - `channel` = `body.mod` (`widget`, `facebook_comments`, `facebook_dm`) — all
   channels covered automatically since everything flows through `/ask`.
 - `outcome` ∈ `gatekeeper` (gatekeeper replied directly), `main`,
-  `unavailable` (all retries exhausted — `model` omitted).
+  `unavailable` (all retries exhausted — `model` omitted), `ignore`
+  (gatekeeper dropped the message — still consumed a Groq call, which is why
+  it's logged; a spam wave shows up in the digest instead of silently burning
+  quota).
 - `conversation_id` = `body.conversation_id`, verbatim (omitted if the request
   didn't send one) — the digest reader can group lines by conversation; the
   full transcript lives in `logs/conversations/<id>.jsonl` (see § Prompt &
   Conversation Logging).
-- Admin-secret (trusted) test calls and `IGNORE`d comments are **not** logged.
+- Admin-secret (trusted) test calls go to a **separate** `logs/admin_events.jsonl`
+  (same line format). They burn the same Groq/Gemini keys, so they must be
+  accounted for — but in their own file so the digest stays pure real-traffic.
+  Nothing drains or emails the admin file: quota answers are pull-only (ssh +
+  look), growth ~200 B/event is the same accepted debt as `events.jsonl`.
 - The file is append-only and generic: future event types just add lines with
   new fields; the notifier forwards the raw lines as-is, so no formatting code
   to update. Adding a new notification source means appending JSONL, not
