@@ -40,7 +40,9 @@
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
-  html { scroll-behavior: smooth; }
+  /* overflow-x on html too: body-only overflow-x propagates to the viewport and
+     stops clipping at body level, so phones can still pan sideways. */
+  html { scroll-behavior: smooth; overflow-x: hidden; }
 
   body {
     font-family: 'Heebo', sans-serif;
@@ -152,6 +154,17 @@
     color: #fff !important;
   }
 
+  .nav-toggle {
+    display: none;
+    background: none;
+    border: 0;
+    padding: 8px;
+    cursor: pointer;
+    color: var(--ink);
+  }
+
+  .nav-toggle svg { width: 26px; height: 26px; display: block; }
+
   /* ── HERO ── */
   .hero {
     min-height: 100vh;
@@ -215,7 +228,7 @@
     margin: 0 auto;
     width: 100%;
     display: grid;
-    grid-template-columns: 1fr 480px;
+    grid-template-columns: 1fr auto;
     gap: 80px;
     align-items: center;
   }
@@ -348,6 +361,8 @@
 
   /* ── CHAT MOCKUP ── */
   .chat-mockup {
+    width: 480px;
+    max-width: 100%;
     background: var(--white);
     border-radius: 24px;
     border: 1px solid var(--ink-10);
@@ -451,14 +466,20 @@
 
   .chat-msg.user .chat-msg-time { text-align: left; }
 
-  /* Behind-the-scenes annotation rail beside the chat (pitch overlay) */
-  .chat-demo { position: relative; }
+  /* Behind-the-scenes annotation rail beside the chat, in flow so it gets real
+     space (an absolute rail used to overlap the headline). row-reverse: RTL
+     puts the chat on the physical left, rail between chat and text. */
+  .chat-demo {
+    display: flex;
+    flex-direction: row-reverse;
+    gap: 28px;
+    align-items: flex-start;
+  }
 
   .chat-annotations {
-    position: absolute;
-    top: 80px;
-    left: calc(100% + 32px);   /* physical: chat sits on the left, rail to its right */
-    width: 196px;
+    width: 186px;
+    flex-shrink: 0;
+    margin-top: 72px;
     display: flex;
     flex-direction: column;
     gap: 14px;
@@ -508,12 +529,16 @@
   .ca-item.blue  { border-left-color: var(--accent); }
   .ca-item.amber { border-left-color: var(--amber); }
 
-  @media (max-width: 1100px) {
+  /* Below 1200px there's no room for the side rail — stack hero into one
+     column and turn the rail into wrapped chips under the chat. */
+  @media (max-width: 1200px) {
+    .hero-content { grid-template-columns: 1fr; }
+    .chat-demo { flex-direction: column; align-items: center; }
+    .chat-mockup { width: 100%; }
     .chat-annotations {
-      position: static;
       width: 100%;
       max-width: 480px;
-      margin: 18px auto 0;
+      margin: 18px 0 0;
       flex-direction: row;
       flex-wrap: wrap;
       gap: 8px;
@@ -1407,8 +1432,6 @@
 
   /* ── RESPONSIVE ── */
   @media (max-width: 1100px) {
-    .hero-content { grid-template-columns: 1fr; }
-    .chat-mockup { max-width: 480px; }
     .conversion-grid { grid-template-columns: repeat(3, 1fr); }
     .kpi-grid { grid-template-columns: repeat(2, 1fr); }
     .examples-grid { grid-template-columns: repeat(2, 1fr); }
@@ -1416,7 +1439,22 @@
 
   @media (max-width: 768px) {
     nav { padding: 16px 24px; }
-    .nav-links { display: none; }
+    .nav-toggle { display: block; }
+    .nav-links {
+      display: none;
+      position: absolute;
+      top: 100%; right: 0; left: 0;
+      flex-direction: column;
+      gap: 0;
+      padding: 8px 24px 20px;
+      background: rgba(244,241,234,0.97);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--ink-10);
+      box-shadow: 0 16px 32px var(--ink-10);
+    }
+    nav.menu-open .nav-links { display: flex; }
+    .nav-links a { display: block; padding: 12px 0; font-size: 16px; }
+    .nav-links .nav-cta { padding: 12px 24px; margin-top: 8px; text-align: center; }
     .hero { padding: 120px 24px 60px; }
     .section { padding: 60px 24px; }
     .how-grid { grid-template-columns: 1fr; }
@@ -1428,6 +1466,11 @@
     .postvisit-timeline { grid-template-columns: 1fr 1fr; }
     .safety-grid { grid-template-columns: 1fr; }
     footer { flex-direction: column; gap: 16px; text-align: center; }
+    /* 5 items in one flex row can't shrink below their text — was the source
+       of the page-wide horizontal overflow on phones. Extra .arch-layer in the
+       selector: the base .arch-layer-role rule is defined later in this sheet. */
+    .arch-layer { flex-wrap: wrap; row-gap: 10px; }
+    .arch-layer .arch-layer-role { flex-basis: 100%; }
   }
 
   /* ── INTENT CAROUSEL ── */
@@ -1636,8 +1679,11 @@
             font-family="'Heebo','Segoe UI',sans-serif" font-size="34"
             font-weight="700" letter-spacing="-1.5">ab&#251;</text>
     </svg>
-    <span class="logo-sub" dir="rtl">עין טל · AI Medical Agent</span>
+    <span class="logo-sub" dir="rtl">עין טל · AI Patient Engagement Platform</span>
   </a>
+  <button class="nav-toggle" id="nav-toggle" aria-label="תפריט" aria-expanded="false">
+    <svg viewBox="0 0 24 24" fill="none"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+  </button>
   <ul class="nav-links">
     <li><a href="#how">איך עובד</a></li>
     <li><a href="#layers">ארכיטקטורה</a></li>
@@ -2590,7 +2636,7 @@
     <span class="footer-logo-text">Qabû</span>
   </a>
   <div class="footer-right">
-    עין טל | סוכן תיאום רפואי-שיווקי | Blueprint v2.0
+    עין טל | AI Patient Engagement Platform | Blueprint v2.0
   </div>
 </footer>
 
@@ -2600,6 +2646,14 @@
   window.addEventListener('scroll', () => {
     nav.classList.toggle('scrolled', window.scrollY > 40);
   });
+
+  // Mobile menu
+  const navToggle = document.getElementById('nav-toggle');
+  navToggle.addEventListener('click', () => {
+    navToggle.setAttribute('aria-expanded', nav.classList.toggle('menu-open'));
+  });
+  document.querySelectorAll('.nav-links a').forEach(a =>
+    a.addEventListener('click', () => nav.classList.remove('menu-open')));
 
   // Scroll reveal
   const reveals = document.querySelectorAll('.reveal');
