@@ -91,19 +91,35 @@ Four Caddyfiles handle routing across the two VMs:
 
 **Clients router** (`services/clients_router/src/Caddyfile`) — on client VM:
 - `*.qabu.net` → `{subdomain}-services-router-1:80` (per-client services router)
-- `/admin/*` — `forward_auth` via auth-verifier sidecar, redirects to Google login on 401
+- `/bab/*` — `forward_auth` via auth-verifier sidecar, redirects to Google login
+  on 401 (generic authed prefix; the admin lives at `/bab/admin/`)
+- `/admin*` — 301 → `/bab/admin...` (back-compat for old bookmarks)
 - `/facebook-*` — validates `X-Dispatcher-Secret` header, rejects 403 if missing
 - `/scaffold` → provisioner:4321
 - Unknown subdomains → 404 with `X-Qabu: not-found` header
 
 **Services router** (`services/services_router/src/Caddyfile`) — per-client
 gateway. Generic routing: `/{service}/...` → `{service}:4321` (prefix stripped).
-All services listen on port **4321**. `/private/*`, `/widget.js`, and `/page/*`
-are excluded from the generic routing.
+`/private/*`, `/widget.js`, and `/page/*` are excluded from the generic routing.
 - `/taken` → responds "true" (for onboarding subdomain-taken check)
 - `/widget.js`, `/widget.css` → widget:4321 (dedicated widget service)
-- `/{service}/*` → `{service}:4321` (generic: admin, prompt-composer, facebook-dm, etc.)
+- `/bab/{service}/*` → `{service}:4322` (generic authed: admin, future dashboard, …)
+- `/{service}/*` → `{service}:4321` (generic public: prompt-composer, facebook-dm, etc.)
 - Everything else (including `/private/*`) → site:80 (static file server)
+
+**Two-port convention** — the `/bab` prefix is only meaningful because of the
+port split: **4321 = public** (reachable via the bare `/{service}/*` rule),
+**4322 = authed** (reachable only via `/bab/{service}/*`, which the
+clients-router guards with `forward_auth`). A service that listens only on
+4322 cannot be reached unauthenticated; a service wanting both surfaces
+listens on both ports. No allowlists to maintain — the ports are the policy.
+Checking `X-Auth-Email` inside a service is NOT a substitute: on non-`/bab`
+paths the clients-router passes client-supplied headers through, so the header
+is spoofable. And authentication ≠ authorization — `forward_auth` only proves
+"some Google account logged in", so every authed service must still check
+`X-Auth-Email` against its `authorized_emails` allowlist (as admin does).
+New authed service contract: listen on 4322, be named `<name>` in compose, and
+you're live at `/bab/<name>/` behind Google login — zero routing changes.
 
 **Site Caddyfile** (`services/site/src/Caddyfile`) — serves from the shared `ui`
 volume (HTML, loader, page) and the client's `private/` volume.
@@ -143,14 +159,14 @@ services:
 ### Context detection
 
 A single `loader.js` serves both contexts. It detects admin vs site by checking
-`location.pathname.startsWith('/admin')`:
+`location.pathname.startsWith('/bab/admin')`:
 - **Admin**: dynamically loads `admin.js` first (sets `ChatWidgetConfig` overrides
-  for draft testing), prefixes fetches with `/admin` (e.g. `/admin/private/...`)
+  for draft testing), prefixes fetches with `/bab/admin` (e.g. `/bab/admin/private/...`)
 - **Site**: loads the widget directly, fetches from `/private/...`
 
 The visual page (`page/`) uses relative paths (`../private/client-config.json`,
 `../private/background.png`) so it resolves correctly under both `/page/` (site)
-and `/admin/page/` (admin).
+and `/bab/admin/page/` (admin).
 
 ### Layout
 
@@ -204,7 +220,7 @@ Six buttons on the main screen:
    per panel open, with a refresh button.
 5. **Test Facebook Comments** — Opens a mock Facebook post (iframe) on the chat
    section (over the widget). Admin types comments, JS formats chat history matching
-   `facebook_comments` service format, POSTs to `/admin/ask` with `mod:
+   `facebook_comments` service format, POSTs to `/bab/admin/ask` with `mod:
    'facebook_comments'` + draft overrides from localStorage. Opens independently
    of other panels so admin can edit SP on one side and test on the other.
 6. **Manage Services** — Toggle panel for enabling/disabling optional services.
@@ -239,7 +255,7 @@ JWT: HMAC-SHA256, 24h expiry, claims `{ email, name, picture, iat, exp }`.
 Signing key shared between main server and client router (`jwt_signing_key` secret).
 
 Request flow:
-- Admin chat: browser → client router → forward_auth → services-router `/admin/*` → admin BE `/ask` → prompt-composer
+- Admin chat: browser → client router → forward_auth → services-router `/bab/admin/*` → admin BE `/ask` → prompt-composer
 - Site chat: browser → client router → services-router `/prompt-composer/*` → prompt-composer `/ask`
 - Initial load: admin BE `/api/initial-content` → prompt-composer `/knowledge_base` + `/system_prompts` + `/greeting`
 - KB publish: admin BE `/api/knowledge_base` → prompt-composer `/knowledge_base`
@@ -557,7 +573,7 @@ the mounted files — fine for two owners, not exposed to end customers.
 5. Tries VMs in order (`v1.qabu.net`, `v2.qabu.net`, ...) via `POST /scaffold`
 6. Provisioner validates `X-Provision-Secret`, delegates to conductor via Unix socket
 7. Conductor creates client directory (copies from `config/` template), starts stack
-8. On success: redirects to `https://{sub}.qabu.net/admin`
+8. On success: redirects to `https://{sub}.qabu.net/bab/admin/`
 
 ### Services
 

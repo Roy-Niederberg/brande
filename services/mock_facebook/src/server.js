@@ -272,7 +272,7 @@ body { font-family: Helvetica, Arial, sans-serif; background:#f0f2f5;
 
     typingEl.classList.add('visible')
     try {
-      const res = await fetch('/admin/ask', {
+      const res = await fetch('/bab/admin/ask', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

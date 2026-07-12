@@ -25,8 +25,11 @@ services:
     # RegEx on the URL to extract the service name. This enforce a protocol that
     # 1.  To reach any service, the URL should include the service name exactly.
     #     Example: /prompt-composer/test → prompt-composer:4321/test
-    # 2.  Port 4321 - any new service just need to listen on it and traffic with
-    #     with its name will automatically be routed to it.
+    # 2.  Two-port convention:
+    #     - 4321 = public.  /{service}/* routes here with no auth.
+    #     - 4322 = authed.  /bab/{service}/* routes here, and only after the
+    #       clients-router's forward_auth (Google login). A service listening
+    #       only on 4322 (e.g. admin) is unreachable without auth.
     #
     # Gets http traffic, after the 'clients-router' perform https termination.
     #

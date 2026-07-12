@@ -554,6 +554,40 @@ Phase 3 work until there's a second paying client.
 
 ### Auth & security
 
+- [roy] [P2] **Deploy the `/bab/*` authenticated sub-route (code done + QA
+  verified 2026-07-12, needs commit + prod rollout).** The generic authed
+  prefix (Akkadian *bābu* = "gate") decided in the 2026-07-11 dashboard
+  conversation is fully implemented in the working tree: clients-router
+  `forward_auth` moved from `/admin/*` to `/bab/*` (with `/admin*` 301
+  back-compat, prod + QA Caddyfiles), services-router routes
+  `/bab/{service}/*` → `{service}:4322` (two-port convention: 4321 public,
+  4322 authed), admin listens on 4322 and lives at `/bab/admin/`
+  (server.js, loader.js, admin.js via one `PREFIX` const), and the four
+  outside references were updated (mock-facebook `/bab/admin/ask`,
+  onboarding post-create redirect, telegram-agent prompt, `check_main.sh`
+  canary). Docs updated (CLAUDE.md § Caddy Routing / § Admin & Shared UI,
+  architecture.md routing tables + two-port convention, config compose
+  template comment). Verified in QA with a minted JWT: `/admin/*` 301s,
+  logged-out `/bab/admin/` → login redirect, authed editor endpoints +
+  `/ask` with KB/SP overrides answer correctly, public site/widget/chat
+  untouched on drlipokatz (HE) and dradamblack (EN), `/admin.js` and
+  `/bab/nonexistent/` fail sanely. Remaining — Roy must:
+  1. Commit (build.sh stamps the revision label from HEAD).
+  2. `services/build.sh` for `admin`, `services_router`, `clients_router`,
+     `mock_facebook`, `client_onboarding`, `telegram_agent`.
+  3. Deploy: client VM shared infra + every client stack (pull + up);
+     `client_onboarding` on main. **Interlock:** clients-router and admin
+     must land together — old `/admin` path dies the moment admin stops
+     listening on 4321 (~1-min admin outage; public chat unaffected).
+  4. `check_main.sh` + `check_clients.sh`; manually open
+     `https://drlipokatz.qabu.net/bab/admin/` and click through the six
+     buttons (QA couldn't exercise the real Google OAuth hop or `.co.il`
+     bounce).
+  Future-service contract now in effect: listen on 4322, be named `<name>`,
+  and you're live at `/bab/<name>/` behind Google auth — just copy admin's
+  `authorized_emails` check (auth ≠ authorization). (added 2026-07-11,
+  implemented 2026-07-12)
+
 - [roy] [defer] **Zero-downtime key rotation for the admin↔prompt-composer
   shared secret.** Today the admin sends `x-admin-secret` and prompt-composer
   validates against a single value. Rotation requires both sides to swap

@@ -22,10 +22,14 @@
 	}
 	respond @facebook_noauth 403
 
-	# Admin: verify JWT via auth-verifier sidecar; redirect to Google
-	# login on 401. Forwards X-Auth-Email/X-Auth-Name to the services-router.
-	@admin path /admin/*
-	handle @admin {
+	# Authed prefix: any /bab/{service}/* is verified via the auth-verifier
+	# sidecar (JWT), with redirect to Google login on 401. Forwards
+	# X-Auth-Email/X-Auth-Name to the services-router, which routes
+	# /bab/{service}/* → {service}:4322 (authed services listen on 4322 —
+	# 4321 is reachable via the public bare rule, so it must never carry
+	# authed-only surfaces).
+	@bab path /bab/*
+	handle @bab {
 		forward_auth auth-verifier:3456 {
 			uri /
 			copy_headers X-Auth-Email X-Auth-Name
@@ -36,6 +40,11 @@
 		}
 		reverse_proxy {labels.2}-services-router-1:80
 	}
+
+	# Back-compat: the admin used to live at /admin/*; bookmarks 301 to
+	# /bab/admin/* ({uri} keeps the original /admin prefix + query).
+	redir /admin/* /bab{uri} 301
+	redir /admin /bab/admin/ 301
 
 	# Provisioner: scaffolds new client directories
 	@provision path /scaffold
@@ -63,18 +72,20 @@
 # Serves the SAME per-client backends as *.qabu.net, but the subdomain is one
 # label deeper ({labels.3}: il=0, co=1, qabu=2, eintal=3).
 # Admin + Facebook intentionally stay on *.qabu.net: the JWT cookie is scoped to
-# .qabu.net and can't cross to .co.il, so /admin/* is redirected there and
-# /facebook-* is closed (the dispatcher only ever targets *.qabu.net hosts).
+# .qabu.net and can't cross to .co.il, so /bab/* (authed services) is redirected
+# there and /facebook-* is closed (the dispatcher only ever targets *.qabu.net
+# hosts).
 *.qabu.co.il {
 	# Wildcard TLS cert via Cloudflare DNS challenge (issued on first request).
 	tls {
 		dns cloudflare {env.CLOUDFLARE_API_TOKEN}
 	}
 
-	# Admin can't authenticate here (cookie is .qabu.net) — bounce to the .net
-	# domain, preserving path + query.
-	@admin path /admin*
-	redir @admin https://{labels.3}.qabu.net{uri} 302
+	# Authed routes can't authenticate here (cookie is .qabu.net) — bounce to
+	# the .net domain, preserving path + query. /admin* is kept alongside
+	# /bab* so old bookmarks chain through the .net 301 to /bab/admin/.
+	@authed path /bab* /admin*
+	redir @authed https://{labels.3}.qabu.net{uri} 302
 
 	# Facebook webhooks are dispatched to *.qabu.net only; close the path here so
 	# the per-client FB handlers aren't reachable unauthenticated via .co.il.

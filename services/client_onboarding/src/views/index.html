@@ -177,7 +177,7 @@
         if (resp.ok) {
           const d = await resp.json()
           document.querySelector('.form').innerHTML = `<div id="message" class="success">${d.subdomain}.qabu.net is live!</div>`
-          setTimeout(() => location.href = `https://${d.subdomain}.qabu.net/admin`, 5000)
+          setTimeout(() => location.href = `https://${d.subdomain}.qabu.net/bab/admin/`, 5000)
           return
         }
         if (resp.status === 401) return toSignIn()  // no/expired session — sign in and come back

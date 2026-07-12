@@ -50,7 +50,7 @@ read-only under /app:
               events.jsonl (one line per answered customer message; drained daily by the notifier)
 - private/  — client-config.json and site assets
 Answer questions about the logs, events, prompts and KB. You CANNOT change anything yet — if
-asked to edit, say write support is coming and point to the admin panel at /admin.
+asked to edit, say write support is coming and point to the admin panel at /bab/admin.
 Reply in the language you were asked in. Plain text only (no markdown — Telegram shows it raw).
 Keep answers short and phone-friendly; expand only when asked.`
 }

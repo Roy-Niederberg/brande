@@ -12,9 +12,10 @@ http://*.qa.qabu.net {
 	}
 	respond @facebook_noauth 403
 
-	# Admin: verify JWT via auth-verifier, redirect to login on 401.
-	@admin path /admin/*
-	handle @admin {
+	# Authed prefix (/bab/{service}/* → {service}:4322 behind auth-verifier;
+	# see the prod Caddyfile for the full rationale).
+	@bab path /bab/*
+	handle @bab {
 		forward_auth auth-verifier:3456 {
 			uri /
 			copy_headers X-Auth-Email X-Auth-Name
@@ -25,6 +26,10 @@ http://*.qa.qabu.net {
 		}
 		reverse_proxy {labels.3}-services-router-1:80
 	}
+
+	# Back-compat: old /admin/* bookmarks → /bab/admin/*.
+	redir /admin/* /bab{uri} 301
+	redir /admin /bab/admin/ 301
 
 	# All other traffic → per-client services-router
 	reverse_proxy {labels.3}-services-router-1:80

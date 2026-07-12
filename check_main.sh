@@ -72,7 +72,7 @@ fi
 # canary client subdomain (clients-router → auth-verifier → /auth/login).
 # Picks drlipokatz as the canary; if it's ever undeployed, change this.
 admin_canary=drlipokatz.qabu.net
-admin_url=$(location "https://$admin_canary/admin/")
+admin_url=$(location "https://$admin_canary/bab/admin/")
 if [[ "$admin_url" == *"/auth/login"* ]]; then
   echo "$PASS Admin forward_auth via $admin_canary"
 else

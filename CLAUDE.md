@@ -501,19 +501,29 @@ the conductor's `MAX_TIER` capacity cap (also in TASKS.md).
 Four Caddyfiles route across the two VMs: **main router** (`services/main_router/`,
 main VM — `/facebook*`, `/auth/*`, `/onboarding*`, static `/privacy` `/terms`,
 catch-all → landing-page), **clients router** (`services/clients_router/`, client
-VM — `*.qabu.net` → per-client services-router, `/admin/*` `forward_auth`,
-`/facebook-*` dispatcher-secret check, `/scaffold` → provisioner), **services
-router** (`services/services_router/`, per-client — generic `/{service}/*` →
-`{service}:4321` prefix-stripped, `/widget.js` → widget, everything else → site:80),
-and **site Caddyfile** (`services/site/`, serves `ui` volume + `private/`).
+VM — `*.qabu.net` → per-client services-router, `/bab/*` `forward_auth` (generic
+authed prefix; `/admin*` 301s to `/bab/admin...`), `/facebook-*`
+dispatcher-secret check, `/scaffold` → provisioner), **services router**
+(`services/services_router/`, per-client — generic `/{service}/*` →
+`{service}:4321` prefix-stripped, authed `/bab/{service}/*` → `{service}:4322`,
+`/widget.js` → widget, everything else → site:80), and **site Caddyfile**
+(`services/site/`, serves `ui` volume + `private/`).
+
+**Two-port convention:** 4321 = public, 4322 = authed. Only the `/bab` rule
+(behind `forward_auth`) can reach 4322, so a service listening only on 4322
+(e.g. admin) is unreachable without Google login — no lists to maintain. A new
+authed service just listens on 4322 and is live at `/bab/<name>/`. Auth ≠
+authorization: each authed service must still check `X-Auth-Email` against its
+`authorized_emails` (admin does; copy the pattern).
 Full per-route tables in `docs/architecture.md` § Caddy Routing.
 
 ## Admin & Shared UI
 
 The admin and site share the exact same HTML shell, loader, and visual `page/`
 (**WYSIWYG**). The admin Docker image owns these files and copies them to the `ui`
-volume on startup; site mounts that volume read-only. `loader.js` detects admin
-vs site via `location.pathname.startsWith('/admin')`. `admin.js` injects the
+volume on startup; site mounts that volume read-only. The admin is served at
+`/bab/admin/`; `loader.js` detects admin vs site via
+`location.pathname.startsWith('/bab/admin')`. `admin.js` injects the
 editor overlay (six buttons: Edit KB, Edit System Prompts, Edit Greeting, See
 Prompt, Test Facebook Comments, Manage Services) with localStorage drafts +
 publish flow. Admin→prompt-composer trust is a shared `admin_secret` header that

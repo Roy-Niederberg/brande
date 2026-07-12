@@ -112,4 +112,6 @@ app.r('post', '/api/greeting', async (rq, rs) => {
 
 app.use((e, _, rs, _nxt) => { console.error(e.response?.data || e.message, `\n${e.stack}`); rs.sendStatus(500) })
 app.use('*', (_, rs) => rs.sendStatus(404))
-app.listen(4321, () => console.log('Server Start Up'))
+// 4322 = authed port: only the services-router's /bab/* rule (behind
+// forward_auth) reaches it. Listening on 4321 would expose us publicly.
+app.listen(4322, () => console.log('Server Start Up'))

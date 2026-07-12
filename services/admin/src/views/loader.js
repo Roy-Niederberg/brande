@@ -1,6 +1,6 @@
 (async function() {
-    const isAdmin = location.pathname.startsWith('/admin')
-    const prefix = isAdmin ? '/admin' : ''
+    const isAdmin = location.pathname.startsWith('/bab/admin')
+    const prefix = isAdmin ? '/bab/admin' : ''
 
     // In admin context, load admin.js first (sets ChatWidgetConfig overrides)
     if (isAdmin) {

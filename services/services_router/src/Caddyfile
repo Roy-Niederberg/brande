@@ -15,6 +15,26 @@
     }
 
     # -------------------------------------------------------------------------
+    # 2. Authenticated Service Routing (@bab)
+    # -------------------------------------------------------------------------
+    # /bab/{service}/* arrives here only after the clients-router's
+    # forward_auth, and is routed to port 4322 — NOT 4321. The two-port
+    # convention is the security boundary: the public @svc rule below can only
+    # reach 4321, this rule can only reach 4322. A service that listens on
+    # 4322 is therefore unreachable without auth, with no lists to maintain.
+    # (Services must still authorize: X-Auth-Email vs authorized_emails.)
+    @bab path_regexp bab ^/bab/([^/]+)(/.*)$
+    handle @bab {
+        # e.g. /bab/admin/ask → admin:4322/ask
+        rewrite * {http.regexp.bab.2}
+        reverse_proxy {http.regexp.bab.1}:4322
+    }
+    # Bare /bab/{service} (no trailing slash) → canonical /bab/{service}/ so
+    # the page's relative URLs resolve under the service prefix.
+    @babBare path_regexp babBare ^/bab/([^/]+)$
+    redir @babBare /bab/{http.regexp.babBare.1}/ 308
+
+    # -------------------------------------------------------------------------
     # 3. Dynamic Service Routing (@svc)
     # -------------------------------------------------------------------------
 
@@ -41,11 +61,12 @@
         rewrite * {http.regexp.svc.2}
 
         # STEP B: Proxy to the container.
-        # It takes Group 1 from our RegEx (the service name) and uses it 
-        # as the hostname. It assumes all these containers are on the 
-        # same Docker network and listening on port 4321.
-        # e.g. /admin/ask → admin:4321/ask
-        #      /prompt-composer/ask → prompt-composer:4321/ask
+        # It takes Group 1 from our RegEx (the service name) and uses it
+        # as the hostname. It assumes all these containers are on the
+        # same Docker network and listening on port 4321 — the PUBLIC
+        # port. Authed services listen on 4322 and are only reachable
+        # via the @bab rule above.
+        # e.g. /prompt-composer/ask → prompt-composer:4321/ask
         reverse_proxy {http.regexp.svc.1}:4321
     }
 

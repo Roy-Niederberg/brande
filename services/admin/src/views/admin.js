@@ -1,8 +1,9 @@
 (function() {
+  const PREFIX = '/bab/admin'   // authed route: clients-router forward_auth → admin:4322
   let kbEditor, spEditor, grEditor
 
   window.ChatWidgetConfig = {
-    apiEndpoint: '/admin/ask',
+    apiEndpoint: `${PREFIX}/ask`,
     greetingOverride: () => ({ messages: grEditor.getDraft().map(e => ({ delay: parseInt(e.key) || 0, text: e.content })) }),
     beforeSend: (body) => {
       body.knowledgeBaseOverride = kbEditor.getDraft()
@@ -382,7 +383,7 @@
 
   async function loadLastPrompt() {
     try {
-      const data = await fetch('/admin/api/last_prompt').then(r => r.json())
+      const data = await fetch(`${PREFIX}/api/last_prompt`).then(r => r.json())
       let html = `<div class="log-model"><b>model:</b> ${escapeHtml(data.model || '?')}</div>`
       if (Array.isArray(data.messages)) {
         for (const m of data.messages) {
@@ -433,7 +434,7 @@
   async function loadServices() {
     const list = svcPanel.querySelector('.svc-list')
     try {
-      const { profiles } = await fetch('/admin/api/services').then(r => r.json())
+      const { profiles } = await fetch(`${PREFIX}/api/services`).then(r => r.json())
       list.innerHTML = Object.entries(PROFILES).map(([k, label]) => `
         <div class="svc-row">
           <span class="svc-label">${label}</span>
@@ -450,7 +451,7 @@
     svcPanel.querySelectorAll('[data-profile]').forEach(cb => { if (cb.checked) profiles.push(cb.dataset.profile) })
     btn.disabled = true
     try {
-      await fetch('/admin/api/services', {
+      await fetch(`${PREFIX}/api/services`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ profiles })
       })
@@ -531,13 +532,13 @@
 
   kbEditor = createEditor(kbPanel, {
     draftKey: 'kb_draft', canModify: true, openBtn: document.getElementById('open-kb-btn'),
-    publishUrl: '/admin/api/knowledge_base',
+    publishUrl: `${PREFIX}/api/knowledge_base`,
     toBody: (draft) => ({ knowledgeBase: draft })
   })
 
   spEditor = createEditor(spPanel, {
     draftKey: 'sp_draft', canModify: false, openBtn: document.getElementById('open-sp-btn'),
-    publishUrl: '/admin/api/system_prompts',
+    publishUrl: `${PREFIX}/api/system_prompts`,
     toBody: (draft) => {
       const sp = {}
       for (const e of draft) {
@@ -551,14 +552,14 @@
 
   grEditor = createEditor(grPanel, {
     draftKey: 'gr_draft', canModify: true, openBtn: document.getElementById('open-gr-btn'),
-    publishUrl: '/admin/api/greeting',
+    publishUrl: `${PREFIX}/api/greeting`,
     toBody: (draft) => ({ greeting: { widget: { messages: draft.map(e => ({ delay: parseInt(e.key) || 0, text: e.content })) } } })
   })
 
   // Load data
   ;(async () => {
     try {
-      const data = await fetch('/admin/api/initial-content').then(r => r.json())
+      const data = await fetch(`${PREFIX}/api/initial-content`).then(r => r.json())
 
       if (data.knowledgeBase) {
         let kb = data.knowledgeBase
