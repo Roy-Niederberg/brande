@@ -110,7 +110,9 @@ app.r('post', '/ask', async ({ body, headers }, rs) => {
       {channel: body.mod, user: body.chat.at(-1).content, reply, model, outcome})
   }
 
-  const sp = trusted ? body.sp_override : $.system_prompts[body.mod]
+  // Published prompts fill whatever the override doesn't carry — a trusted
+  // request without (or with a partial) sp_override must not crash.
+  const sp = {...$.system_prompts[body.mod], ...(trusted && body.sp_override)}
   const kb_obj = (trusted && body.kb_override) || $.knowledge_base
 
   let escalate = body.skip_gk
