@@ -15,14 +15,6 @@ const toJS = (v,d=0) => typeof v==='string' ? '`'+v.replace(/\\/g,'\\\\').replac
 const writeJSObj = (f, d) => writeFile(f, `export default ${toJS(d)}\n`)
 const logLine = e => JSON.stringify({ts: new Date().toISOString(), ...e}) + '\n'
 const logEvent = (e, file = 'events') => fs.appendFileSync(`./logs/${file}.jsonl`, logLine(e))
-const logChat = (id, e) => /^[\w.-]{1,128}$/.test(id ?? '') &&
-  fs.appendFileSync(`./logs/conversations/${id}.jsonl`, logLine(e))
-fs.mkdirSync('./logs/conversations', {recursive: true})
-const CHAT_RETENTION_MS = 30 * 864e5
-const sweepChats = () => fs.readdirSync('./logs/conversations').forEach(f =>
-  Date.now() - fs.statSync(`./logs/conversations/${f}`).mtimeMs > CHAT_RETENTION_MS
-    && fs.unlinkSync(`./logs/conversations/${f}`))
-sweepChats(); setInterval(sweepChats, 864e5)
 
 // =============== Server Loading section =======================================================//
 const GEM_1 = fs.readFileSync('/run/secrets/gemini_1', 'utf-8').trim()
@@ -46,7 +38,7 @@ const m1  = [new GoogleGenAI({apiKey:GEM_1}),'gemini-3.1-flash-lite']
 const m2  = [new GoogleGenAI({apiKey:GEM_2}),'gemini-3.1-flash-lite']
 const gemini = [[...m1f, ...m1], [...m2f, ...m2]]
 
-const askGroq = async (content, msgs) => {
+const askGroq = async (content, msgs, errors) => {
   const llm = groq[0]
   groq.push(groq.shift())
   for (const i of [0,2]) { // with retry
@@ -55,11 +47,14 @@ const askGroq = async (content, msgs) => {
       const res = (await llm[i].chat.completions.create(ask_obj)).choices[0].message.content
       fs.writeFileSync('./logs/last_prompt.json', JSON.stringify({...ask_obj, res}))
       return {res, model: llm[i + 1]}
-    } catch (e) {console.error(`🚩 failed [${llm[i + 1]}] try ${i}:`, e.message)}
+    } catch (e) {
+      errors.push(`${llm[i + 1]} try ${i}: ${e.message}`)
+      console.error(`🚩 failed [${llm[i + 1]}] try ${i}:`, e.message)
+    }
   }
 }
 
-const askGemini = async (system, msgs) => {
+const askGemini = async (system, msgs, errors) => {
   const llm = gemini[0]
   gemini.push(gemini.shift())
   const contents = msgs.map(m => ({
@@ -72,7 +67,10 @@ const askGemini = async (system, msgs) => {
       const res = (await llm[i].models.generateContent(ask_obj)).text
       fs.writeFileSync('./logs/last_prompt.json', JSON.stringify({...ask_obj, res}))
       return {res, model: llm[i + 1]}
-    } catch (e) {console.error(`🚩 failed [${llm[i + 1]}] try ${i}:`, e.message)}
+    } catch (e) {
+      errors.push(`${llm[i + 1]} try ${i}: ${e.message}`)
+      console.error(`🚩 failed [${llm[i + 1]}] try ${i}:`, e.message)
+    }
   }
 }
 
@@ -97,69 +95,76 @@ for (const f of files) {
 }
 
 app.r('post', '/ask', async ({ body, headers }, rs) => {
-  if (!body.mod || !$.system_prompts[body.mod] || !body.chat?.length)
-    throw `ASK validation [${body.mod}][${$.system_prompts[body.mod]}][${body.chat?.length}]`
-
-  const trusted = headers['x-admin-secret'] === ADMIN_SECRET
-
-  const record = (outcome, model, reply) => {
-    logEvent({channel: body.mod, model, outcome, conversation_id: body.conversation_id},
-      trusted ? 'admin_events' : 'events')
-    if (trusted) return // draft-override test chats don't belong in customer transcripts
-    logChat(body.conversation_id,
-      {channel: body.mod, user: body.chat.at(-1).content, reply, model, outcome})
+  const t0 = Date.now()
+  const ev = {
+    v: 1,
+    channel: body.mod,
+    conversation_id: body.conversation_id,
+    user_mssg: body.chat?.at(-1)?.content,
+    errors: [],
+    res: "The assistant is unavailable at the moment. Please try again later."
   }
-
-  // Published prompts fill whatever the override doesn't carry — a trusted
-  // request without (or with a partial) sp_override must not crash.
-  const sp = {...$.system_prompts[body.mod], ...(trusted && body.sp_override)}
-  const kb_obj = (trusted && body.kb_override) || $.knowledge_base
-
-  let escalate = body.skip_gk
-
-  if (!escalate) {
-    const gk = await askGroq(parse(sp.gatekeeper, body.local_time), body.chat)
-    if (gk === undefined) console.error('🚩 gatekeeper exhausted all keys')
-    else if (gk.res === 'IGNORE')   {record('ignore', gk.model); return rs.send("...")}
-    else if (gk.res !== 'ESCALATE') {
-      record('gatekeeper', gk.model, gk.res)
-      return rs.send(gk.res)
-    }
-  }
-
-  const kb = '# KNOWLEDGE BASE:\n' +
-    kb_obj.map(e => `## ${e.key}\n${e.content}`).join('\n\n')
-
-  let caps = ''
-  if (sp.capabilities && Object.keys($.capabilities).length) {
-    const list = Object.entries($.capabilities)
-    .map(([k, v]) => `- ${k}: ${v.description}`).join('\n')
-    caps = sp.capabilities + '\n\n# CAPABILITIES:\n' + list
-  }
-
-  const query = [sp.main, caps, kb].join('\n\n')
-
-  for (const i of [1,2]) { // 2 tries — each rotates to a fresh bucket
-    const ans = await askGemini(query, body.chat)
-    if (ans) {
-      record('main', ans.model, ans.res)
-      return rs.send(ans.res)
-    }
-    console.log(`Gemini try ${i} failed.`)
-  }
-  console.error('🚩 main model exhausted all retries')
-
-  const unavailable = "The assistant is unavailable at the moment. Please try again later."
-  record('unavailable', undefined, unavailable)
-  rs.send(unavailable)
+  await ask(body, headers, rs, ev)
+  ev.duration_ms = Date.now() - t0
+  logEvent(ev, 'events')
+  rs.send(ev.res)
 })
+
+async function ask(body, headers, rs, ev) {
+  try {
+    const trusted = headers['x-admin-secret'] === ADMIN_SECRET
+
+    if (!body.mod || !$.system_prompts[body.mod] || !body.chat?.length)
+      throw `ASK validation [${body.mod}][${$.system_prompts[body.mod]}][${body.chat?.length}]`
+
+    const sp = {...$.system_prompts[body.mod], ...(trusted && body.sp_override)}
+    const kb_obj = (trusted && body.kb_override) || $.knowledge_base
+
+    if (body.skip_gk) {
+      ev.skip_gk = true
+    } else {
+      const gk = await askGroq(parse(sp.gatekeeper, body.local_time), body.chat, ev.errors)
+      if (gk === undefined) ev.errors.push('gatekeeper exhausted all keys')
+      else {
+        ev.gk = gk.model
+        if (gk.res !== 'ESCALATE') {
+          ev.res = gk.res
+          return
+        }
+      }
+    }
+
+    const kb = '# KNOWLEDGE BASE:\n' +
+      kb_obj.map(e => `## ${e.key}\n${e.content}`).join('\n\n')
+
+    let caps = ''
+    if (sp.capabilities && Object.keys($.capabilities).length) {
+      const list = Object.entries($.capabilities)
+      .map(([k, v]) => `- ${k}: ${v.description}`).join('\n')
+      caps = sp.capabilities + '\n\n# CAPABILITIES:\n' + list
+    }
+
+    const query = [sp.main, caps, kb].join('\n\n')
+
+    for (const i of [1,2]) { // 2 tries — each rotates to a fresh bucket
+      const ans = await askGemini(query, body.chat, ev.errors)
+      if (ans) {
+        ev.main = ans.model
+        ev.res = ans.res
+        return
+      }
+      ev.errors.push(`Gemini try ${i} failed.`)
+    }
+    throw('main model exhausted all retries')
+  } catch (e) {
+    ev.errors.push(String(e.message ?? e))
+    ev.error = true
+    rs.sendStatus(500)
+  }
+}
 
 app.r('get', '/last_prompt', (_, rs) => {rs.sendFile('logs/last_prompt.json', {root: '.'})})
 
-// =============== Error handling middleware ====================================================//
-app.use((e, _, rs, _n) => {
-  console.error(`🚩 ${e.response?.data || e.message}\nSTACK: ${e.stack}\nERR: ${e}`)
-  rs.sendStatus(500)
-})
+// ==============================================================================================//
 app.use('*', (_, rs) => rs.sendStatus(404))
 app.listen(4321, ()=> console.log('Server Start Up'))
