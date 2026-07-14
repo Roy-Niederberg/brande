@@ -372,7 +372,13 @@ Five shell scripts live at the repo root, all run from a local dev machine:
 - **`check_clients.sh`** — iterates every directory under `clients/` and checks
   `widget.js` (status + JS content-type, catches mis-routing), `/taken` (proves
   services-router is alive), and `/` (warn-only, since site profile may be off).
-  Run after client-VM deploys or when adding a client.
+  Run after client-VM deploys or when adding a client. `--chat` adds an opt-in
+  live LLM smoke test: greets each agent (Hebrew/English per `client-config.json`
+  `lang`) and asks a business question, then over ssh checks each client's
+  `events.jsonl` that the gatekeeper answered the greeting and a Gemini flash
+  model answered the question — printing both replies for a visual check. Opt-in
+  because it burns LLM quota, appends real lines to `events.jsonl` (which the
+  notifier emails), and needs ssh to the client VM (hardcoded single-VM host).
 
 - **`rsync_clients.sh`** — pulls each client's `private/` and `data/` from the
   client VMs back to the local `clients/<sub>/` directory. Currently runs with
