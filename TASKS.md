@@ -149,24 +149,18 @@ Phase 3 work until there's a second paying client.
 
 ### Prompt engineering
 
-- [both] [P2] **Widget gatekeepers: replace IGNORE with a polite deflection
-  reply.** Decided 2026-07-14 while fixing the IGNORE leak from the /ask
-  refactor: in the site widget (and future facebook_dm), a visitor typed into
-  the clinic's own chat, so the gatekeeper should answer off-topic/spam with a
-  short polite redirect to clinic topics — not IGNORE (and not the old `"..."`,
-  which Roy explicitly doesn't want back). IGNORE **stays** in the
-  `facebook_comments` gatekeepers — public comment threads genuinely need
-  silence. The code seatbelt is already shipped: prompt-composer maps a
-  gatekeeper IGNORE to HTTP 204, and widget / facebook_comments / facebook_dm
-  all treat 204 as "show nothing", so a model that emits IGNORE anyway causes
-  harmless silence, never the literal string reaching a user. This task is the
-  *content* pass: rewrite the `widget.gatekeeper` prompt in all six clients
-  (EN: dradamblack; HE: drlipokatz, eintal, eintal-hadassah, yomialpurrer,
-  aram-ent — live edit via admin, no deploy) **and** the template
-  `services/config/files/data/system_prompts.js` (git). Keep ESCALATE
-  untouched; only the IGNORE instruction becomes "reply with a brief friendly
-  redirect". Use the `qabu-prompt-engineer` skill; Nevo should review the
-  Hebrew deflection wording. (added 2026-07-14)
+- [roy] [P2] **Nevo review: the new widget-gatekeeper deflection wording (all
+  six clients).** On 2026-07-14 the widget gatekeepers stopped using IGNORE:
+  off-topic/spam now gets a short friendly redirect to clinic topics (Roy
+  wrote drlipokatz; Claude mirrored the pattern to the other five + the
+  template, each in the client's own voice — e.g. "אני העוזר של המרכז הרפואי
+  א.ר.ם 😊 אשמח לעזור בשאלות על טיפולי אף אוזן גרון..."). All verified live
+  with gibberish tests. Nevo should sanity-check the Hebrew phrasing per
+  client (admin → Edit System Prompts, widget gatekeeper, rule 3 + the last
+  example). Monitoring: `"ignore":true` on `channel:"widget"` in events.jsonl
+  should stay at zero — its reappearance means a model slipped back to
+  emitting IGNORE (users just see silence, thanks to the 204 seatbelt).
+  (added 2026-07-14)
 
 - [claude] [defer] **Fix trailing SLEEP action in LLM responses.** The LLM
   sometimes appends a standalone `|| SLEEP 2500` as the last action with
@@ -653,6 +647,33 @@ Phase 3 work until there's a second paying client.
   Facebook pages.
 
 ### Auth & security
+
+- [both] [P1] **prompt-composer config endpoints are publicly writable — no
+  auth on POST.** Found 2026-07-14 while publishing the gatekeeper deflection
+  prompts: the services-router's generic `@svc` rule proxies *any* HTTP method
+  on `/{service}/*` to port 4321, and prompt-composer's config endpoints
+  (`POST /system_prompts`, `/knowledge_base`, `/greeting`, `/capabilities`)
+  check nothing — so **anyone on the internet can overwrite any client's
+  prompts, KB, greeting, or capabilities** via e.g.
+  `POST https://<sub>.qabu.net/prompt-composer/system_prompts`. Worst case is
+  `capabilities.js`: it's JavaScript executed in every visitor's browser, so a
+  public POST there is stored XSS on the client's site. The GETs are also
+  public (full prompts + KB readable by anyone — confirmed live; that's how
+  Claude fetched all six clients' prompts without credentials). The admin BE
+  sends `x-admin-secret` only on `/ask` (draft-test overrides), NOT on its
+  publish POSTs — publishes currently work only because nothing checks.
+  Arguably P0: eintal is meant to sign as a paying client and this is a
+  one-curl defacement/data-wipe. Fix sketch:
+  1. prompt-composer: require `x-admin-secret` on all four config POSTs
+     (reject 401 otherwise). Decide GETs too — `GET /greeting` must stay
+     public (widget fetches it), but `system_prompts`/`knowledge_base` GETs
+     should be gated; check what widget/site actually fetch before locking.
+  2. admin BE: add the `x-admin-secret` header to its publish/config fetches
+     (it already mounts the secret and uses it for `/ask`).
+  3. Rebuild + deploy `prompt_composer` and `admin` together (old admin
+     against new composer would get 401 on publish).
+  Backups (`qabu-backup` on the VM) limit the damage today but don't prevent
+  the XSS vector. (added 2026-07-14)
 
 - [roy] [defer] **Zero-downtime key rotation for the admin↔prompt-composer
   shared secret.** Today the admin sends `x-admin-secret` and prompt-composer
