@@ -72,6 +72,7 @@ const process_message = async (psid, message_text, page_id) => {
       chat: [{ role: 'user', content: chat_history }] })
   })
   if (!llm_res.ok && LOG(5, `${llm_res.status} ${llm_res.statusText}`)) return
+  if (llm_res.status === 204) return console.log('🤐 Gatekeeper ignored — no reply')
   const answer = await llm_res.text()
   console.log('--------------------- Answer -----------------------------------------------------')
   console.log(answer)

@@ -47,7 +47,9 @@ read-only under /app:
 - data/     — knowledge_base.json, system_prompts.js (gatekeeper + main), greeting.json,
               capabilities.js, notify.json
 - logs/     — last_prompt.json (the last prompt sent to the LLM, incl. which model answered),
-              events.jsonl (one line per answered customer message; drained daily by the notifier)
+              events.jsonl (one line per request: user_mssg, res = reply sent, gk/main =
+              models used, admin/ignore/error flags, errors, duration_ms; drained daily by
+              the notifier — group lines by conversation_id to reconstruct a conversation)
 - private/  — client-config.json and site assets
 Answer questions about the logs, events, prompts and KB. You CANNOT change anything yet — if
 asked to edit, say write support is coming and point to the admin panel at /bab/admin.

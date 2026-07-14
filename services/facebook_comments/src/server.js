@@ -110,6 +110,7 @@ const process_comment = async (comment_id, parent_id, post_id, _page_id) => {
     body: JSON.stringify({ mod: 'facebook_comments', conversation_id: level1_comment, chat })
   })
   if (!llm_res.ok && LOG(7, `${llm_res.status} ${llm_res.statusText}`)) return
+  if (llm_res.status === 204) return console.log('🤐 Gatekeeper ignored — no reply')
   const answer = await llm_res.text()
   console.log('--------------------- Answer ------------------------------------------------------')
   console.log(answer)

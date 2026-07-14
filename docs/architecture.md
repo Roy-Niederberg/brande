@@ -262,7 +262,7 @@ Request flow:
 - SP publish: admin BE `/api/system_prompts` → prompt-composer `/system_prompts`
 - Services: admin BE `/api/services` → prompt-composer `/services`
 
-### Prompt & Conversation Logging
+### Prompt & Event Logging
 
 After each LLM call, the prompt-composer writes the full request + response to
 `logs/last_prompt.json` (overwritten each time). Readable via `GET /last_prompt`
@@ -270,17 +270,52 @@ After each LLM call, the prompt-composer writes the full request + response to
 per-conversation — it's a "what was just sent" debugging tool, and a
 per-conversation variant would persist the full KB once per request.
 
-Each answered `/ask` also appends one line to
-`logs/conversations/<conversation_id>.jsonl`:
-`{ts, channel, user, reply, model, outcome}`, where `user` is the last chat
-message — so a file reads as the conversation transcript. Admin-trusted calls
-are excluded (draft-override answers next to real transcripts would mislead;
-their *events* go to `admin_events.jsonl`, see § Notifier). `IGNORE`d messages
-do get a line (`outcome: "ignore"`, no `reply`) — it documents the silence. The
-id (see § Request Flags) is validated (`^[\w.-]{1,128}$`) before being used as
-a filename; requests without a valid id (e.g. mock_facebook) skip transcript
-logging. Retention: a daily sweep deletes conversation files untouched for 30
-days (`CHAT_RETENTION_MS` in `server.js`).
+Each `/ask` also appends **one rich event line** to `logs/events.jsonl` at
+request end (outbox pattern — logging is prompt-composer's only record-keeping
+duty; storage, aggregation and dashboards live in future consumers):
+
+```json
+{"ts": "<append time>", "v": 1, "channel": "<body.mod>",
+ "conversation_id": "...", "user_mssg": "<last user message>",
+ "errors": ["<failed model attempts, thrown errors>"], "admin": false,
+ "gk": "<gatekeeper model>", "skip_gk": true, "ignore": true,
+ "main": "<main model>", "res": "<text sent to user>", "error": true,
+ "duration_ms": 1234}
+```
+
+**The event line is a versioned public API** for consumers (notifier, future
+ingester/dashboard): additive-only — add fields freely; never rename, remove,
+or repurpose. Every line carries `v: 1`. The shape is declared as a JSDoc
+`@type` on `ev` in `server.js`. Always present: `ts`, `v`, `channel`,
+`errors`, `admin`, `duration_ms`. The rest appear only when relevant:
+
+- `user_mssg` is **only the current message** (`body.chat.at(-1).content`), never
+  the full resent history — a consumer reconstructs a conversation by grouping
+  lines on `conversation_id` (see § Request Flags).
+- `gk` / `main` are the models that ran each stage. `gk` is absent on
+  capability follow-ups (`skip_gk: true` is set instead) and when the
+  gatekeeper exhausted all keys (the failures land in `errors`). `main`
+  present means the main model produced the reply; `gk` without `main` means
+  the gatekeeper answered directly.
+- `ignore: true` — the gatekeeper returned `IGNORE`; no `res`, and the HTTP
+  response is 204 (see § System Prompts). Logged because it still consumed a
+  Groq call — a spam wave stays visible instead of silently burning quota.
+- `res` is the reply text actually sent to the user — absent for `ignore` and
+  `error` lines.
+- `errors` collects per-attempt LLM failures (`"<model> try <i>: <message>"`)
+  and any thrown error; `error: true` means the request failed entirely
+  (crash, validation, or all retries exhausted) — the event is still appended,
+  and the client gets a bare 500 (each FE decides what its user sees).
+- `admin: true` — the request carried the `x-admin-secret` header (admin
+  draft-test chats, `sp_override`/`kb_override`). Same file as customer
+  traffic; consumers filter on the flag. (Until 2026-07-14 these went to a
+  separate `logs/admin_events.jsonl` — now orphaned, removed on deploy.)
+- `user_mssg`/`res` are full text, no truncation — the file is drained daily by
+  the notifier (see § Notifier), so size is a non-issue.
+
+There are no per-conversation transcript files — `logs/conversations/` was
+removed 2026-07-13; the enriched events carry the full text, and grouping by
+`conversation_id` reconstructs any transcript.
 
 ### System Prompts
 
@@ -291,9 +326,18 @@ are editable in the admin UI. The `capabilities` key is optional — modules wit
 it (e.g. `facebook_comments`) don't get capability instructions in their prompt.
 
 The gatekeeper returns **plain text** (no JSON/tool use):
-- `IGNORE` → drop the request silently
+- `IGNORE` → prompt-composer answers HTTP 204 No Content; every FE (widget,
+  facebook_comments, facebook_dm) treats 204 as "show nothing". Note `res.ok`
+  is *true* for 204 — consumers need an explicit status check, not just `!ok`.
 - `ESCALATE` → pass to the main model with full KB
 - anything else → send directly as the reply (e.g. a short greeting response)
+
+IGNORE is meant for `facebook_comments` (public threads need silence toward
+spam). Widget (and future facebook_dm) gatekeeper prompts should instead
+answer off-topic messages with a short polite redirect — see the TASKS.md
+prompt-engineering task. The 204 path stays as the seatbelt: if a model emits
+IGNORE anyway, the failure mode is harmless silence, never the literal token
+reaching a user.
 
 ### Rate Limiting
 
@@ -357,17 +401,18 @@ for (const f of files) {
 
 - `skip_gk: true` — skip gatekeeper (used for capability result follow-ups)
 - `conversation_id` — stable id for the conversation the request belongs to.
-  The prompt-composer stamps it on every `events.jsonl` line and groups
-  per-conversation transcripts under `logs/conversations/<id>.jsonl` (see
-  § Prompt & Conversation Logging). Per channel:
+  The prompt-composer stamps it on every `events.jsonl` line; consumers group
+  lines on it to reconstruct a conversation (see § Prompt & Event Logging).
+  Per channel:
   - **widget** — random UUID minted client-side, kept in `sessionStorage`
     next to `chat_history` (same lifetime: survives reload, regenerated on
     "Clear conversation"). Admin chat uses the same widget, so it's covered.
   - **facebook_dm** — the Graph API conversation id (`t_...`).
   - **facebook_comments** — the level-1 comment id: the L1 thread is the
     conversation unit whose history the service fetches and sends.
-  - **mock_facebook** — doesn't send one; its traffic is admin-trusted and
-    excluded from event logging anyway.
+  - **mock_facebook** — doesn't send one. Its traffic flows through the real
+    facebook_comments service *without* the admin secret, so those test chats
+    log as regular events (`admin: false`, no `conversation_id`).
 
 ## Widget Service
 
@@ -398,35 +443,29 @@ Per-client activity digests by email (`services/notifier/`). Design goal:
 prompt-composer stays single-responsibility — it *answers*; it only records
 the fact that it answered. The notifier interprets those facts and emails.
 
-**Event log (the API).** prompt-composer appends one JSON line per answered
-`/ask` to `logs/events.jsonl` (same `./logs` volume that holds
-`last_prompt.json`):
-
-```json
-{"ts":"2026-06-11T07:18:32.000Z","channel":"widget","model":"gemini-3.5-flash","outcome":"main","conversation_id":"1c9e..."}
-```
+**Event log (the API).** prompt-composer appends one rich JSON line per `/ask`
+to `logs/events.jsonl` (same `./logs` volume that holds `last_prompt.json`) —
+full shape and field rules in § Prompt & Event Logging. Notifier-relevant
+points:
 
 - `channel` = `body.mod` (`widget`, `facebook_comments`, `facebook_dm`) — all
   channels covered automatically since everything flows through `/ask`.
-- `outcome` ∈ `gatekeeper` (gatekeeper replied directly), `main`,
-  `unavailable` (all retries exhausted — `model` omitted), `ignore`
-  (gatekeeper dropped the message — still consumed a Groq call, which is why
-  it's logged; a spam wave shows up in the digest instead of silently burning
-  quota).
-- `conversation_id` = `body.conversation_id`, verbatim (omitted if the request
-  didn't send one) — the digest reader can group lines by conversation; the
-  full transcript lives in `logs/conversations/<id>.jsonl` (see § Prompt &
-  Conversation Logging).
-- Admin-secret (trusted) test calls go to a **separate** `logs/admin_events.jsonl`
-  (same line format). They burn the same Groq/Gemini keys, so they must be
-  accounted for — but in their own file so the digest stays pure real-traffic.
-  Nothing drains or emails the admin file: quota answers are pull-only (ssh +
-  look), growth ~200 B/event is the same accepted debt as `events.jsonl`.
+- `ignore`d messages are logged too — they still consumed a Groq call; a spam
+  wave shows up in the digest instead of silently burning quota.
+- Admin-secret test calls land in the **same file**, flagged `admin: true`
+  (until 2026-07-14 they went to a separate, never-emailed
+  `admin_events.jsonl`). They burn the same Groq/Gemini keys, so they must be
+  accounted for — and they now appear in the daily digest; the flag lets any
+  reader (and the future ingester) filter them.
 - The file is append-only and generic: future event types just add lines with
   new fields; the notifier forwards the raw lines as-is, so no formatting code
   to update. Adding a new notification source means appending JSONL, not
   touching the producer's API.
-- Growth is ~200 B/event; rotation is accepted debt for now.
+- Since 2026-07-13 the lines carry full `user_mssg`/`res` text, so the daily
+  digest emails are richer *and noisier* — accepted (only Roy reads them), and
+  until the planned ingester exists, drained events survive only in those
+  emails. The long-term plan: a `services/dashboard/` ingester owns the file
+  and the notifier switches to querying it.
 
 **Notifier loop.** No inbound port, no services-router entry — a pure
 consumer. Once a day (hour 12, system local time) it emails the new entries
@@ -458,8 +497,7 @@ name-plumbing through conductor or env. Body is the raw log chunk, verbatim
 JSONL, one event per line:
 
 ```
-{"ts":"2026-06-19T10:18:00.000Z","model":"gemini-3.5-flash","channel":"facebook_comments","outcome":"main"}
-{"ts":"2026-06-19T10:24:00.000Z","model":"gemini-3.1-flash-lite","channel":"widget","outcome":"main"}
+{"ts":"2026-07-14T10:18:00.000Z","v":1,"channel":"widget","conversation_id":"1c9e...","user_mssg":"מתי אתם פתוחים?","errors":[],"admin":false,"gk":"openai/gpt-oss-120b","main":"gemini-3.5-flash","res":"אנחנו פתוחים...","duration_ms":4210}
 ```
 
 SMTP was rejected because Oracle/GCP block outbound SMTP ports; HTTP POST

@@ -149,6 +149,25 @@ Phase 3 work until there's a second paying client.
 
 ### Prompt engineering
 
+- [both] [P2] **Widget gatekeepers: replace IGNORE with a polite deflection
+  reply.** Decided 2026-07-14 while fixing the IGNORE leak from the /ask
+  refactor: in the site widget (and future facebook_dm), a visitor typed into
+  the clinic's own chat, so the gatekeeper should answer off-topic/spam with a
+  short polite redirect to clinic topics — not IGNORE (and not the old `"..."`,
+  which Roy explicitly doesn't want back). IGNORE **stays** in the
+  `facebook_comments` gatekeepers — public comment threads genuinely need
+  silence. The code seatbelt is already shipped: prompt-composer maps a
+  gatekeeper IGNORE to HTTP 204, and widget / facebook_comments / facebook_dm
+  all treat 204 as "show nothing", so a model that emits IGNORE anyway causes
+  harmless silence, never the literal string reaching a user. This task is the
+  *content* pass: rewrite the `widget.gatekeeper` prompt in all six clients
+  (EN: dradamblack; HE: drlipokatz, eintal, eintal-hadassah, yomialpurrer,
+  aram-ent — live edit via admin, no deploy) **and** the template
+  `services/config/files/data/system_prompts.js` (git). Keep ESCALATE
+  untouched; only the IGNORE instruction becomes "reply with a brief friendly
+  redirect". Use the `qabu-prompt-engineer` skill; Nevo should review the
+  Hebrew deflection wording. (added 2026-07-14)
+
 - [claude] [defer] **Fix trailing SLEEP action in LLM responses.** The LLM
   sometimes appends a standalone `|| SLEEP 2500` as the last action with
   nothing after it. Capabilities instructions teach the SLEEP→CONTACT_FORM
@@ -497,6 +516,88 @@ Phase 3 work until there's a second paying client.
 
 ### Admin & widget UX
 
+- [roy] [P2] **Deploy the enriched `events.jsonl` (code shipped 2026-07-13).**
+  The enrich-events task is implemented and QA-verified: prompt-composer now
+  appends one rich `v: 1` line per `/ask` (`user_mssg`, `res`, `gk`/`main`
+  models, `admin`/`ignore`/`error` flags, `errors`, `duration_ms` — full
+  contract in `docs/architecture.md` § Prompt & Event Logging) and
+  per-conversation transcripts (`logs/conversations/`) are removed. The telegram agent's system prompt was updated to match, and
+  the IGNORE→HTTP 204 change (2026-07-14) touched three more services:
+  prompt-composer now answers a gatekeeper IGNORE with 204 No Content, and
+  widget / facebook_comments / facebook_dm treat 204 as "show nothing" —
+  **deploy prompt_composer together with those three** (an old FE against the
+  new composer would try to render an empty 204 body; the old composer never
+  sends 204, so FE-first ordering is safe). Remaining, all prod-side:
+  1. `services/build.sh` for: `prompt_composer`, `telegram_agent`, `widget`,
+     `facebook_comments`, `facebook_dm` (commit first so the revision label
+     is truthful).
+  2. On the Oracle client VM: `docker compose pull && docker compose up -d`
+     in each of the six client dirs (aram-ent, dradamblack, drlipokatz,
+     eintal, eintal-hadassah, yomialpurrer).
+  3. Spot-check one real chat and its `events.jsonl` line on the VM.
+  4. Cleanup after verification: delete the now-orphaned
+     `logs/conversations/` dir and `logs/admin_events.jsonl` in each client's
+     `logs/` (admin traffic now goes to `events.jsonl` with an `admin` flag;
+     nothing reads or writes either anymore — without this they linger
+     forever).
+  (added 2026-07-13)
+
+- [both] [P2] **Build the per-client analytics dashboard (`/bab/dashboard/`).**
+  Nevo's idea (2026-07-11 conversation): a dashboard the owner can open — and
+  Qabu can show prospects — summarizing everything the agent handled. Static
+  mock with fake data in `docs/dashboard_example.html` (Hebrew/RTL, eintal-
+  themed). The `/bab/*` prereq shipped 2026-07-12, so routing+auth are free:
+  new `services/dashboard/` Node service, compose name `dashboard`, listen
+  **4322**, live at `https://<sub>.qabu.net/bab/dashboard/` behind Google login —
+  zero routing changes. Copy admin's `authorized_emails` check (auth ≠
+  authorization) and its secrets/mount pattern; mounts read-only:
+  `./logs:/app/logs:ro`, `./data:/app/data:ro`, `./private` if it needs
+  title/lang from `client-config.json`.
+
+  **Reality check on data — the mock oversells what we log.** The
+  enrich-events work (shipped 2026-07-13) made `logs/events.jsonl` the single
+  rich stream: one `v: 1` line per `/ask` — `{ts, channel, conversation_id,
+  user_mssg, errors, admin, gk, skip_gk, ignore, main, res, error,
+  duration_ms}`; outcomes are derivable (`ignore`/`error` flags; `main`
+  present = main answered; `gk` without `main` = gatekeeper answered; admin
+  test chats flagged `admin: true` in the same file); per-conversation
+  transcripts are gone (group lines on `conversation_id` to reconstruct — see
+  `docs/architecture.md` § Prompt & Event Logging). Two consequences for this
+  service: (1) it likely *is* the planned ingester — it should own the file
+  (tail into SQLite-per-client) and the notifier later switches to querying
+  it instead of draining; (2) until then the notifier drains `events.jsonl`
+  daily, so history older than a day survives only in the digest emails —
+  build the ingest side early or accept stats starting from its go-live date.
+  Supported by real data: total conversations/messages, per-channel split
+  (widget / FB comments / FB DMs), volume over time, outcome split,
+  error/latency stats (`errors`, `duration_ms`), recent-conversations feed
+  with full text. **Not supported without new collection**: topics, lead
+  funnel, HOT/WARM/COLD heat, insurance breakdown, "left details" counts, FB
+  reach estimate. Those need either extra logging in prompt-composer (e.g.
+  gatekeeper/main emitting a topic/intent tag — an additive field, allowed by
+  the `v: 1` contract; ties into the "Better chat logging" north star) or an
+  offline LLM classification pass over stored events. Suggest **v1 =
+  real-data panels only** (KPIs, channel donut, volume chart, live feed),
+  fake-data panels dropped or clearly marked demo — a paying client dashboard
+  must not show invented numbers.
+
+  **Decisions for Roy + Nevo before building:**
+  - Palette: the mock uses its own teal/navy scheme, not the CLAUDE.md brand
+    colors — keep the mock look or align to brand?
+  - Chart.js comes from a CDN in the mock — vendor it into the image (no
+    external deps at runtime, works offline).
+  - Compose profile: add as profile `dashboard` (opt-in per client) rather
+    than core — the AMD client VM has 1 GB RAM and has OOM'd before; six more
+    Node containers is real pressure. Enable for eintal/demos first, or land
+    after the ARM migration (P0).
+  - EN + HE from day one (mock is RTL-only; dradamblack needs LTR/English) —
+    read lang/direction from `client-config.json` like the site does.
+  - Template updates: `services/config/files/docker-compose.yml` + existing
+    six clients' compose files on the VM (conductor template only covers new
+    clients).
+  All channels are already distinguishable via the `channel` field, and the
+  service is read-only — no impact on widget/FB flows. (added 2026-07-12)
+
 - [both] [P0] **Make the admin work perfectly for Nevo.** Top-top priority for
   Phase 0 alongside FB reliability. Currently the admin has friction that
   prevents Nevo from confidently editing eintal's KB/SP/greeting on the fly.
@@ -507,6 +608,31 @@ Phase 3 work until there's a second paying client.
   replies (no restart needed), auth stability. Acceptance: Nevo updates a KB
   entry at 2pm and Qabu uses the new answer on the next FB comment without
   Roy in the loop. (added 2026-04-27)
+- [claude] [P2] **Widget + facebook_dm: show the "assistant unavailable"
+  message when prompt-composer returns 500.** While reviewing the /ask
+  refactor (2026-07-14 conversation) we settled the per-channel error policy:
+  prompt-composer returns a bare 500 for *any* failure (crash, validation, or
+  LLM retry-exhaustion — the canned-message default was removed from `ev.res`)
+  and each FE decides what the user sees. Wanted behavior: **widget** and
+  **facebook_dm** reply "The assistant is unavailable at the moment. Please
+  try again later." (English for now, even for Hebrew clients — a localized
+  message can come later); **facebook_comments** stays silent (already true:
+  `LOG(7)` + return, and the webhook is pre-ACKed so FB never retries).
+  Concrete edits:
+  - `services/widget/widget.js` send-handler catch (~line 507): replace
+    `'Unable to connect to service'` with the unavailable message. This one
+    catch covers all reasons — 500, the 429 rate limit, network down.
+  - `services/facebook_dm/src/server.js` (~line 74): on `!llm_res.ok`, don't
+    `return` after `LOG(5)` — fall through with the unavailable message as
+    `answer` so the existing reply-send block delivers it to the customer
+    (today the DM silently goes unanswered).
+  - Future (don't build now): per-client localized message via
+    `ChatWidgetConfig` / `client-config.json` (widget already receives
+    per-client config), and the same string for facebook_dm — the text now
+    lives in two FE places, accepted at this scale.
+  Deploy note: this adds `widget` and `facebook_dm` image rebuilds on top of
+  the pending enriched-events deploy (prompt_composer + telegram_agent).
+  (added 2026-07-14)
 - [roy] [defer] **Admin: comment as multiple users in Facebook test.** Add a
   few avatar images to the docker images so the admin can simulate different
   commenters.
@@ -553,20 +679,6 @@ Phase 3 work until there's a second paying client.
   Facebook pages.
 
 ### Auth & security
-
-- [roy] [P2] **Browser click-through of the admin at its new `/bab/admin/`
-  home.** The `/bab/*` generic authed sub-route (2026-07-11 dashboard
-  conversation; Akkadian *bābu* = "gate") shipped and deployed to both VMs
-  2026-07-12 (commit `168037c`, all 6 clients + onboarding verified via
-  `check_main.sh`/`check_clients.sh`/curl). What curl can't prove: the real
-  Google OAuth round-trip back into `/bab/admin/` and the six admin buttons
-  (drafts, publish, See Prompt, mock-FB test, Manage Services) working from
-  a real browser session, EN + HE. Roy: log in at
-  `https://drlipokatz.qabu.net/bab/admin/` (old `/admin` bookmarks 301) and
-  click through once; check one EN client too (dradamblack). Future-service
-  contract now in effect: listen on 4322, be named `<name>` in compose, and
-  you're live at `/bab/<name>/` behind Google auth — copy admin's
-  `authorized_emails` check (auth ≠ authorization). (added 2026-07-12)
 
 - [roy] [defer] **Zero-downtime key rotation for the admin↔prompt-composer
   shared secret.** Today the admin sends `x-admin-secret` and prompt-composer

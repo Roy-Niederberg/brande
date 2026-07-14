@@ -96,29 +96,31 @@ for (const f of files) {
 
 app.r('post', '/ask', async ({ body, headers }, rs) => {
   const t0 = Date.now()
+  /** @type {{v: number, channel?: string, conversation_id?: string, user_mssg?: string,
+      errors: string[], gk?: string, skip_gk?: boolean, main?: string, res?: string,
+      ignore?: boolean, error?: boolean, admin?: boolean, duration_ms?: number}} */
   const ev = {
     v: 1,
     channel: body.mod,
     conversation_id: body.conversation_id,
     user_mssg: body.chat?.at(-1)?.content,
-    errors: [],
-    res: "The assistant is unavailable at the moment. Please try again later."
+    errors: []
   }
-  await ask(body, headers, rs, ev)
+  await ask(body, headers, ev)
   ev.duration_ms = Date.now() - t0
   logEvent(ev, 'events')
-  rs.send(ev.res)
+  ev.error ? rs.sendStatus(500) : ev.ignore ? rs.sendStatus(204) : rs.send(ev.res)
 })
 
-async function ask(body, headers, rs, ev) {
+async function ask(body, headers, ev) {
   try {
-    const trusted = headers['x-admin-secret'] === ADMIN_SECRET
+    ev.admin = headers['x-admin-secret'] === ADMIN_SECRET
 
     if (!body.mod || !$.system_prompts[body.mod] || !body.chat?.length)
       throw `ASK validation [${body.mod}][${$.system_prompts[body.mod]}][${body.chat?.length}]`
 
-    const sp = {...$.system_prompts[body.mod], ...(trusted && body.sp_override)}
-    const kb_obj = (trusted && body.kb_override) || $.knowledge_base
+    const sp = {...$.system_prompts[body.mod], ...(ev.admin && body.sp_override)}
+    const kb_obj = (ev.admin && body.kb_override) || $.knowledge_base
 
     if (body.skip_gk) {
       ev.skip_gk = true
@@ -127,6 +129,7 @@ async function ask(body, headers, rs, ev) {
       if (gk === undefined) ev.errors.push('gatekeeper exhausted all keys')
       else {
         ev.gk = gk.model
+        if (gk.res === 'IGNORE') { ev.ignore = true; return }
         if (gk.res !== 'ESCALATE') {
           ev.res = gk.res
           return
@@ -159,12 +162,15 @@ async function ask(body, headers, rs, ev) {
   } catch (e) {
     ev.errors.push(String(e.message ?? e))
     ev.error = true
-    rs.sendStatus(500)
   }
 }
 
 app.r('get', '/last_prompt', (_, rs) => {rs.sendFile('logs/last_prompt.json', {root: '.'})})
 
-// ==============================================================================================//
+// =============== Error handling middleware ====================================================//
+app.use((e, _, rs, _n) => {
+  console.error(`🚩 ${e.response?.data || e.message}\nSTACK: ${e.stack}\nERR: ${e}`)
+  rs.sendStatus(500)
+})
 app.use('*', (_, rs) => rs.sendStatus(404))
 app.listen(4321, ()=> console.log('Server Start Up'))

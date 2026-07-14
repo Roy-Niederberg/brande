@@ -370,6 +370,7 @@
     })
     if (abort.stopped) return null
     if (!res.ok) throw new Error(res.status)
+    if (res.status === 204) return null // gatekeeper ignored — callers treat null as "show nothing"
     return res.text()
   }
 
