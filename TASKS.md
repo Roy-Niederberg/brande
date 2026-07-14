@@ -524,11 +524,17 @@ Phase 3 work until there's a second paying client.
   teal; no Chart.js at all). Compose profile `dashboard` (opt-in — decided,
   RAM pressure on the 1 GB VM); template compose + QA (drlipokatz) wired.
   Verified in QA: 403 without auth, login redirect via clients-router,
-  screenshots eyeballed light+dark. **Remaining:**
-  - Deploy: `services/build.sh dashboard`, add the service to existing
-    clients' compose files on the VM (template only covers new clients), add
-    `dashboard` to `COMPOSE_PROFILES` for chosen clients (eintal/demos first,
-    or after the ARM migration).
+  screenshots eyeballed light+dark. **Deployed 2026-07-15** (commit
+  `3e9e7c1`): dashboard block added to all six clients' compose files on the
+  Oracle VM (profile-gated, backups `*.bak-dashboard-20260715`), enabled +
+  live for **eintal** and **drlipokatz** only (1 GB VM memory pressure —
+  fleet-wide enablement waits for the ARM migration). The new
+  `prompt_composer` (enriched v1 events) was deployed to those two clients at
+  the same time; the other four still run the pre-v1 image and will pick up
+  `:latest` on their next pull — their events stay textless until then. Note
+  the composer's new bare-500 error policy is now live on those two clients
+  while the widget still shows the old 'Unable to connect' text (see the
+  widget/facebook_dm unavailable-message task below). **Remaining:**
   - **The notifier still drains `events.jsonl` daily** — dashboard only sees
     events since the last digest. Roy: we'll change the notifier soon; the
     dashboard is likely the planned ingester (own the file, tail into
