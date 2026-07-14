@@ -83,6 +83,12 @@ const data = { date: local_time || new Date().toString('en-IL', { timeZone: 'Asi
 }
 
 // =============== Endpoints ====================================================================//
+// Config writes always require the admin secret; reads are gated too, except
+// greeting + capabilities, which the widget fetches straight from the visitor's
+// browser. Without this, /{endpoint} on port 4321 is world-writable via the
+// services-router's generic proxy (POST capabilities.js = stored XSS).
+const authed = h => h['x-admin-secret'] === ADMIN_SECRET
+const PUBLIC_GET = new Set(['greeting', 'capabilities'])
 const files = ['knowledge_base.json', 'system_prompts.js', 'greeting.json', 'capabilities.js']
 const $ = {}
 for (const f of files) {
@@ -90,8 +96,14 @@ for (const f of files) {
   let arg = (ext === 'json') ? {with:{type:'json'}} : {}
   let write = ext === 'json' ? writeJSON : f === 'system_prompts.js' ? writeJSObj : writeFile
   $[name] = (await import(`../data/${f}`, arg)).default
-  app.r('get', '/' + name, (_, rs) => f === 'system_prompts.js' ? rs.json($[name]) : rs.sendFile(`data/${f}`, {root: '.'}))
-  app.r('post', '/' + name, ({body}, rs) => {$[name] = body; write(f, body); rs.sendStatus(200)})
+  app.r('get', '/' + name, ({headers}, rs) => {
+    if (!PUBLIC_GET.has(name) && !authed(headers)) return rs.sendStatus(401)
+    f === 'system_prompts.js' ? rs.json($[name]) : rs.sendFile(`data/${f}`, {root: '.'})
+  })
+  app.r('post', '/' + name, ({body, headers}, rs) => {
+    if (!authed(headers)) return rs.sendStatus(401)
+    $[name] = body; write(f, body); rs.sendStatus(200)
+  })
 }
 
 app.r('post', '/ask', async ({ body, headers }, rs) => {
@@ -114,7 +126,7 @@ app.r('post', '/ask', async ({ body, headers }, rs) => {
 
 async function ask(body, headers, ev) {
   try {
-    ev.admin = headers['x-admin-secret'] === ADMIN_SECRET
+    ev.admin = authed(headers)
 
     if (!body.mod || !$.system_prompts[body.mod] || !body.chat?.length)
       throw `ASK validation [${body.mod}][${$.system_prompts[body.mod]}][${body.chat?.length}]`
@@ -165,7 +177,10 @@ async function ask(body, headers, ev) {
   }
 }
 
-app.r('get', '/last_prompt', (_, rs) => {rs.sendFile('logs/last_prompt.json', {root: '.'})})
+app.r('get', '/last_prompt', ({headers}, rs) => {
+  if (!authed(headers)) return rs.sendStatus(401)
+  rs.sendFile('logs/last_prompt.json', {root: '.'})
+})
 
 // =============== Error handling middleware ====================================================//
 app.use((e, _, rs, _n) => {

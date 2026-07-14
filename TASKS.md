@@ -648,32 +648,34 @@ Phase 3 work until there's a second paying client.
 
 ### Auth & security
 
-- [both] [P1] **prompt-composer config endpoints are publicly writable — no
-  auth on POST.** Found 2026-07-14 while publishing the gatekeeper deflection
-  prompts: the services-router's generic `@svc` rule proxies *any* HTTP method
-  on `/{service}/*` to port 4321, and prompt-composer's config endpoints
-  (`POST /system_prompts`, `/knowledge_base`, `/greeting`, `/capabilities`)
-  check nothing — so **anyone on the internet can overwrite any client's
-  prompts, KB, greeting, or capabilities** via e.g.
-  `POST https://<sub>.qabu.net/prompt-composer/system_prompts`. Worst case is
-  `capabilities.js`: it's JavaScript executed in every visitor's browser, so a
-  public POST there is stored XSS on the client's site. The GETs are also
-  public (full prompts + KB readable by anyone — confirmed live; that's how
-  Claude fetched all six clients' prompts without credentials). The admin BE
-  sends `x-admin-secret` only on `/ask` (draft-test overrides), NOT on its
-  publish POSTs — publishes currently work only because nothing checks.
-  Arguably P0: eintal is meant to sign as a paying client and this is a
-  one-curl defacement/data-wipe. Fix sketch:
-  1. prompt-composer: require `x-admin-secret` on all four config POSTs
-     (reject 401 otherwise). Decide GETs too — `GET /greeting` must stay
-     public (widget fetches it), but `system_prompts`/`knowledge_base` GETs
-     should be gated; check what widget/site actually fetch before locking.
-  2. admin BE: add the `x-admin-secret` header to its publish/config fetches
-     (it already mounts the secret and uses it for `/ask`).
-  3. Rebuild + deploy `prompt_composer` and `admin` together (old admin
-     against new composer would get 401 on publish).
-  Backups (`qabu-backup` on the VM) limit the damage today but don't prevent
-  the XSS vector. (added 2026-07-14)
+- [roy] [P1] **DEPLOY the prompt-composer config-endpoint auth fix (code done
+  2026-07-14, commit pending).** Found + fixed same day while publishing the
+  gatekeeper prompts: the services-router's generic `@svc` rule proxies *any*
+  HTTP method on `/{service}/*` to port 4321, and prompt-composer's config
+  endpoints checked nothing — so anyone on the internet could overwrite a
+  client's prompts/KB/greeting/capabilities via
+  `POST https://<sub>.qabu.net/prompt-composer/system_prompts`, and read them
+  via GET. Worst case was `POST /capabilities` (JS run in every visitor's
+  browser = stored XSS), which had *no* legitimate caller at all.
+  **Fix applied + QA-verified** (attack → 401, data intact, admin round-trip
+  200, widget greeting/capabilities still public, real chat still 200):
+  - `prompt_composer/src/server.js`: `authed(h)` helper; all four config
+    POSTs and `GET /last_prompt` require `x-admin-secret` → 401 otherwise.
+    GET of `system_prompts`/`knowledge_base` gated too; `greeting` +
+    `capabilities` GET stay public (widget fetches/imports them from the
+    browser — `PUBLIC_GET` set). `/ask` reuses `authed()`.
+  - `admin/src/server.js`: `SECRET_HDR` added to the two gated initial-content
+    GETs, the last_prompt GET, and the three publish POSTs.
+  **Remaining — deploy, prompt_composer + admin together** (old admin vs new
+  composer 401s on publish; ordering doesn't help, so deploy both in one go):
+  1. `services/build.sh prompt_composer && services/build.sh admin`.
+  2. Oracle VM, per client dir (all six): `docker compose --env-file
+     private/config.env pull && ... up -d` (admin recreation re-copies the
+     shared UI to the `ui` volume — expected).
+  3. Verify: an unauth `POST https://<sub>.qabu.net/prompt-composer/greeting`
+     returns 401 on a real client, and Nevo's admin can still publish.
+  Backups (`qabu-backup`) limited the damage window but didn't prevent the XSS
+  vector. (added 2026-07-14)
 
 - [roy] [defer] **Zero-downtime key rotation for the admin↔prompt-composer
   shared secret.** Today the admin sends `x-admin-secret` and prompt-composer

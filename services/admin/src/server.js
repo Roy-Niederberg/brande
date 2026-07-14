@@ -15,6 +15,7 @@ app.r = (vrb, u, f) => app[vrb](u, async (rq, rs, nxt) => { try { await f(rq, rs
 
 const emails = JSON.parse(fs.readFileSync('/run/secrets/authorized_emails', 'utf-8').trim()).emails
 const admin_secret = fs.readFileSync('/run/secrets/admin_secret', 'utf-8').trim()
+const SECRET_HDR = { 'x-admin-secret': admin_secret } // gates prompt-composer config endpoints
 app.use((rq, rs, nx) => {
   if (!emails) return nx()
   if (!emails.includes(rq.headers['x-auth-email'])) return rs.sendStatus(403)
@@ -33,15 +34,15 @@ app.get('/api/user', (rq, rs) =>
 
 app.r('get', '/api/initial-content', async (_rq, rs) => {
   const [instructionsRes, knowledgeBaseRes, greetingRes] = await Promise.all([
-    fetch(`${PROMPT_COMPOSER_URL}/system_prompts`),
-    fetch(`${PROMPT_COMPOSER_URL}/knowledge_base`),
+    fetch(`${PROMPT_COMPOSER_URL}/system_prompts`, { headers: SECRET_HDR }),
+    fetch(`${PROMPT_COMPOSER_URL}/knowledge_base`, { headers: SECRET_HDR }),
     fetch(`${PROMPT_COMPOSER_URL}/greeting`)
   ])
   rs.json({ instructions: await instructionsRes.text(), knowledgeBase: await knowledgeBaseRes.text(), greeting: await greetingRes.text() })
 })
 
 app.r('get', '/api/last_prompt', async (_, rs) => {
-  const response = await fetch(`${PROMPT_COMPOSER_URL}/last_prompt`)
+  const response = await fetch(`${PROMPT_COMPOSER_URL}/last_prompt`, { headers: SECRET_HDR })
   rs.json(JSON.parse(await response.text()))
 })
 
@@ -57,7 +58,7 @@ app.r('post', '/ask', async (rq, rs) => {
   requestBody.sp_override = systemPromptOverride
   const response = await fetch(`${PROMPT_COMPOSER_URL}/ask`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-admin-secret': admin_secret },
+    headers: { 'Content-Type': 'application/json', ...SECRET_HDR },
     body: JSON.stringify(requestBody)
   })
   rs.send(await response.text())
@@ -67,7 +68,7 @@ app.r('post', '/api/system_prompts', async (rq, rs) => {
   const { systemPrompts } = rq.body
   if (!systemPrompts) return rs.status(400).json({ error: 'System prompts required' })
   const r = await fetch(`${PROMPT_COMPOSER_URL}/system_prompts`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    method: 'POST', headers: { 'Content-Type': 'application/json', ...SECRET_HDR },
     body: JSON.stringify(systemPrompts)
   })
   if (!r.ok) return rs.status(r.status).json({ error: await r.text() })
@@ -78,7 +79,7 @@ app.r('post', '/api/knowledge_base', async (rq, rs) => {
   const { knowledgeBase } = rq.body
   if (!knowledgeBase) return rs.status(400).json({ error: 'Knowledge base required' })
   const r = await fetch(`${PROMPT_COMPOSER_URL}/knowledge_base`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    method: 'POST', headers: { 'Content-Type': 'application/json', ...SECRET_HDR },
     body: JSON.stringify(knowledgeBase)
   })
   if (!r.ok) return rs.status(r.status).json({ error: await r.text() })
@@ -103,7 +104,7 @@ app.r('post', '/api/greeting', async (rq, rs) => {
   const { greeting } = rq.body
   if (!greeting) return rs.status(400).json({ error: 'Greeting required' })
   const r = await fetch(`${PROMPT_COMPOSER_URL}/greeting`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    method: 'POST', headers: { 'Content-Type': 'application/json', ...SECRET_HDR },
     body: JSON.stringify(greeting)
   })
   if (!r.ok) return rs.status(r.status).json({ error: await r.text() })
