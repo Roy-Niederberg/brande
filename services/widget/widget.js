@@ -152,6 +152,31 @@
     else f()
   }
 
+  // Mobile keyboards overlay the layout viewport instead of resizing it, and the
+  // browser then pans the page to reveal the caret — exposing blank space past the
+  // document edge below the input bar. While the keyboard is up, pin the widget to
+  // the visual viewport so the input bar sits directly on the keyboard. Only when
+  // the widget spans the full viewport (embedded page / fullscreen floating);
+  // scale guard skips pinch-zoom, and kb ≈ 0 wherever the layout viewport already
+  // resizes with the keyboard (e.g. interactive-widget=resizes-content).
+  const vv = window.visualViewport
+  if (vv) {
+    const fitViewport = () => {
+      const kb = document.documentElement.clientHeight - vv.height
+      const fullscreen = !floating || window.innerWidth <= 480
+      if (fullscreen && kb > 150 && vv.scale < 1.02) {
+        widget.style.height = `${vv.height}px`
+        widget.style.transform = `translateY(${vv.offsetTop}px)`
+      } else {
+        widget.style.height = ''
+        widget.style.transform = ''
+      }
+      scrollToBottom()
+    }
+    vv.addEventListener('resize', fitViewport)
+    vv.addEventListener('scroll', fitViewport)
+  }
+
   const applyMetadata = (row, role, time) => {
     const d = time ? new Date(time) : new Date()
     const minuteKey = `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`
