@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Qabû Dashboard</title>
+<style>
+  :root {
+    --bg: #FAF4E8; --card: #FFFFFF; --ink: #35424F; --ink2: #5D6D7E;
+    --mark: #1B4F72; --mark-hover: #2A6496; --track: #C9E2F4; --grid: #ECEFF3;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1C2127; --card: #242A33; --ink: #FAF4E8; --ink2: #9FB0C0;
+      --mark: #85C1E9; --mark-hover: #A5D2F0; --track: #2A4359; --grid: #313945;
+    }
+  }
+  * { margin: 0; box-sizing: border-box; }
+  body { background: var(--bg); color: var(--ink); font: 14px/1.45 system-ui, sans-serif; padding: 24px; }
+  main { max-width: 860px; margin: 0 auto; display: grid; gap: 16px; }
+  h1 { font-size: 20px; font-weight: 600; }
+  h1 small { color: var(--ink2); font-weight: 400; }
+  h2 { font-size: 13px; font-weight: 600; color: var(--ink2); margin-bottom: 12px; }
+  .filters { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .filters button { border: 1px solid var(--grid); background: var(--card); color: var(--ink2);
+    padding: 5px 12px; border-radius: 6px; cursor: pointer; font: inherit; }
+  .filters button.on { color: var(--mark); border-color: var(--mark); font-weight: 600; }
+  .filters label { color: var(--ink2); margin-inline-start: auto; display: flex; gap: 6px; align-items: center; }
+  .card { background: var(--card); border-radius: 10px; padding: 16px; }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 16px; }
+  .kpi .v { font-size: 26px; font-weight: 600; margin-top: 2px; }
+  .kpi .l { font-size: 12px; color: var(--ink2); }
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 640px) { .cols { grid-template-columns: 1fr; } }
+  /* column chart */
+  .plot { position: relative; height: 160px; margin-top: 6px; }
+  .plot .tick { position: absolute; left: 0; right: 0; border-top: 1px solid var(--grid); }
+  .plot .tick span { position: absolute; top: -16px; right: 0; font-size: 11px; color: var(--ink2);
+    font-variant-numeric: tabular-nums; }
+  .plot .cells { position: absolute; inset: 0; display: flex; align-items: flex-end; gap: 2px; }
+  .cell { flex: 1; height: 100%; display: flex; align-items: flex-end; justify-content: center; cursor: default; }
+  .cell b { display: block; width: 100%; max-width: 24px; background: var(--mark);
+    border-radius: 4px 4px 0 0; min-height: 1px; }
+  .cell.zero b { background: none; }
+  .cell:hover b { background: var(--mark-hover); }
+  .xlabels { display: flex; margin-top: 6px; justify-content: space-between;
+    font-size: 11px; color: var(--ink2); }
+  #tip { position: fixed; pointer-events: none; background: var(--card); color: var(--ink);
+    border: 1px solid var(--grid); border-radius: 6px; padding: 6px 10px; font-size: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.15); display: none; z-index: 9; }
+  #tip b { font-size: 14px; }
+  #tip span { color: var(--ink2); }
+  /* horizontal bar rows */
+  .row { display: grid; grid-template-columns: 130px 1fr 46px; gap: 8px; align-items: center;
+    margin: 8px 0; }
+  .row .l { font-size: 12px; color: var(--ink2); overflow: hidden; text-overflow: ellipsis;
+    white-space: nowrap; }
+  .row .t { background: var(--track); border-radius: 4px; height: 12px; }
+  .row .t i { display: block; height: 100%; background: var(--mark);
+    border-radius: 4px 0 0 4px; min-width: 2px; }
+  .row .t i.full { border-radius: 4px; }
+  .row .v { font-size: 12px; font-variant-numeric: tabular-nums; text-align: right; }
+  details { color: var(--ink2); font-size: 12px; }
+  details table { border-collapse: collapse; margin-top: 8px; }
+  details td, details th { border: 1px solid var(--grid); padding: 3px 10px; text-align: left;
+    font-variant-numeric: tabular-nums; }
+  .empty { color: var(--ink2); padding: 24px 0; text-align: center; }
+  .kpi.click { cursor: pointer; }
+  .kpi.click:hover .v { color: var(--mark); }
+  .drillhead { display: flex; align-items: center; gap: 12px; }
+  .drillhead h2 { margin-bottom: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; }
+  .linkbtn { background: none; border: none; color: var(--mark); cursor: pointer; font: inherit;
+    font-size: 12px; padding: 2px 4px; white-space: nowrap; }
+  .convs { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 13px; }
+  .convs th { text-align: left; color: var(--ink2); font-weight: 500; font-size: 12px; }
+  .convs th, .convs td { border-bottom: 1px solid var(--grid); padding: 6px 8px;
+    font-variant-numeric: tabular-nums; }
+  .convs tr.click { cursor: pointer; }
+  .convs tr.click:hover td { background: var(--bg); }
+  .cid { color: var(--mark); font-family: ui-monospace, monospace; font-size: 12px; }
+  .errdetail { font-size: 12px; color: var(--ink2); word-break: break-word; max-width: 320px; }
+  .msg { max-width: 75%; width: fit-content; margin: 8px 0; padding: 8px 12px; border-radius: 10px; }
+  .msg.user { background: var(--mark); color: var(--card); margin-left: auto; }
+  .msg.bot { background: var(--track); color: var(--ink); }
+  .msg .meta { font-size: 11px; opacity: .75; margin-top: 4px; }
+  .updated { display: flex; gap: 8px; align-items: center; color: var(--ink2); font-size: 12px; }
+  .updated button { background: none; border: none; color: var(--ink2); cursor: pointer;
+    padding: 2px; display: flex; }
+  .updated button:hover { color: var(--ink); }
+  .updated button.busy svg { animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<main>
+  <h1><span id="client" dir="auto"></span> <small>· Qabû dashboard</small></h1>
+  <div class="filters" id="filters">
+    <button data-days="7">7 days</button>
+    <button data-days="30" class="on">30 days</button>
+    <button data-days="0">All</button>
+    <label><input type="checkbox" id="incAdmin"> include admin test chats</label>
+  </div>
+  <div class="kpis">
+    <div class="card kpi"><div class="l">Messages</div><div class="v" id="kMsgs">–</div></div>
+    <div class="card kpi click" id="tConvs"><div class="l">Conversations</div><div class="v" id="kConvs">–</div></div>
+    <div class="card kpi"><div class="l">Median response</div><div class="v" id="kDur">–</div></div>
+    <div class="card kpi click" id="tErrs"><div class="l">Errors</div><div class="v" id="kErrs">–</div></div>
+  </div>
+  <div class="card" id="drill" hidden>
+    <div class="drillhead">
+      <h2 id="drillTitle" dir="auto">Conversations</h2>
+      <button id="drillBack" class="linkbtn" hidden>← Back</button>
+      <button id="drillClose" class="linkbtn" aria-label="Close">✕</button>
+    </div>
+    <div id="drillBody"></div>
+  </div>
+  <div class="card">
+    <h2>Messages per day</h2>
+    <div id="daily"></div>
+  </div>
+  <div class="cols">
+    <div class="card"><h2>By channel</h2><div id="channels"></div></div>
+    <div class="card"><h2>By outcome</h2><div id="outcomes"></div></div>
+  </div>
+  <div class="card"><details><summary>Data table (per day)</summary><table id="dayTable"></table></details></div>
+  <div class="updated">Last updated: <span id="ago">–</span>
+    <button id="refresh" aria-label="Refresh" title="Refresh">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+        stroke-width="2.5" stroke-linecap="round">
+        <path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 3v4h-4"/>
+      </svg>
+    </button>
+  </div>
+</main>
+<div id="tip"></div>
+<script>
+const $ = id => document.getElementById(id)
+const CH = { widget: 'Widget', facebook_comments: 'FB comments', facebook_dm: 'FB DMs' }
+const OUT = { main: 'Main answer', gatekeeper: 'Gatekeeper answer', ignored: 'Ignored',
+              error: 'Error', other: 'Other' }
+let all = [], days = 30, drill = null, backTo = 'list' // drill: null | 'list' | 'errors' | a conversation id
+
+const ymd = ts => { const d = new Date(ts); return isNaN(d) ? null :
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` }
+
+const fmtDur = ms => ms >= 10000 ? `${Math.round(ms / 1000)}s` : ms >= 1000 ?
+  `${(ms / 1000).toFixed(1)}s` : `${Math.round(ms)}ms`
+
+function render() {
+  const from = days && new Date(Date.now() - days * 864e5)
+  const ev = all.filter(e => ($('incAdmin').checked || !e.admin) && e.ts &&
+                             (!from || new Date(e.ts) >= from))
+  $('kMsgs').textContent = ev.length.toLocaleString()
+  $('kConvs').textContent = new Set(ev.filter(e => e.conversation_id).map(e => e.conversation_id)).size.toLocaleString()
+  $('kErrs').textContent = ev.filter(e => e.outcome === 'error').length.toLocaleString()
+  const durs = ev.map(e => e.duration_ms).filter(d => d > 1).sort((a, b) => a - b)
+  $('kDur').textContent = durs.length ? fmtDur(durs[(durs.length - 1) >> 1]) : '–'
+  renderDaily(ev)
+  renderBars('channels', count(ev, e => CH[e.channel] || e.channel))
+  renderBars('outcomes', count(ev, e => OUT[e.outcome]))
+  renderDrill(ev)
+}
+
+function renderDrill(ev) {
+  $('drill').hidden = !drill
+  if (!drill) return
+  const body = $('drillBody'); body.textContent = ''
+  $('drillBack').hidden = drill === 'list' || drill === 'errors'
+  if (drill === 'errors') {
+    $('drillTitle').textContent = 'Errors'
+    const list = ev.filter(e => e.outcome === 'error' || e.errors)
+      .sort((a, b) => (b.ts || '').localeCompare(a.ts || ''))
+    if (!list.length) return body.innerHTML = '<div class="empty">No errors in this range</div>'
+    const t = document.createElement('table'); t.className = 'convs'
+    t.innerHTML = '<tr><th>Time</th><th>Conversation</th><th>Source</th><th>Status</th><th>Details</th></tr>'
+    for (const e of list) {
+      const r = t.insertRow()
+      r.insertCell().textContent = e.ts ? new Date(e.ts).toLocaleString('en-GB') : '–'
+      const c = r.insertCell()
+      if (e.conversation_id) {
+        const cid = document.createElement('span'); cid.className = 'cid'; cid.textContent = e.conversation_id
+        cid.style.cursor = 'pointer'
+        cid.onclick = () => { drill = e.conversation_id; backTo = 'errors'; render() }
+        c.append(cid)
+      } else c.textContent = '–'
+      r.insertCell().textContent = CH[e.channel] || e.channel
+      r.insertCell().textContent = e.outcome === 'error' ? 'Failed' : 'Recovered (retry worked)'
+      const d = r.insertCell(); d.className = 'errdetail'
+      d.textContent = (e.errors || []).join(' · ') || '(no details recorded)'
+    }
+    return body.append(t)
+  }
+  if (drill === 'list') {
+    $('drillTitle').textContent = 'Conversations'
+    const groups = new Map()
+    for (const e of ev) {
+      const id = e.conversation_id || '(none)'
+      groups.has(id) ? groups.get(id).push(e) : groups.set(id, [e])
+    }
+    if (!groups.size) return body.innerHTML = '<div class="empty">No conversations in this range</div>'
+    const t = document.createElement('table'); t.className = 'convs'
+    t.innerHTML = '<tr><th>Conversation</th><th>Started</th><th>Source</th><th>Messages</th></tr>'
+    const convs = [...groups.entries()].sort((a, b) => (b[1][0].ts || '').localeCompare(a[1][0].ts || ''))
+    for (const [id, list] of convs) {
+      const r = t.insertRow(); r.className = 'click'
+      const cid = document.createElement('span'); cid.className = 'cid'; cid.textContent = id
+      r.insertCell().append(cid)
+      r.insertCell().textContent = list[0].ts ? new Date(list[0].ts).toLocaleString('en-GB') : '–'
+      r.insertCell().textContent = [...new Set(list.map(e => CH[e.channel] || e.channel))].join(', ')
+      r.insertCell().textContent = list.length
+      r.onclick = () => { drill = id; backTo = 'list'; render() }
+    }
+    body.append(t)
+  } else {
+    $('drillTitle').textContent = drill
+    const list = ev.filter(e => (e.conversation_id || '(none)') === drill)
+      .sort((a, b) => (a.ts || '').localeCompare(b.ts || ''))
+    const meta = (parent, parts) => {
+      const m = document.createElement('div'); m.className = 'meta'; m.dir = 'ltr'
+      m.textContent = parts.filter(Boolean).join(' · ')
+      parent.append(m)
+    }
+    for (const e of list) {
+      // ts is stamped when the event is logged — i.e. reply time; the user's
+      // message arrived duration_ms earlier.
+      const time = e.ts ? new Date(e.ts).toLocaleTimeString('en-GB') : ''
+      const sent = e.ts && e.duration_ms >= 0
+        ? new Date(new Date(e.ts) - e.duration_ms).toLocaleTimeString('en-GB') : time
+      const u = document.createElement('div'); u.className = 'msg user'; u.dir = 'auto'
+      u.textContent = e.user_mssg ?? '(message text not recorded)'
+      meta(u, [sent])
+      const b = document.createElement('div'); b.className = 'msg bot'; b.dir = 'auto'
+      b.textContent = e.res ?? (e.outcome === 'ignored' ? '(ignored — no reply)'
+        : e.outcome === 'error' ? '(error — no reply)' : '(reply text not recorded)')
+      meta(b, [time, OUT[e.outcome], e.model])
+      body.append(u, b)
+    }
+  }
+}
+
+const count = (ev, key) => {
+  const m = {}
+  for (const e of ev) m[key(e)] = (m[key(e)] || 0) + 1
+  return Object.entries(m).sort((a, b) => b[1] - a[1])
+}
+
+function renderDaily(ev) {
+  const byDay = {}
+  for (const e of ev) byDay[ymd(e.ts)] = (byDay[ymd(e.ts)] || 0) + 1
+  const dates = Object.keys(byDay).sort()
+  if (!dates.length) { $('daily').innerHTML = '<div class="empty">No events in this range</div>'
+                       $('dayTable').textContent = ''; return }
+  const seq = []  // continuous day sequence, gaps filled with 0
+  for (let d = new Date(dates[0]); ymd(d) <= dates.at(-1); d.setDate(d.getDate() + 1))
+    seq.push([ymd(d), byDay[ymd(d)] || 0])
+  const max = Math.max(...seq.map(s => s[1]))
+  const top = max <= 5 ? 5 : Math.ceil(max / 10) * 10
+  const plot = document.createElement('div'); plot.className = 'plot'
+  for (const f of [1, .5]) {
+    const t = document.createElement('div'); t.className = 'tick'; t.style.top = `${(1 - f) * 100}%`
+    const s = document.createElement('span'); s.textContent = (top * f).toLocaleString()
+    t.append(s); plot.append(t)
+  }
+  const base = document.createElement('div'); base.className = 'tick'; base.style.top = '100%'
+  plot.append(base)
+  const cells = document.createElement('div'); cells.className = 'cells'
+  for (const [date, n] of seq) {
+    const c = document.createElement('div'); c.className = n ? 'cell' : 'cell zero'
+    const b = document.createElement('b'); b.style.height = `${n / top * 100}%`
+    c.append(b); cells.append(c)
+    c.onpointermove = e => tip(e, n, date)
+    c.onpointerleave = () => $('tip').style.display = 'none'
+  }
+  plot.append(cells)
+  const xl = document.createElement('div'); xl.className = 'xlabels'
+  for (const i of seq.length > 1 ? [0, seq.length - 1] : [0]) {
+    const s = document.createElement('span')
+    s.textContent = new Date(seq[i][0]).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+    xl.append(s)
+  }
+  $('daily').replaceChildren(plot, xl)
+  const tbl = $('dayTable'); tbl.textContent = ''
+  const hr = tbl.insertRow(); hr.insertCell().outerHTML = '<th>Date</th>'; hr.insertCell().outerHTML = '<th>Messages</th>'
+  for (const [date, n] of seq) {
+    const r = tbl.insertRow(); r.insertCell().textContent = date; r.insertCell().textContent = n
+  }
+}
+
+function tip(e, n, date) {
+  const t = $('tip')
+  t.replaceChildren(Object.assign(document.createElement('b'), { textContent: n }),
+    document.createTextNode(` message${n === 1 ? '' : 's'} `),
+    Object.assign(document.createElement('span'), { textContent: date }))
+  t.style.display = 'block'
+  t.style.left = `${Math.min(e.clientX + 12, innerWidth - t.offsetWidth - 8)}px`
+  t.style.top = `${e.clientY - 36}px`
+}
+
+function renderBars(id, entries) {
+  const box = $(id); box.textContent = ''
+  if (!entries.length) return box.innerHTML = '<div class="empty">No events</div>'
+  const max = entries[0][1]
+  for (const [label, n] of entries) {
+    const row = document.createElement('div'); row.className = 'row'
+    const l = document.createElement('div'); l.className = 'l'; l.textContent = label
+    const t = document.createElement('div'); t.className = 't'
+    const i = document.createElement('i'); i.style.width = `${n / max * 100}%`
+    if (n === max) i.className = 'full'
+    t.append(i)
+    const v = document.createElement('div'); v.className = 'v'; v.textContent = n.toLocaleString()
+    row.append(l, t, v); box.append(row)
+  }
+}
+
+$('filters').onclick = e => {
+  if (!e.target.dataset.days) return
+  days = +e.target.dataset.days
+  for (const b of document.querySelectorAll('#filters button')) b.classList.toggle('on', b === e.target)
+  render()
+}
+$('incAdmin').onchange = render
+$('tConvs').onclick = () => { drill = 'list'; render() }
+$('tErrs').onclick = () => { drill = 'errors'; render() }
+$('drillBack').onclick = () => { drill = backTo; render() }
+$('drillClose').onclick = () => { drill = null; render() }
+
+let loadedAt = Date.now()
+const ago = () => {
+  const m = (Date.now() - loadedAt) / 60000
+  $('ago').textContent = m < 1 ? 'just now' : m < 60 ? `${Math.floor(m)}m ago` : `${Math.floor(m / 60)}h ago`
+}
+setInterval(ago, 30000)
+
+function load() {
+  $('refresh').classList.add('busy')
+  fetch('api/events').then(r => r.json()).then(d => {
+    $('client').textContent = d.title
+    document.title = `${d.title} · Qabû Dashboard`
+    all = d.events
+    loadedAt = Date.now()
+    render(); ago()
+  }).finally(() => $('refresh').classList.remove('busy'))
+}
+$('refresh').onclick = load
+load()
+</script>
+</body>
+</html>

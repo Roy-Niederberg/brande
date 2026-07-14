@@ -504,6 +504,36 @@ SMTP was rejected because Oracle/GCP block outbound SMTP ports; HTTP POST
 from prompt-composer to the notifier was rejected because it couples the hot
 `/ask` path to the notifier's existence.
 
+## Dashboard Service
+
+Per-client analytics page (`services/dashboard/`, v0 2026-07-14). Reads
+`logs/events.jsonl` and shows simple derived stats: KPI tiles (messages,
+conversations, median response, errors), messages-per-day column chart,
+channel and outcome splits, with 7/30/all-day filters, an include-admin-tests
+toggle, and a refresh button with a relative "last updated" stamp. Clicking
+the Messages/Conversations tiles drills down: conversation list (id, start
+time, source, message count) → full transcript reconstructed by grouping
+events on `conversation_id` (pre-`v:1` lines show "(text not recorded)").
+Brand palette, light + dark, no third-party JS.
+
+**Shape.** Express on **4322 only** (authed port) → live at
+`https://<sub>.qabu.net/bab/dashboard/` behind Google login with zero routing
+changes; authorization is the admin's pattern (`X-Auth-Email` vs the
+`authorized_emails` secret — same file as admin, so Roy + Nevo). Mounts are
+read-only: `./logs` (events) and `./private` (title from
+`client-config.json`). `GET /api/events` normalizes both event schemas — the
+pre-`v:1` `{outcome, model}` lines and the `v:1` flag-style lines
+(`gk`/`main`/`ignore`/`error`) — into `{ts, channel, conversation_id,
+outcome, admin, duration_ms, user_mssg, res}`; the page aggregates
+client-side. Compose
+profile `dashboard` (opt-in per client, off by default — RAM pressure on the
+1 GB client VM).
+
+**Known limits (v0).** The notifier still *drains* `events.jsonl` daily, so
+the dashboard only sees events since the last digest — the long-term plan
+(see TASKS.md) is for this service to own the file (ingest into SQLite) and
+the notifier to query it. UI is English/LTR regardless of client language.
+
 ## Telegram Agent
 
 Per-client Claude Code over Telegram (`services/telegram_agent/`). Roy & Nevo

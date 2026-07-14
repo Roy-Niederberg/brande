@@ -510,61 +510,37 @@ Phase 3 work until there's a second paying client.
 
 ### Admin & widget UX
 
-- [both] [P2] **Build the per-client analytics dashboard (`/bab/dashboard/`).**
-  Nevo's idea (2026-07-11 conversation): a dashboard the owner can open — and
-  Qabu can show prospects — summarizing everything the agent handled. Static
-  mock with fake data in `docs/dashboard_example.html` (Hebrew/RTL, eintal-
-  themed). The `/bab/*` prereq shipped 2026-07-12, so routing+auth are free:
-  new `services/dashboard/` Node service, compose name `dashboard`, listen
-  **4322**, live at `https://<sub>.qabu.net/bab/dashboard/` behind Google login —
-  zero routing changes. Copy admin's `authorized_emails` check (auth ≠
-  authorization) and its secrets/mount pattern; mounts read-only:
-  `./logs:/app/logs:ro`, `./data:/app/data:ro`, `./private` if it needs
-  title/lang from `client-config.json`.
-
-  **Reality check on data — the mock oversells what we log.** The
-  enrich-events work (shipped 2026-07-13) made `logs/events.jsonl` the single
-  rich stream: one `v: 1` line per `/ask` — `{ts, channel, conversation_id,
-  user_mssg, errors, admin, gk, skip_gk, ignore, main, res, error,
-  duration_ms}`; outcomes are derivable (`ignore`/`error` flags; `main`
-  present = main answered; `gk` without `main` = gatekeeper answered; admin
-  test chats flagged `admin: true` in the same file); per-conversation
-  transcripts are gone (group lines on `conversation_id` to reconstruct — see
-  `docs/architecture.md` § Prompt & Event Logging). Two consequences for this
-  service: (1) it likely *is* the planned ingester — it should own the file
-  (tail into SQLite-per-client) and the notifier later switches to querying
-  it instead of draining; (2) until then the notifier drains `events.jsonl`
-  daily, so history older than a day survives only in the digest emails —
-  build the ingest side early or accept stats starting from its go-live date.
-  Supported by real data: total conversations/messages, per-channel split
-  (widget / FB comments / FB DMs), volume over time, outcome split,
-  error/latency stats (`errors`, `duration_ms`), recent-conversations feed
-  with full text. **Not supported without new collection**: topics, lead
-  funnel, HOT/WARM/COLD heat, insurance breakdown, "left details" counts, FB
-  reach estimate. Those need either extra logging in prompt-composer (e.g.
-  gatekeeper/main emitting a topic/intent tag — an additive field, allowed by
-  the `v: 1` contract; ties into the "Better chat logging" north star) or an
-  offline LLM classification pass over stored events. Suggest **v1 =
-  real-data panels only** (KPIs, channel donut, volume chart, live feed),
-  fake-data panels dropped or clearly marked demo — a paying client dashboard
-  must not show invented numbers.
-
-  **Decisions for Roy + Nevo before building:**
-  - Palette: the mock uses its own teal/navy scheme, not the CLAUDE.md brand
-    colors — keep the mock look or align to brand?
-  - Chart.js comes from a CDN in the mock — vendor it into the image (no
-    external deps at runtime, works offline).
-  - Compose profile: add as profile `dashboard` (opt-in per client) rather
-    than core — the AMD client VM has 1 GB RAM and has OOM'd before; six more
-    Node containers is real pressure. Enable for eintal/demos first, or land
-    after the ARM migration (P0).
-  - EN + HE from day one (mock is RTL-only; dradamblack needs LTR/English) —
-    read lang/direction from `client-config.json` like the site does.
-  - Template updates: `services/config/files/docker-compose.yml` + existing
-    six clients' compose files on the VM (conductor template only covers new
-    clients).
-  All channels are already distinguishable via the `channel` field, and the
-  service is read-only — no impact on widget/FB flows. (added 2026-07-12)
+- [both] [P2] **Analytics dashboard (`/bab/dashboard/`) — v0 built 2026-07-14,
+  next: deploy + grow toward the mock.** Nevo's idea (2026-07-11): a dashboard
+  the owner can open — and Qabu can show prospects — summarizing everything the
+  agent handled (aspirational fake-data mock: `docs/dashboard_example.html`).
+  **v0 exists in the repo** (`services/dashboard/`, see `docs/architecture.md`
+  § Dashboard Service): Express on 4322 behind `/bab/` auth + admin's
+  `authorized_emails` (Roy + Nevo), read-only mounts, real-data-only panels
+  from `events.jsonl` — KPI tiles (messages, conversations, median response,
+  errors), messages/day chart, channel + outcome splits, 7/30/all filter,
+  admin-test toggle. Handles both event schemas (pre-`v:1` and `v:1`). Brand
+  palette, light+dark, no third-party JS (decided: brand colors over mock's
+  teal; no Chart.js at all). Compose profile `dashboard` (opt-in — decided,
+  RAM pressure on the 1 GB VM); template compose + QA (drlipokatz) wired.
+  Verified in QA: 403 without auth, login redirect via clients-router,
+  screenshots eyeballed light+dark. **Remaining:**
+  - Deploy: `services/build.sh dashboard`, add the service to existing
+    clients' compose files on the VM (template only covers new clients), add
+    `dashboard` to `COMPOSE_PROFILES` for chosen clients (eintal/demos first,
+    or after the ARM migration).
+  - **The notifier still drains `events.jsonl` daily** — dashboard only sees
+    events since the last digest. Roy: we'll change the notifier soon; the
+    dashboard is likely the planned ingester (own the file, tail into
+    SQLite-per-client, notifier queries it instead of draining). Build that
+    ingest side before real-client use or stats stay ~1 day deep.
+  - HE/RTL localization (v0 is English/LTR; client title from
+    `client-config.json` already shows) — read `lang`/`direction` like site.
+  - v1+ panels from the mock (topics, lead funnel, heat, "left details")
+    need new collection: intent/topic tags from gatekeeper/main (additive
+    `v:1` fields — ties into "Better chat logging" north star) or an offline
+    LLM classification pass. A paying-client dashboard must not show
+    invented numbers. (added 2026-07-12, v0 built 2026-07-14)
 
 - [both] [P0] **Make the admin work perfectly for Nevo.** Top-top priority for
   Phase 0 alongside FB reliability. Currently the admin has friction that

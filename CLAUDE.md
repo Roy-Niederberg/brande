@@ -557,6 +557,11 @@ These are reference-heavy — see `docs/architecture.md` for full detail:
   that only after a successful send (failed sends retry next cycle). Recipients
   in `data/notify.json` — in `data/`, not `private/`, because site serves
   `private/` publicly.
+- **§ Dashboard Service** — per-client `services/dashboard/` (profile
+  `dashboard`, off by default): simple stats derived from `logs/events.jsonl`
+  at `/bab/dashboard/` (authed port 4322, admin's `authorized_emails`).
+  v0 caveat: the notifier drains the log daily, so the dashboard only sees
+  events since the last digest.
 - **§ Telegram Agent** — per-client `services/telegram_agent/`: Claude Code in a
   container, one Telegram group per enabled client (Roy + Nevo + `<client>-claude`),
   for asking about logs/events/KB from a phone. Profile `telegram`, one BotFather
@@ -565,7 +570,7 @@ These are reference-heavy — see `docs/architecture.md` for full detail:
   via prompt-composer admin CRUD, with in-chat diff confirmation.
 - **§ Client Onboarding & Provisioning** — onboarding → provisioner → conductor
   flow, the `config/` template, Docker Compose profiles (`site`, `facebook`,
-  `telegram` — core services have none), subdomain regex
+  `telegram`, `dashboard` — core services have none), subdomain regex
   `^[a-z][a-z0-9-]{3,18}[a-z]$` (must stay in sync between onboarding and
   conductor).
 - **§ Secrets** — `secrets/` layout (client_router / clients / main_server scopes),

@@ -84,6 +84,13 @@ services:
     volumes:
       - ../services/notifier/src:/app/src:ro
 
+  drlipokatz-dashboard:
+    image: qabu-dashboard-dev
+    build: {context: ../services/dashboard/, target: development}
+    volumes:
+      - ../services/dashboard/src:/app/src:ro
+      - ../services/dashboard/src/views:/app/views:ro
+
   drlipokatz-admin:
     image: qabu-admin-dev
     build: {context: ../services/admin/, target: development}

@@ -208,6 +208,16 @@ services:
       - drlipokatz-telegram-claude:/root/.claude
     profiles: [telegram]
 
+  drlipokatz-dashboard:
+    build: {context: ../services/dashboard/, target: production}
+    networks:
+      drlipokatz-network:
+        aliases: [dashboard]
+    secrets: [authorized_emails]
+    volumes:
+      - ../clients/drlipokatz/logs:/app/logs:ro
+      - ../clients/drlipokatz/private:/app/private:ro
+
   drlipokatz-admin:
     build: {context: ../services/admin/, target: production}
     networks:

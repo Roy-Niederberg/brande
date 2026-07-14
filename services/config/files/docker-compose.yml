@@ -88,6 +88,18 @@ services:
                telegram-claude:/root/.claude]
     profiles: [telegram]
 
+  dashboard:
+    # -------------------------------------------------------------------------|
+    # Per-client analytics from ./logs/events.jsonl (messages, conversations,
+    # channel/outcome split, daily volume). Read-only. Listens on 4322 (authed
+    # port) → live at /bab/dashboard/ behind Google login + authorized_emails.
+    # -------------------------------------------------------------------------|
+    image:    registry.gitlab.com/rny3/brande/dashboard:latest
+    networks: [client_network]
+    secrets:  [authorized_emails]
+    volumes:  [./logs:/app/logs:ro, ./private:/app/private:ro]
+    profiles: [dashboard]
+
   admin:
     # -------------------------------------------------------------------------|
     # Admin interface to manage the SP/KB and to test it. Uses the production
