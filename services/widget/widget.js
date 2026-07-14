@@ -38,6 +38,7 @@
   let lastMsgRole = null
   let lastMsgMinute = null
   const siteDir = config.direction || 'ltr'
+  const rtl = siteDir === 'rtl'
   // In floating mode, targetElement is the host's <body>; don't flip the
   // entire host page's direction — set dir on the widget itself instead.
   if (!floating) targetElement.dir = siteDir
@@ -71,18 +72,26 @@
     document.head.appendChild(linkEl)
   }
 
+  const legal = rtl
+    ? `Qabû AI עלול לטעות — תמיד יש לאמת מידע חשוב מול איש מקצוע מוסמך.
+        <a href="https://qabu.net/privacy" target="_blank" rel="noopener noreferrer">מדיניות הפרטיות</a> &middot;
+        השימוש בצ'אט מהווה הסכמה ל<a href="https://qabu.net/terms" target="_blank" rel="noopener noreferrer">תנאי השימוש</a>.`
+    : `Qabû AI can make mistakes — always verify important information with a qualified professional.
+        <a href="https://qabu.net/privacy" target="_blank" rel="noopener noreferrer">Privacy Policy</a> &middot;
+        By using this chat you agree to our <a href="https://qabu.net/terms" target="_blank" rel="noopener noreferrer">Terms of Service</a>.`
+
   const html = `
     <div id="chat-box">
       <div id="chat-header">
         <div class="chat-header-avatar">
           ${config.profilePic ? `<img src="${config.profilePic}" onerror="this.style.display='none';this.nextElementSibling.style.display=''">` : ''}
-          <svg ${config.profilePic ? 'style="display:none"' : ''} width="48" height="48" viewBox="-603 -603 1206 1206">
+          <svg ${config.profilePic ? 'style="display:none"' : ''} width="22" height="22" viewBox="-603 -603 1206 1206">
             <path transform="rotate(135) scale(1)" fill="#1B4F72" d="M -43.934 -600L -43.934 0C -102.948 -160.66 -102.944 -248.528 -175.736 -175.736A 248.528 248.528 0 1 0 43.934 -244.614L 43.934 -804.594C 87.868 -512.132 248.528 -600 424.264 -424.264A 600 600 0 1 1 -43.934 -600"></path>
           </svg>
         </div>
         <div class="chat-header-name">
           <span>${config.clientName || 'Qab\u00fb'}</span>
-          <span class="chat-header-subtitle">Qab\u00fb AI assistance</span>
+          <span class="chat-header-status">Qab\u00fb AI &middot; ${rtl ? '\u05e4\u05e2\u05d9\u05dc \u05e2\u05db\u05e9\u05d9\u05d5' : 'Active now'}</span>
         </div>
         ${floating ? `<button class="chat-header-menu-btn" id="chat-minimize-btn" title="Minimize" aria-label="Minimize">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -112,11 +121,13 @@
       </div>
       <div id="chat-messages">
       </div>
-      <div id="chat-footer">
-        Qab\u00fb AI can make mistakes — always verify important information with a qualified professional.
-        <a href="https://qabu.net/privacy" target="_blank" rel="noopener noreferrer">Privacy Policy</a> &middot;
-        By using this chat you agree to our <a href="https://qabu.net/terms" target="_blank" rel="noopener noreferrer">Terms of Service</a>.
+      <div id="chat-input-bar">
+        <div id="chat-input" contenteditable="true" data-placeholder="${rtl ? 'כתוב הודעה...' : 'Type a message...'}"></div>
+        <button id="chat-send" aria-label="Send" title="Send">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+        </button>
       </div>
+      <div id="chat-footer">${legal}</div>
     </div>
   `
 
@@ -129,6 +140,8 @@
   targetElement.appendChild(widget)
 
   const messages = document.getElementById('chat-messages')
+  const input = document.getElementById('chat-input')
+  const sendBtn = document.getElementById('chat-send')
   const menuBtn = document.getElementById('chat-menu-btn')
   const dropdown = document.getElementById('chat-dropdown')
   const clearItem = document.getElementById('chat-clear-item')
@@ -422,110 +435,56 @@
 
   let sendAbort = null
 
-  const addGhostBubble = () => {
-    document.querySelectorAll('.ghost-send-btn').forEach(b => b.remove())
-    const row = document.createElement('div')
-    row.id = 'ghost-row'
-    row.className = `msg-row user ghost-row${lastMsgRole === 'user' ? ' grouped' : ''}`
-
-    const bubble = document.createElement('div')
-    bubble.id = 'ghost-bubble'
-    bubble.className = 'chat-msg user ghost-input'
-    bubble.contentEditable = 'true'
-    bubble.dir = siteDir
-
-    const btn = document.createElement('button')
-    btn.id = 'ghost-send'
-    btn.className = 'ghost-send-btn'
-    btn.textContent = 'send'
-
-    row.appendChild(bubble)
-    messages.appendChild(row)
-    const footer = document.getElementById('chat-footer')
-    footer.parentNode.insertBefore(btn, footer)
-
-    bubble.addEventListener('input', () => {
-      bubble.dir = getTextDirection(bubble.innerText)
-      scrollToBottom()
-    })
-    bubble.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMsg() }
-    })
-    btn.onclick = sendMsg
-
-    scrollToBottom(100)
-    if (!('ontouchstart' in window)) bubble.focus()
-  }
-
   const sendMsg = async () => {
-    const ghostRow = document.getElementById('ghost-row')
-    const ghostBubble = document.getElementById('ghost-bubble')
-    if (!ghostBubble) return
-    const text = ghostBubble.innerText.trim()
+    if (sendAbort) return
+    const text = input.innerText.trim()
     if (!text) return
 
     if (greetingAbort) { greetingAbort.stopped = true; greetingAbort = null }
 
-    // Transform ghost → opaque sent message
-    ghostBubble.contentEditable = 'false'
-    ghostBubble.innerHTML = parseMarkdown(text)
-    ghostBubble.dir = getTextDirection(text)
-    ghostBubble.classList.remove('ghost-input')
-    ghostBubble.style.animation = 'none'
-    ghostBubble.style.opacity = '1'
-
-    // Fade out send button, add timestamp to row
-    const sendBtn = document.getElementById('ghost-send')
-    sendBtn.style.opacity = '0'
-    const d = new Date()
-    const minuteKey = `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`
-    setTimeout(() => {
-      ghostRow.classList.remove('ghost-row')
-      const ts = document.createElement('span')
-      ts.className = 'chat-timestamp'
-      ts.textContent = minuteKey
-      ts.style.opacity = '0'
-      ts.style.transition = 'opacity 0.3s ease'
-      sendBtn.id = ''
-      sendBtn.style.visibility = 'hidden'
-      ghostRow.appendChild(ts)
-      requestAnimationFrame(() => ts.style.opacity = '')
-    }, 300)
-    ghostRow.id = ''
-    ghostBubble.id = ''
-
-    lastMsgRole = 'user'
-    lastMsgMinute = minuteKey
+    input.innerHTML = ''
+    input.dir = siteDir
+    addMsg(text, 'user')
     history.push({ role: 'user', content: text, time: Date.now() })
     saveHistory()
 
+    sendBtn.disabled = true
     const abort = { stopped: false }
     sendAbort = abort
 
     try {
       await askAndProcess(abort)
     } catch (e) {
-      if (abort.stopped) return
-      addMsg('Unable to connect to service', 'assistant')
+      if (!abort.stopped) addMsg('Unable to connect to service', 'assistant')
     }
 
-    sendAbort = null
-    if (!abort.stopped) addGhostBubble()
+    sendBtn.disabled = false
+    if (sendAbort === abort) sendAbort = null
   }
+
+  input.addEventListener('input', () => {
+    if (input.innerHTML === '<br>') input.innerHTML = '' // keep :empty placeholder working
+    input.dir = input.innerText.trim() ? getTextDirection(input.innerText) : siteDir
+    scrollToBottom()
+  })
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMsg() }
+  })
+  sendBtn.onclick = sendMsg
+  const focusInput = () => { if (!('ontouchstart' in window)) input.focus() }
 
   clearItem.onclick = async () => {
     menuOpen = false; dropdown.style.display = 'none'
     if (greetingAbort) { greetingAbort.stopped = true; greetingAbort = null }
     if (sendAbort) { sendAbort.stopped = true; sendAbort = null }
     messages.innerHTML = ''
-    const oldBtn = document.getElementById('ghost-send')
-    if (oldBtn) oldBtn.remove()
+    sendBtn.disabled = false
     history.length = 0
     lastMsgRole = null; lastMsgMinute = null
     sessionStorage.removeItem(STORAGE_KEY)
     startConversation(true)
     await playGreeting()
-    addGhostBubble()
+    focusInput()
   }
 
   const hasHistory = restoreHistory()
@@ -541,20 +500,21 @@
     document.getElementById('chat-minimize-btn').onclick = () => {
       widget.classList.remove('open'); launcher.classList.add('show')
     }
-    // Defer greeting/input until first open — playing into a hidden widget
+    // Defer the greeting until first open — playing into a hidden widget
     // means users miss the typewriter animation.
     let firstOpen = true
     launcher.onclick = async () => {
       widget.classList.add('open'); launcher.classList.remove('show')
-      if (!firstOpen) return
-      firstOpen = false
-      if (!hasHistory) await playGreeting()
-      addGhostBubble()
+      if (firstOpen) {
+        firstOpen = false
+        if (!hasHistory) await playGreeting()
+      }
+      focusInput()
     }
     requestAnimationFrame(() => launcher.classList.add('show'))
   } else {
     widget.style.display = 'block'
-    if (!hasHistory) playGreeting().then(() => addGhostBubble())
-    else addGhostBubble()
+    if (!hasHistory) playGreeting().then(focusInput)
+    else focusInput()
   }
 })()
