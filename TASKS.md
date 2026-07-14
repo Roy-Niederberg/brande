@@ -516,32 +516,6 @@ Phase 3 work until there's a second paying client.
 
 ### Admin & widget UX
 
-- [roy] [P2] **Deploy the enriched `events.jsonl` (code shipped 2026-07-13).**
-  The enrich-events task is implemented and QA-verified: prompt-composer now
-  appends one rich `v: 1` line per `/ask` (`user_mssg`, `res`, `gk`/`main`
-  models, `admin`/`ignore`/`error` flags, `errors`, `duration_ms` — full
-  contract in `docs/architecture.md` § Prompt & Event Logging) and
-  per-conversation transcripts (`logs/conversations/`) are removed. The telegram agent's system prompt was updated to match, and
-  the IGNORE→HTTP 204 change (2026-07-14) touched three more services:
-  prompt-composer now answers a gatekeeper IGNORE with 204 No Content, and
-  widget / facebook_comments / facebook_dm treat 204 as "show nothing" —
-  **deploy prompt_composer together with those three** (an old FE against the
-  new composer would try to render an empty 204 body; the old composer never
-  sends 204, so FE-first ordering is safe). Remaining, all prod-side:
-  1. `services/build.sh` for: `prompt_composer`, `telegram_agent`, `widget`,
-     `facebook_comments`, `facebook_dm` (commit first so the revision label
-     is truthful).
-  2. On the Oracle client VM: `docker compose pull && docker compose up -d`
-     in each of the six client dirs (aram-ent, dradamblack, drlipokatz,
-     eintal, eintal-hadassah, yomialpurrer).
-  3. Spot-check one real chat and its `events.jsonl` line on the VM.
-  4. Cleanup after verification: delete the now-orphaned
-     `logs/conversations/` dir and `logs/admin_events.jsonl` in each client's
-     `logs/` (admin traffic now goes to `events.jsonl` with an `admin` flag;
-     nothing reads or writes either anymore — without this they linger
-     forever).
-  (added 2026-07-13)
-
 - [both] [P2] **Build the per-client analytics dashboard (`/bab/dashboard/`).**
   Nevo's idea (2026-07-11 conversation): a dashboard the owner can open — and
   Qabu can show prospects — summarizing everything the agent handled. Static
