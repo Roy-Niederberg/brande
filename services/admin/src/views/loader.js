@@ -43,9 +43,17 @@
     // Set iframe src (external client site or built-in visual page)
     document.getElementById('site-frame').src = config.siteUrl || `${prefix}/page/`
 
-    // Initialize chat widget
+    // Overlay mode: site fills the viewport, widget runs in its native floating
+    // mode (launcher bubble) — what an external widget.js embed looks like.
+    // Site default; ?split opts back into the side-by-side view. Admin defaults
+    // to split (its FB test panel lives over .chat-section); ?overlay opts in.
+    const params = new URLSearchParams(location.search)
+    const overlayMode = isAdmin ? params.has('overlay') : !params.has('split')
+    if (overlayMode) container.classList.add('overlay')
+
+    // Initialize chat widget (no targetElement → widget.js floating mode)
     window.ChatWidgetConfig = {
-        targetElement: '#chat-section',
+        ...(overlayMode ? {} : { targetElement: '#chat-section' }),
         canvasElement: '.site-section',
         clientName: config.overlayTitle || '',
         direction: config.direction || 'ltr',

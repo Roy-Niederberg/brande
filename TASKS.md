@@ -62,6 +62,20 @@ Phase 3 work until there's a second paying client.
 
 ## Open
 
+- [claude] [P1] **Add `Cache-Control: no-cache` to the site service's Caddyfile.**
+  Surfaced 2026-07-15 while testing the new overlay-mode default in QA: Roy
+  didn't see the change because his browser had heuristically cached `loader.js`.
+  The widget service already sends `Cache-Control: no-cache` (revalidate via
+  ETag each load, cheap 304s), but the site service (`services/site/src/Caddyfile`)
+  sends only `ETag`/`Last-Modified` with no `Cache-Control`, so browsers cache
+  `index.html`, `loader.js`, and `page/` for a heuristic TTL (~10% of file age).
+  Consequence in prod: after a deploy, returning visitors can run a stale UI
+  shell for hours — and since `loader.js` builds `ChatWidgetConfig`, a stale
+  shell can even mix old loader + new widget. Fix: `header Cache-Control
+  no-cache` in both `handle` blocks (match the widget Caddyfile), rebuild the
+  site image, redeploy per client. Check the admin's express static serving too
+  (`/bab/admin/` views) for the same gap. (added 2026-07-15)
+
 - [roy] [P4] **Revoke the unused GitLab deploy token** (`docker-login-for-server`,
   username `gitlab+deploy-token-9617691`). While auditing which credential the
   VMs use for `docker login registry.gitlab.com` (2026-07-06 conversation), we

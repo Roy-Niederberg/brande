@@ -188,6 +188,16 @@ overlays — the chat section sits on top of the site section.
 external site, `canvasElement` can point to any element (or `null` to disable
 capability UI).
 
+**Overlay mode** (the site default): the site iframe fills the whole viewport
+(`.container.overlay` CSS hides `.chat-section`) and `loader.js` omits
+`targetElement` from `ChatWidgetConfig`, so the widget runs in its native
+floating mode — launcher bubble bottom-right (both LTR and RTL), minimize
+button, fullscreen under 480px. This showcases exactly what an external
+`widget.js` embed looks like on a customer's own site. `?split` opts back into
+the side-by-side view (e.g. `drlipokatz.qabu.net/?split`). The **admin**
+defaults the other way — split view, because its Facebook test panel overlays
+`.chat-section` — and takes `?overlay` to opt in.
+
 ### Important
 
 Any change to the shared UI files (`index.html`, `loader.js`, `page/`) affects

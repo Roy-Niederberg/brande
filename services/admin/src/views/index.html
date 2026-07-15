@@ -40,6 +40,13 @@
             .site-section { position: absolute; inset: 0; }
             .chat-section { position: absolute; inset: 0; background: transparent; min-width: 0; }
         }
+
+        /* Overlay mode (site default; ?split opts out): fullscreen iframe, floating widget */
+        .container.overlay {
+            max-width: none; margin: 0; height: 100vh; height: 100dvh;
+            border: none; border-radius: 0; box-shadow: none;
+        }
+        .container.overlay .chat-section { display: none; }
     </style>
 </head>
 <body>
