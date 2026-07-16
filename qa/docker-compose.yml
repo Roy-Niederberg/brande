@@ -111,7 +111,9 @@ services:
       - ../clients/dradamblack/logs:/app/logs
 
   dradamblack-notifier:
+    # Off by default pending redesign (see TASKS.md): docker compose --profile notifier up
     build: {context: ../services/notifier/, target: production}
+    profiles: [notifier]
     networks:
       dradamblack-network:
         aliases: [notifier]
@@ -183,7 +185,9 @@ services:
       - ../clients/drlipokatz/logs:/app/logs
 
   drlipokatz-notifier:
+    # Off by default pending redesign (see TASKS.md): docker compose --profile notifier up
     build: {context: ../services/notifier/, target: production}
+    profiles: [notifier]
     networks:
       drlipokatz-network:
         aliases: [notifier]

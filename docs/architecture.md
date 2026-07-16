@@ -320,8 +320,10 @@ or repurpose. Every line carries `v: 1`. The shape is declared as a JSDoc
   draft-test chats, `sp_override`/`kb_override`). Same file as customer
   traffic; consumers filter on the flag. (Until 2026-07-14 these went to a
   separate `logs/admin_events.jsonl` — now orphaned, removed on deploy.)
-- `user_mssg`/`res` are full text, no truncation — the file is drained daily by
-  the notifier (see § Notifier), so size is a non-issue.
+- `user_mssg`/`res` are full text, no truncation. Nothing truncates the file
+  since the notifier (which drained it daily) was disabled 2026-07-16 — growth
+  is unbounded, fine at demo traffic, needs rotation before real volume (see
+  § Notifier).
 
 There are no per-conversation transcript files — `logs/conversations/` was
 removed 2026-07-13; the enriched events carry the full text, and grouping by
@@ -449,6 +451,15 @@ defaults to Qabu logo SVG), `clientName` (header title, defaults to `'Qabû'`).
 
 ## Notifier Service
 
+**Status: disabled on all clients since 2026-07-16**, pending a redesign (see
+TASKS.md). The raw daily digest added no value in practice — Roy checked the
+dashboard anyway — and its drain-the-log behavior truncated the dashboard's
+history. The service is profile-gated (`profiles: [notifier]` in the client
+template and QA compose) and the profile is in no client's `COMPOSE_PROFILES`,
+so re-enabling is a one-line config.env change. The code, the `resend_api_key`
+secrets, and the Resend/DNS setup below all remain in place. The rest of this
+section describes the service as built.
+
 Per-client activity digests by email (`services/notifier/`). Design goal:
 prompt-composer stays single-responsibility — it *answers*; it only records
 the fact that it answered. The notifier interprets those facts and emails.
@@ -472,10 +483,11 @@ points:
   to update. Adding a new notification source means appending JSONL, not
   touching the producer's API.
 - Since 2026-07-13 the lines carry full `user_mssg`/`res` text, so the daily
-  digest emails are richer *and noisier* — accepted (only Roy reads them), and
-  until the planned ingester exists, drained events survive only in those
-  emails. The long-term plan: a `services/dashboard/` ingester owns the file
-  and the notifier switches to querying it.
+  digest emails were richer *and noisier* — accepted (only Roy read them), but
+  it also meant drained events survived only in those emails, which is part of
+  why the drain design lost to the dashboard. The long-term plan: a
+  `services/dashboard/` ingester owns the file and a redesigned notifier
+  queries it.
 
 **Notifier loop.** No inbound port, no services-router entry — a pure
 consumer. Once a day (hour 12, system local time) it emails the new entries
@@ -539,10 +551,11 @@ client-side. Compose
 profile `dashboard` (opt-in per client, off by default — RAM pressure on the
 1 GB client VM).
 
-**Known limits (v0).** The notifier still *drains* `events.jsonl` daily, so
-the dashboard only sees events since the last digest — the long-term plan
-(see TASKS.md) is for this service to own the file (ingest into SQLite) and
-the notifier to query it. UI is English/LTR regardless of client language.
+**Known limits (v0).** Since the notifier was disabled (2026-07-16) the
+dashboard sees the full `events.jsonl` history, but nothing rotates the file —
+the long-term plan (see TASKS.md) is for this service to own the file (ingest
+into SQLite) and a redesigned notifier to query it. UI is English/LTR
+regardless of client language.
 
 ## Telegram Agent
 

@@ -550,18 +550,20 @@ These are reference-heavy — see `docs/architecture.md` for full detail:
   covers prompt-composer's `$`-object data loading + crud GET/POST endpoints.
 - **§ Widget Service** — `services/widget/` serves `widget.js` on 4321 to site,
   admin, and external embeds; talks straight to prompt-composer; config options.
-- **§ Notifier Service** — per-client `services/notifier/` emails a once-a-day
-  raw digest via Resend (key: `resend_api_key` secret); sends the new lines of
-  `logs/events.jsonl` (appended by prompt-composer) verbatim, no parsing. No
-  inbound port; drains the log by renaming it to `events.sending` and deleting
-  that only after a successful send (failed sends retry next cycle). Recipients
-  in `data/notify.json` — in `data/`, not `private/`, because site serves
-  `private/` publicly.
+- **§ Notifier Service** — per-client `services/notifier/`, **disabled on all
+  clients since 2026-07-16** (profile `notifier`, in no client's
+  `COMPOSE_PROFILES`) pending a redesign: the raw daily digest added no value
+  over the dashboard, and its drain-the-log behavior truncated the dashboard's
+  history (see TASKS.md). What it did: once a day emailed the new lines of
+  `logs/events.jsonl` verbatim via Resend (`resend_api_key` secret) to the
+  `data/notify.json` recipients, draining the log (rename to `events.sending`,
+  delete after successful send). Side effect of disabling: nothing truncates
+  `events.jsonl` anymore — fine at demo traffic, needs rotation before real
+  volume.
 - **§ Dashboard Service** — per-client `services/dashboard/` (profile
   `dashboard`, off by default): simple stats derived from `logs/events.jsonl`
   at `/bab/dashboard/` (authed port 4322, admin's `authorized_emails`).
-  v0 caveat: the notifier drains the log daily, so the dashboard only sees
-  events since the last digest.
+  Sees full history now that the notifier (which drained the log daily) is off.
 - **§ Telegram Agent** — per-client `services/telegram_agent/`: Claude Code in a
   container, one Telegram group per enabled client (Roy + Nevo + `<client>-claude`),
   for asking about logs/events/KB from a phone. Profile `telegram`, one BotFather

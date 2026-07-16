@@ -67,11 +67,15 @@ services:
     # apply live). To track "what's new" it drains the log: events.jsonl is
     # renamed to events.sending, emailed, then deleted only after a successful
     # send — a failed send keeps the file for next-cycle retry.
+    # Off by default (profile 'notifier') pending redesign — the raw daily
+    # digest added no value over the dashboard, and its drain-the-log behavior
+    # truncated the dashboard's history. See TASKS.md.
     # -------------------------------------------------------------------------|
     image:    registry.gitlab.com/rny3/brande/notifier:latest
     networks: [client_network]
     secrets:  [resend_api_key]
     volumes:  [./logs:/app/logs, ./data:/app/data:ro, ./private:/app/private:ro]
+    profiles: [notifier]
 
   telegram-agent:
     # -------------------------------------------------------------------------|

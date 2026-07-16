@@ -575,11 +575,11 @@ Phase 3 work until there's a second paying client.
   the composer's new bare-500 error policy is now live on those two clients
   while the widget still shows the old 'Unable to connect' text (see the
   widget/facebook_dm unavailable-message task below). **Remaining:**
-  - **The notifier still drains `events.jsonl` daily** — dashboard only sees
-    events since the last digest. Roy: we'll change the notifier soon; the
-    dashboard is likely the planned ingester (own the file, tail into
-    SQLite-per-client, notifier queries it instead of draining). Build that
-    ingest side before real-client use or stats stay ~1 day deep.
+  - ~~The notifier drains `events.jsonl` daily~~ — resolved 2026-07-16 by
+    disabling the notifier on all clients (see the notifier-redesign task
+    below); the dashboard now sees full history. The flip side: nothing
+    rotates `events.jsonl` anymore, so the ingest-side plan (own the file,
+    tail into SQLite-per-client) is still needed before real-client volume.
   - HE/RTL localization (v0 is English/LTR; client title from
     `client-config.json` already shows) — read `lang`/`direction` like site.
   - v1+ panels from the mock (topics, lead funnel, heat, "left details")
@@ -587,6 +587,29 @@ Phase 3 work until there's a second paying client.
     `v:1` fields — ties into "Better chat logging" north star) or an offline
     LLM classification pass. A paying-client dashboard must not show
     invented numbers. (added 2026-07-12, v0 built 2026-07-14)
+
+- [both] [P2] **Redesign the notifier — what should owner notifications
+  actually be?** Disabled on all clients 2026-07-16 (profile `notifier`, in no
+  client's `COMPOSE_PROFILES`; template + QA compose profile-gated, containers
+  removed on the VM). Roy's verdict: the once-a-day raw `events.jsonl` digest
+  gave him nothing — he checks the dashboard anyway — and its drain-the-log
+  design actively hurt, truncating the dashboard's history to ~1 day. The
+  code, `resend_api_key` secrets, and Resend/DNS setup all remain, so
+  re-enabling after redesign is a one-line `config.env` change. Questions for
+  the redesign: (1) who is the audience — Roy (ops: errors, spam waves, quota
+  burn) vs the client owner (business: leads, unanswered questions, daily
+  summary)? Probably two different products. (2) Push vs pull — the dashboard
+  already covers pull; a notifier only earns its place with *event-driven*
+  push (error spike, first message from a new lead, ESCALATE volume), not a
+  scheduled raw dump. (3) An LLM-written daily/weekly summary email could be
+  the client-owner-facing product (ties into the [P2] "Qabu as an employee"
+  north star — the agent reporting to its boss). (4) Must read `events.jsonl`
+  without consuming it — the dashboard/ingester owns the file (tail into
+  SQLite, notifier queries it — see the dashboard task above); the drain
+  design is dead. (5) Channels beyond email: the per-client Telegram group
+  already exists and may be the better push channel. Interim consequence of
+  disabling: nothing rotates `events.jsonl` — fine at demo traffic, needs
+  rotation/ingest before real volume. (added 2026-07-16)
 
 - [both] [P0] **Make the admin work perfectly for Nevo.** Top-top priority for
   Phase 0 alongside FB reliability. Currently the admin has friction that
