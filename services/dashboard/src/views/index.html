@@ -29,6 +29,7 @@
   .card { background: var(--card); border-radius: 10px; padding: 16px; }
   .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 16px; }
   .kpi .v { font-size: 26px; font-weight: 600; margin-top: 2px; }
+  .kpi .v small { font-size: 12px; font-weight: 400; color: var(--ink2); }
   .kpi .l { font-size: 12px; color: var(--ink2); }
   .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
   @media (max-width: 640px) { .cols { grid-template-columns: 1fr; } }
@@ -152,7 +153,10 @@ function render() {
                              (!from || new Date(e.ts) >= from))
   $('kMsgs').textContent = ev.length.toLocaleString()
   $('kConvs').textContent = new Set(ev.filter(e => e.conversation_id).map(e => e.conversation_id)).size.toLocaleString()
-  $('kErrs').textContent = ev.filter(e => e.outcome === 'error').length.toLocaleString()
+  const failed = ev.filter(e => e.outcome === 'error').length
+  const recovered = ev.filter(e => e.outcome !== 'error' && e.errors).length
+  $('kErrs').replaceChildren(failed.toLocaleString(), ...(recovered ? [Object.assign(
+    document.createElement('small'), { textContent: ` (+${recovered} recovered)` })] : []))
   const durs = ev.map(e => e.duration_ms).filter(d => d > 1).sort((a, b) => a - b)
   $('kDur').textContent = durs.length ? fmtDur(durs[(durs.length - 1) >> 1]) : '–'
   renderDaily(ev)
