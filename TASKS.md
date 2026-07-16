@@ -62,6 +62,32 @@ Phase 3 work until there's a second paying client.
 
 ## Open
 
+- [roy] [P1] **Move the two flash Gemini keys (`gemini_3`/`gemini_4` projects) to
+  paid tier.** Two findings from debugging Nevo's slow eintal demo (2026-07-15,
+  responses took 7–90s): (a) free-tier `gemini-3.5-flash` is served from shared
+  capacity and gets extremely slow under load — a control request ("שלום") took
+  119s during testing, and Google 503s free traffic first ("high demand"); (b)
+  the free tier quota for `gemini-3.5-flash` is **20 requests/day/project**
+  (seen verbatim in a 429: `GenerateRequestsPerDayPerProjectPerModel-FreeTier:
+  20`), so the entire fleet — all clients share `clients_secrets` — has ~40
+  flash calls/day across the two flash keys before every answer degrades to
+  flash-lite. A timeout+fallback guard now bounds the latency damage (deployed
+  2026-07-15), but demo quality for eintal (prospective first customer) still
+  rides on free-tier priority. Enabling billing (tier 1) on the two flash-key
+  projects costs well under a cent per message at demo volume and buys priority
+  capacity + real quotas. Keep the lite keys (`gemini_1`/`gemini_2`) free.
+  Remember the secrets are rsynced to the VMs — after swapping/upgrading keys,
+  re-sync and restart each client's prompt-composer. (added 2026-07-15)
+
+- [claude] [defer] **Streaming responses in the widget.** Would cut *perceived*
+  latency to time-to-first-token (today the user watches a typing indicator
+  until the full answer is ready — during the 2026-07-15 Gemini slowness that
+  meant up to 90s of nothing). Requires prompt-composer to stream
+  (`generateContentStream`), the services-router/widget path to pass chunks
+  through, and widget rendering changes. Channel caveat: FB comments/DMs can't
+  stream, so this is a widget-only UX polish on top of the timeout+fallback
+  guard (which covers all channels), not a replacement for it. (added 2026-07-15)
+
 - [claude] [P1] **Add `Cache-Control: no-cache` to the site service's Caddyfile.**
   Surfaced 2026-07-15 while testing the new overlay-mode default in QA: Roy
   didn't see the change because his browser had heuristically cached `loader.js`.

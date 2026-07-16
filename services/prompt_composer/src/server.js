@@ -54,6 +54,9 @@ const askGroq = async (content, msgs, errors) => {
   }
 }
 
+// Free-tier Gemini can be slow-but-alive under load (observed 90-119s); abort → next try/model.
+const GEMINI_TIMEOUT_MS = +process.env.GEMINI_TIMEOUT_MS || 12000
+
 const askGemini = async (system, msgs, errors) => {
   const llm = gemini[0]
   gemini.push(gemini.shift())
@@ -64,12 +67,14 @@ const askGemini = async (system, msgs, errors) => {
     const conf = {thinkingConfig: {thinkingLevel: "MEDIUM"}, systemInstruction: system}
     const ask_obj = {model: llm[i + 1], config: conf , contents}
     try {
-      const res = (await llm[i].models.generateContent(ask_obj)).text
+      const config = {...conf, abortSignal: AbortSignal.timeout(GEMINI_TIMEOUT_MS)}
+      const res = (await llm[i].models.generateContent({...ask_obj, config})).text
       fs.writeFileSync('./logs/last_prompt.json', JSON.stringify({...ask_obj, res}))
       return {res, model: llm[i + 1]}
     } catch (e) {
-      errors.push(`${llm[i + 1]} try ${i}: ${e.message}`)
-      console.error(`🚩 failed [${llm[i + 1]}] try ${i}:`, e.message)
+      const msg = e.name === 'AbortError' ? `timed out after ${GEMINI_TIMEOUT_MS}ms` : e.message
+      errors.push(`${llm[i + 1]} try ${i}: ${msg}`)
+      console.error(`🚩 failed [${llm[i + 1]}] try ${i}:`, msg)
     }
   }
 }
@@ -110,7 +115,8 @@ app.r('post', '/ask', async ({ body, headers }, rs) => {
   const t0 = Date.now()
   /** @type {{v: number, channel?: string, conversation_id?: string, user_mssg?: string,
       errors: string[], gk?: string, skip_gk?: boolean, main?: string, res?: string,
-      ignore?: boolean, error?: boolean, admin?: boolean, duration_ms?: number}} */
+      ignore?: boolean, error?: boolean, admin?: boolean, duration_ms?: number,
+      gk_ms?: number, main_ms?: number}} */
   const ev = {
     v: 1,
     channel: body.mod,
@@ -137,7 +143,9 @@ async function ask(body, headers, ev) {
     if (body.skip_gk) {
       ev.skip_gk = true
     } else {
+      const t = Date.now()
       const gk = await askGroq(parse(sp.gatekeeper, body.local_time), body.chat, ev.errors)
+      ev.gk_ms = Date.now() - t
       if (gk === undefined) ev.errors.push('gatekeeper exhausted all keys')
       else {
         ev.gk = gk.model
@@ -161,10 +169,12 @@ async function ask(body, headers, ev) {
 
     const query = [sp.main, caps, kb].join('\n\n')
 
+    const t = Date.now()
     for (const i of [1,2]) { // 2 tries — each rotates to a fresh bucket
       const ans = await askGemini(query, body.chat, ev.errors)
       if (ans) {
         ev.main = ans.model
+        ev.main_ms = Date.now() - t
         ev.res = ans.res
         return
       }
