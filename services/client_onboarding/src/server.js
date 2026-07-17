@@ -23,13 +23,12 @@ app.r('get', '/', (_, rs) => rs.sendFile('views/index.html', {root: './src'}))
 app.r('get', '/subdomain-regex', (_, rs) => rs.json({pattern: SUBDOMAIN_RE.source}))
 app.r('post', '/validate-invite', async (rq, rs) => rs.json({valid: await validInvite(rq.body.code)}))
 
-// A subdomain is taken if its services-router answers /taken; free if the
-// clients-router 404s with X-Qabu: not-found. Anything else is indeterminate.
+// A subdomain is taken iff its services-router answers /taken with 'true'.
+// Anything else that responds (clients-router 404, or the wildcard-DNS
+// landing-page catch-all) is not a client. Network errors bubble up to 500.
 async function taken(s) {
   const resp = await fetch(`https://${s}.qabu.net/taken`, {signal: AbortSignal.timeout(5000)})
-  if (await resp.text() === 'true') return true
-  if (resp.headers.get('x-qabu') === 'not-found') return false
-  throw new Error(`indeterminate /taken for ${s}: ${resp.status}`)
+  return await resp.text() === 'true'
 }
 
 // Live availability check for the page (shown as the user types).
