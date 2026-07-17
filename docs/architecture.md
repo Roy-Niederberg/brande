@@ -20,8 +20,8 @@ The two x86 VMs are `E2.1.Micro` (1 OCPU = 2 vCPUs via SMT); the two ARM VMs
 are `A1.Flex` and together consume the entire 4 OCPU / 24 GB ARM free pool.
 The plan is to migrate clients from the cramped Clients #1 micro to **arm1
 only** — arm2-small is off the table for now (personal use) — see the ARM
-tasks in `TASKS.md` for status and remaining steps (conductor ARM build, role
-setup, per-client migration).
+tasks in `TASKS.md` for status and remaining steps (role setup, per-client
+migration; the reconciler is a shell script, so nothing needs an ARM build).
 
 A second VM, **Clients #2** (GCP, IPv6-only), hosted the `ofirfichman` demo
 client from 2026-06 to 2026-07-04. Retired: the IPv6-only egress caused
@@ -43,8 +43,8 @@ complications:
 - A second docker-compose network per VM.
 - A fuzzy split between `clients-router` and each client's `services-router`.
 - Onboarding must find a VM with capacity, not just spin up a new one.
-- The `conductor` daemon exists specifically to watch N client stacks per VM;
-  VM-per-client would collapse this to plain systemd.
+- The `qabu-reconciler` daemon exists specifically to keep N client stacks per
+  VM converged; VM-per-client would collapse this to plain systemd.
 
 ### The clients-router ↔ services-router tension
 
@@ -95,7 +95,6 @@ Four Caddyfiles handle routing across the two VMs:
   on 401 (generic authed prefix; the admin lives at `/bab/admin/`)
 - `/admin*` — 301 → `/bab/admin...` (back-compat for old bookmarks)
 - `/facebook-*` — validates `X-Dispatcher-Secret` header, rejects 403 if missing
-- `/scaffold` → provisioner:4321
 - Unknown subdomains → 404 with `X-Qabu: not-found` header
 
 **Services router** (`services/services_router/src/Caddyfile`) — per-client
@@ -633,8 +632,9 @@ credential precedence, so setting both would silently ignore the token.
 3. Create the group, add Roy, Nevo and the bot.
 4. Send a message, read the ignored-user log line for the user ids, put them
    in `data/telegram.json` (admin has no UI for this yet — known gap).
-5. Add `telegram` to `COMPOSE_PROFILES` in `private/config.env` (the
-   conductor picks it up) or `docker compose --profile telegram up -d`.
+5. Paste the `telegram-agent` block (from the template compose, without the
+   `profiles:` line) into the client's `docker-compose.yml` — the reconciler
+   picks it up.
 
 **QA.** One agent in the QA compose (`drlipokatz-telegram-agent`, behind
 `docker compose --profile telegram up`) with its own dedicated BotFather bot
@@ -661,10 +661,13 @@ the mounted files — fine for two owners, not exposed to end customers.
 4. `POST /create-client` (the only route behind `forward_auth` in the main
    router) re-validates the invite code server-side, then checks if the
    subdomain is taken (`https://{sub}.qabu.net/taken`)
-5. Tries VMs in order (`v1.qabu.net`, `v2.qabu.net`, ...) via `POST /scaffold`
-6. Provisioner validates `X-Provision-Secret`, delegates to conductor via Unix socket
-7. Conductor creates client directory (copies from `config/` template), starts stack
-8. On success: redirects to `https://{sub}.qabu.net/bab/admin/`
+5. **Broken since 2026-07-17.** The scaffolding backend (provisioner +
+   conductor) was retired in the reconciler migration, so creation fails at
+   this step — `POST /scaffold` has no handler on the client VM anymore. The
+   page is still live pending a decision on its fate (see TASKS.md). The dead
+   steps used to be: try VMs in order (`v1.qabu.net`, ...) via `POST /scaffold`
+   → provisioner validates `X-Provision-Secret` → conductor (Unix socket)
+   copies the `config/` template, starts the stack → redirect to `/bab/admin/`.
 
 ### Services
 
@@ -677,56 +680,54 @@ the mounted files — fine for two owners, not exposed to end customers.
   `secrets/main_server_secrets/invite_codes.txt` in QA), **single-use**: the
   service deletes a code from the file after a successful creation. Subdomain
   validation: `^[a-z][a-z0-9-]{3,18}[a-z]$` (5–20 chars).
-- **provisioner** (`services/provisioner/`) — thin proxy on client VM, receives
-  `POST /scaffold` (authenticated by `X-Provision-Secret`), talks to conductor
-  via Unix socket at `/run/qabu/conductor.sock`.
-- **conductor** (`clients_server_automation/conductor/`) — C++20 systemd daemon
-  on client VM. Manages full client lifecycle: creation, file watching, reconciliation.
+Retired 2026-07-17 (with the reconciler migration; source deleted, recover
+from git history if ever needed):
+- **provisioner** — thin proxy on the client VM that forwarded `POST /scaffold`
+  to the conductor's Unix socket.
+- **conductor** — C++20 systemd daemon that managed the full client lifecycle
+  (creation, file watching, reconciliation). Replaced by **qabu-reconciler**
+  (see `docs/client-server-setup.md` § Reconciler): an `entr`-based shell
+  script whose only job is converging running containers with each client's
+  `docker-compose.yml`.
 
-### Config Service
+### Client Creation (manual)
 
-The config service (`services/config/`) is an init container that ships the client
-template. It runs once on `docker compose up`, copying `files/` into
-`~/app/config/` on the VM. The conductor uses this template when creating new
-clients (copies `config/` → `clients/<subdomain>/`).
+Programmatic creation is retired for phase 1 — clients are created by hand on
+the client VM:
 
-The template includes:
-- `docker-compose.yml` — client compose with all services, using Docker Compose profiles
-- `private/` — default client-config.json, config.env
-- `data/` — default system_prompts.js, capabilities.js, greeting.json,
-  knowledge_base.json
+1. Copy the template: `services/config/files/` → `~/app/clients/<subdomain>/`
+   (compose file + `private/` + `data/` defaults; put per-client secrets in
+   `secrets/`).
+2. Edit `docker-compose.yml`: delete the optional service blocks the client
+   doesn't need, drop the `profiles:` line from the ones it does.
+3. The reconciler notices the new compose file and brings the stack up.
+4. Add the Cloudflare DNS record for the subdomain.
 
-### Conductor Details
+(`services/config/` also builds an init-container image that copied the
+template to `~/app/config/` on the VM for the conductor's create flow — no
+longer deployed, but the image/template stays as the source for manual copies.)
 
-See `clients_server_automation/conductor/README.md` for full details, build
-instructions, and socket protocol. Key behaviors:
-- Watches `~/app/clients/` via inotify — restarts client stacks on compose file changes
-- Reconciles every 60s: every client dir with a compose file should have a running stack
-- Handles creation requests from provisioner via Unix socket at `/run/qabu/conductor.sock`
+### Docker Compose Profiles (template only)
 
-### Docker Compose Profiles
-
-Each client's `docker-compose.yml` (from the config template) uses profiles to
-control which services run. Core services (widget, services-router,
-prompt-composer, admin) have no profile and always run. Optional services have
-profiles:
-- `site` — site service
-- `facebook` — facebook-comments, facebook-dm, mock-facebook
-
-`private/config.env` sets `COMPOSE_PROFILES=` (e.g. `COMPOSE_PROFILES=site,facebook`).
-The admin "Manage Services" UI edits this file — changes take effect on next
-`docker compose up`.
+Since the reconciler runs plain `docker compose up -d` (no `--env-file`, no
+`COMPOSE_PROFILES`), profiles no longer select services at runtime. They
+survive only in the **template** compose file as an off-by-default marker:
+a `profiles:` key means "this block won't run as-is; delete the line to
+enable it". Deployed client compose files are materialized — they contain
+exactly the services that run. `private/config.env` still exists on the VM
+but is inert; the admin "Manage Services" button edits it to no effect and
+needs a redesign (see TASKS.md).
 
 ### Subdomain Validation
 
-`^[a-z][a-z0-9-]{3,18}[a-z]$` (5–20 chars). Exists in both onboarding
-(`SUBDOMAIN_RE`) and conductor (`valid_sub()`) — these MUST stay in sync.
+`^[a-z][a-z0-9-]{3,18}[a-z]$` (5–20 chars), in onboarding (`SUBDOMAIN_RE`).
+(The conductor's duplicate `valid_sub()` went away with the conductor.)
 
 ## Secrets
 
 Secrets are organized by scope:
 
-- `secrets/client_router_secrets/` — clients-router VM (TLS, JWT, dispatcher, provisioner)
+- `secrets/client_router_secrets/` — clients-router VM (TLS, JWT, dispatcher)
 - `secrets/clients_secrets/` — shared per-client (LLM API keys, admin secret, authorized emails, Resend API key)
 - `secrets/main_server_secrets/` — main server (OAuth, FB app, JWT, dispatcher, onboarding)
 
@@ -739,8 +740,10 @@ Shared secrets that must match across VMs:
 |------------------------|--------------------------------------------|
 | `jwt_signing_key`      | Auth (main) + auth-verifier (client)       |
 | `fb_dispatcher_secret` | Facebook dispatcher (main) + clients-router|
-| `provision_secret`     | Onboarding (main) + provisioner (client)   |
 | `cloudflare_api_token` | TLS on both VMs                            |
+
+(`provision_secret` — onboarding (main) + provisioner (client) — retired with
+the provisioner, 2026-07-17.)
 
 ## Facebook Integration
 

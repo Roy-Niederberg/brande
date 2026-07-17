@@ -14,17 +14,6 @@ services:
     networks: [qabu_network]
     secrets:  [jwt_signing_key]
 
-  provisioner:
-    image:    registry.gitlab.com/rny3/brande/provisioner:latest
-    networks: [qabu_network]
-    secrets:  [provision_secret]
-    volumes:  [/run/qabu/conductor.sock:/run/qabu/conductor.sock]
-
-  config:
-    image:   registry.gitlab.com/rny3/brande/config:latest
-    volumes: [./config:/config]
-    restart: "no"
-
 volumes:
   router_data:
   router_config:
@@ -36,5 +25,4 @@ secrets:
   cloudflare_api_token: {file: ./secrets/cloudflare_api_token.secret}
   fb_dispatcher_secret: {file: ./secrets/fb_dispatcher_secret.secret}
   jwt_signing_key:      {file: ./secrets/jwt_signing_key.secret}
-  provision_secret:     {file: ./secrets/provision_secret.secret}
 

@@ -138,8 +138,9 @@ Phase 3 work until there's a second paying client.
      `state/` bucket per client: `clients/<sub>/state/{data,private}/`.
      `logs/`, `secrets/`, and `docker-compose.yml` stay outside `state/`.
      Touches: `services/config/files/docker-compose.yml` (4 volume mount
-     lines), the template tree (`git mv`), `clients_server_automation/conductor/src/main.cpp`
-     (5 path references), `rsync_clients.sh`, CLAUDE.md, and a one-shot
+     lines), the template tree (`git mv`), `rsync_clients.sh`, CLAUDE.md
+     (the qabu-reconciler needs no change — it only reads each client's
+     `docker-compose.yml`), and a one-shot
      migration script for each existing client on each VM. Service-side
      container paths (`/app/data`, `/app/private`, `/site/private`) stay
      unchanged — only the host side of the mount moves. Ship and verify
@@ -297,8 +298,9 @@ Phase 3 work until there's a second paying client.
     + lower limits; Premium = highest limits) — those two tasks land together.
   - Convert eintal to paying as the validation customer (per the Phase 2 gate
     in `QABU-PLAN.md`).
-  - Decide what "suspended" means operationally: stop the compose stack via
-    conductor? Show a "subscription expired" landing page? Keep data so
+  - Decide what "suspended" means operationally: stop the compose stack
+    (empty/prune its compose file — the reconciler converges on change)?
+    Show a "subscription expired" landing page? Keep data so
     reactivation is one click. **Do not delete client data on lapse** —
     backups exist for accidents, not for policy enforcement.
   - Open question: does Stripe handle ILS billing cleanly for Israeli
@@ -333,7 +335,7 @@ Phase 3 work until there's a second paying client.
   tokens need only DNS-edit, which happens to be the same permission, but
   verify zone coverage (qabu.net; qabu.co.il records stay manual/optional).
   Related: post-switchover, the Cloudflare zone is the only *global* registry
-  of taken subdomains across VMs (each conductor only knows its own dirs);
+  of taken subdomains across VMs (each VM only knows its own client dirs);
   the `/taken` HTTP probe in onboarding keeps working unchanged. Must land
   before or together with the DNS switchover. (added 2026-07-05)
 
@@ -369,65 +371,32 @@ Phase 3 work until there's a second paying client.
   URG.ENT), and whether quoting URG.ENT prices in chat is desirable. Deployed
   to the VM and live. (added 2026-07-03)
 
-- [roy] [P1] **Oracle client VM is over conductor capacity — onboarding to it
-  now always fails.** `conductor/src/main.cpp` has `MAX_TIER = 5` and refuses
-  `create_client` when `dir_count() + tier > MAX_TIER`. With aram-ent the VM
-  has 6 client dirs, so any future onboarding create on this VM returns
-  `err 507` (this is likely also why aram-ent had to be added by hand,
-  2026-07-03). Decide: raise the cap, make it configurable (it's compiled in),
-  or point onboarding at a new VM. Ties into the onboarding long-tail
-  "capacity rules" item. (added 2026-07-03)
+- [roy] [P1] **Decide the fate of `qabu.net/onboarding` — its final step is
+  broken since the conductor/provisioner retirement (2026-07-17).** The page
+  is still live and public: users can enter a subdomain + invite code and
+  sign in, but the closing `POST /scaffold` now has no handler on the client
+  VM, so creation fails with an error at the last step. Phase 1 needs no
+  programmatic creation (Roy creates demo clients by hand — copy the
+  `services/config/files/` template, prune services, the reconciler brings it
+  up), so options: take the page down (main router + compose), or keep the UI
+  and end with a "we'll contact you" message instead of scaffolding. Either
+  way `check_main.sh` health-checks `/onboarding` and needs a matching tweak,
+  and the invite-code flow + `provision_secret` plumbing in
+  `services/client_onboarding/` can be simplified or removed. (added
+  2026-07-17, split from the completed reconciler-migration task)
 
-- [claude] [P1] **Conductor didn't react to a config.env change on the Oracle
-  VM.** During the telegram-agent prod deploy (2026-07-03) we rewrote
-  `clients/drlipokatz/private/config.env` (added the `telegram` profile) and
-  the conductor — running, pid confirmed — never ran pull/up; we deployed
-  manually. `main.cpp` adds an IN_CLOSE_WRITE|IN_MOVED_TO watch on `private/`
-  and filters for the name `config.env`, so a bash `printf >` over ssh should
-  have fired it. Matters because the admin "Manage Services" button relies on
-  exactly this path to apply profile changes. Investigate: is the watch still
-  alive after 5+ weeks of uptime (inotify wd leak / dir replaced by rsync or
-  backup tooling?), where does conductor stdout go (nothing in journald —
-  started outside systemd?), and reproduce with a `touch`/rewrite while
-  strace-ing. Consider having conductor log to a file so failures are ever
-  visible. **Second data point (2026-07-03, aram-ent):** aram-ent was created
-  on the VM with `COMPOSE_PROFILES=site` in `private/config.env`, yet the
-  `site` container was never created — https://aram-ent.qabu.net/ 502'd for
-  ~2 days until we manually ran `docker compose --env-file private/config.env
-  up -d`. Either the same dead-watch bug, or the stack was brought up manually
-  without `--env-file` (a manual `docker compose up` silently drops all
-  profiles — foot-gun worth documenting in CLAUDE.md's deploy section).
-  Related weakness found reading `main.cpp`: `reconcile()` only calls
-  `start_stack` when *zero* containers run (`stack_running` = "any container
-  up"), so a partially-up stack (missing profile services) is never healed —
-  even a working watch can't fix a stack that diverged while conductor was
-  down. Consider making reconcile compare expected services
-  (`compose config --services` with env-file) against running ones.
-  (added 2026-07-03)
-
-- [both] [P1] **Migrate the Oracle client VM from conductor to qabu-reconciler,
-  then retire conductor + provisioner.** While simplifying the conductor
-  (2026-07-16 conversation) we concluded it was over-engineered — Unix socket,
-  client creation, subdomain validation, compiled-in paths/username, env-file
-  handling — and replaced it with `qabu-reconciler`: a ~20-line `entr`-based
-  shell script (same idiom as the backup service) installed by
-  `setup_server.sh`, whose one job is converging running containers with
-  `*/docker-compose.yml` under `~/clients` (event-driven, no polling, no
-  `pull` — deploys stay explicit). It's in `setup_server.sh` for **new** VMs;
-  the existing client VM (`129.159.159.251`) still runs the old conductor
-  watching `~/app/clients`. Migration decisions: when to move existing clients
-  to the `~/clients` layout (ties into the new `qabunet/clients` repo /
-  sparse-checkout setup), disabling the old conductor unit, deleting
-  `clients_server_automation/conductor/` from the repo, and what replaces the
-  provisioner for onboarding (for now Roy creates demo clients by hand — with
-  the reconciler that's just "mkdir + drop a docker-compose.yml"). Supersedes,
-  if completed: the "over conductor capacity / MAX_TIER" task, the "conductor
-  didn't react to config.env" investigation, and the "rebuild and redeploy
-  conductor binary" task — note the reconciler deliberately does NOT watch
-  `config.env`/`.env`, so the admin "Manage Services" COMPOSE_PROFILES button
-  needs rethinking (write profiles into the compose file itself, or drop the
-  button). Onboarding (`/onboarding` → provisioner → conductor socket) will be
-  broken on reconciler-only VMs until a replacement exists. (added 2026-07-16)
+- [both] [P2] **Admin "Manage Services" button is a silent no-op since the
+  reconciler migration (2026-07-17).** The button edits `COMPOSE_PROFILES` in
+  `private/config.env`, which nothing reads anymore: client compose files are
+  materialized (services listed = services running) and the reconciler runs
+  plain `docker compose up -d` with no env-file. Today toggling a service in
+  the admin writes a file and nothing happens. Redesign: the natural
+  mechanism is editing the client's `docker-compose.yml` itself (add/remove
+  service blocks from the template — the reconciler applies it), which needs
+  an authed path for the admin to modify the compose file, or drop the button
+  until real multi-admin demand exists. Consider channels: this affects how
+  site/facebook/telegram/dashboard get toggled for every client. (added
+  2026-07-17, split from the completed reconciler-migration task)
 
 - [roy] [P1] **Enable the Telegram agent for a first client (drlipokatz).**
   The `services/telegram_agent/` service is built (2026-07-02 conversation:
@@ -503,31 +472,9 @@ Phase 3 work until there's a second paying client.
   concession, not the ideal"). Note the pool of *Qabu-usable* ARM capacity is
   now arm1 alone. With multi-arch images done and base provisioning
   (`setup_server.sh`) already run, what remains is role setup per
-  `docs/client-server-setup.md` (registry login, conductor, clients-router,
-  secrets) + DNS. (added 2026-06-21; refreshed 2026-07-10.)
-
-- [claude] [P3] **Conductor treats a partial stack as healthy.** While bringing
-  up yomialpurrer + dradamblack (2026-06-20), only the 4 core (no-profile)
-  services started on the first conductor reconcile; the `site` + `facebook`
-  profile services never came up until a manual `docker compose --env-file
-  private/config.env up -d`. Root cause is `stack_running()` in
-  `clients_server_automation/conductor/src/main.cpp` — it returns true if **any**
-  container is running (`ps -q --status running | grep -q .`), so once the core
-  services are up the conductor considers the stack healthy and never re-runs
-  `start_stack`. A stack that starts partially (or where a profiled service later
-  crashes and isn't restarted) is silently left degraded. The 60s reconcile loop
-  won't repair it. Fix: make the health check compare running services against
-  the set compose *expects* given the env-file profiles (e.g. diff `ps
-  --services --status running` against `config --services`), and re-run
-  `start_stack` when any expected service is missing. (added 2026-06-20, after
-  the first bring-up of both demos came up core-only and needed a manual re-up.)
-
-- [roy] [P1] **Auto-create DNS records via Cloudflare API on scaffold.** Today,
-  someone manually adds an A record after onboarding. The conductor (or
-  provisioner) should call the Cloudflare API after a successful scaffold.
-  Token already on the client VM (Caddy uses it for TLS). Becomes essential
-  with multiple client VMs since wildcard `*.qabu.net` only points to one IP.
-  (added 2026-04-02)
+  `docs/client-server-setup.md` (registry login, clients-router,
+  secrets — the reconciler comes free with `setup_server.sh`) + DNS.
+  (added 2026-06-21; refreshed 2026-07-10.)
 
 - [roy] [P0] **Migrate clients VM from AMD E2.1.Micro to Oracle A1.Flex (ARM).**
   Triggered by 2026-04-23 OOM hang on the 1 GB AMD VM. Status 2026-07-05:
@@ -535,10 +482,10 @@ Phase 3 work until there's a second paying client.
   arm2-small 1/6, see the "Two free ARM VMs" task above; the quota went to
   two boxes instead of the originally recommended single 4/24) and
   `services/build.sh` already builds+pushes multi-arch images. Remaining:
-  - Conductor (C++20) needs an ARM build — compile in `arm64v8/ubuntu` or
-    natively on the ARM box.
   - Role setup on the target VM per `docs/client-server-setup.md` (registry
-    login, conductor, clients-router, secrets).
+    login, clients-router, secrets; the reconciler is a shell script installed
+    by `setup_server.sh` — nothing needs an ARM build since the conductor
+    retired, 2026-07-17).
   - Migrate clients one at a time: rsync data, update Cloudflare DNS, compose
     up on new, verify with `check_clients.sh`, compose down on old. All
     clients land on **arm1** (arm2-small went to Roy's personal use
@@ -552,25 +499,19 @@ Phase 3 work until there's a second paying client.
   manually. Pull at runtime instead — no rsync, no machine dependency.
   (added 2026-03-28)
 
-- [roy] [P0] **Rebuild and redeploy conductor binary.** Three pending source
-  fixes: (1) `setbuf(stdout, NULL)` so logs show in journalctl, (2) remove
-  `2>/dev/null` from `start_stack` and `stack_running` so docker compose
-  errors are visible, (3) `RuntimeDirectory=qabu` in systemd unit (already on
-  server, binary needs rebuild). Build: `docker run --rm -v
-  $(pwd)/clients_server_automation/conductor/src:/src -w /src gcc:latest g++
-  -std=c++20 -O2 -static -s -o /src/conductor main.cpp`, then scp + restart.
-  **Extra urgency surfaced 2026-05-17:** the binary live on the Oracle client
-  VM is from 2026-04-05 — it predates the `--env-file private/config.env`
-  fix in `start_stack` (committed 2026-04-25, `b384255`). Without that fix
-  `COMPOSE_PROFILES` never activates, so on every reboot only the
-  no-profile services come up (admin, widget, prompt-composer, services-router)
-  and site + facebook stay down silently. We hit exactly this when the
-  Oracle VM rebooted overnight 2026-05-16 → eintal and drlipokatz both
-  went down until manual restore. `stack_running()` returns true as soon
-  as *any* container is up, so conductor never retries. Also redeploy the
-  shared-infra stack at `~/app/docker-compose.yml` somehow (systemd unit or
-  add to conductor's scope) — clients-router/auth-verifier/provisioner also
-  didn't come back automatically after the reboot. (added 2026-04-06)
+- [both] [P0] **Shared-infra stack doesn't come back after a VM reboot.**
+  Extracted from the retired "rebuild conductor binary" task (2026-07-17) —
+  this part outlives the conductor. When the Oracle client VM rebooted
+  overnight 2026-05-16, `~/app/docker-compose.yml`
+  (clients-router/auth-verifier) did not restart, taking every client dark
+  until manual restore. The qabu-reconciler does NOT cover it (it watches
+  `~/app/clients/*/docker-compose.yml` only; client stacks DO recover — its
+  startup sweep runs on boot via systemd). Simplest fix: add
+  `restart: unless-stopped` to the shared-infra services in
+  `prod/client-server-clients-router-docker-compose.yml` (and consider the
+  same for client services in the template + materialized files, which would
+  make reboot recovery docker-native instead of reconciler-dependent).
+  (added 2026-04-06 as part of the conductor task; extracted 2026-07-17)
 
 ### Admin & widget UX
 

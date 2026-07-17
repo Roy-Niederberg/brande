@@ -22,7 +22,6 @@ app.r = (vrb,u,f)=>app[vrb](u,async (rq,rs,nxt)=>{try{await f(rq,rs,nxt)} catch(
 app.use(express.json())
 
 // Subdomain rule: 5-20 chars, lowercase letters/digits/hyphens, start+end with letter.
-// MUST stay in sync with valid_sub() in services/conductor/src/main.cpp.
 const SUBDOMAIN_RE = /^[a-z][a-z0-9-]{3,18}[a-z]$/
 app.r('get', '/', (_, rs) => rs.sendFile('views/index.html', {root: './src'}))
 app.r('get', '/subdomain-regex', (_, rs) => rs.json({pattern: SUBDOMAIN_RE.source}))

@@ -96,9 +96,10 @@ did.
   username — renaming the user would have meant a recompile. Don't repeat that.)
 - Minimize third-party dependencies.
 - Whitelist `.gitignore` (not blacklist).
-- Roy's dev machines have `rg` (ripgrep) and `fd` — prefer them over `grep`/`find`
-  in ad-hoc shell commands. (Scripts checked into the repo that must run on the
-  VMs still use POSIX `grep`/`find` — the VMs are kept minimal.)
+- Roy's dev machines have `rg` (ripgrep) and `fd` (binary is `fdfind` on Ubuntu) —
+  prefer them over `grep`/`find` in ad-hoc shell commands. (Scripts checked into
+  the repo that must run on the VMs still use POSIX `grep`/`find` — the VMs are
+  kept minimal.)
 - Everything runs in Docker - no node/npm/python on the host.
   To generate/regenerate `package-lock.json` for a service (since npm isn't on
   the host), run from the repo root:
@@ -226,14 +227,15 @@ prod/                       - Production docker-compose files (deployed to VMs)
   main-server-docker-compose.yml
   client-server-clients-router-docker-compose.yml
 services/                   - Dockerized service source code
-  config/                   - Client template (init container, copied by conductor on creation)
+  config/                   - Client template (copied by hand when creating a client)
     files/                  - Default files for a new client (private/, data/, docker-compose.yml)
 docs/                       - Operational guides + architecture reference
   architecture.md           - Deep reference: VMs, routing, admin/site UI, capabilities, widget, onboarding, secrets, Facebook
   images/                   - Images for the project
   client-server-setup.md    - How to provision a new client VM from scratch
 clients_server_automation/  - Host-level automation on the client VM
-  conductor/                - systemd daemon that manages client lifecycle
+  backup/                   - entr loop that mirrors client data to a git repo
+                              (qabu-reconciler lives in setup_server.sh, not here)
 ```
 
 **Where things go:** `CLAUDE.md` is for *what to do* — instructions, conventions,
@@ -262,7 +264,7 @@ creates the **clients-router ↔ services-router tension**: clients-router does
 cross-cutting concerns only (TLS, admin `forward_auth`, dispatcher secret,
 rate limits); services-router does per-client URL routing only. If a feature
 blurs that line, that's the signal to reconsider VM-per-client, not to add glue.
-Full rationale (multi-cloud, IPv6, conductor) in `docs/architecture.md` § VM Strategy.
+Full rationale (multi-cloud, IPv6, reconciler) in `docs/architecture.md` § VM Strategy.
 
 ## Running the QA Environment
 
@@ -341,7 +343,7 @@ After pushing images, SSH into the VM and pull + restart:
 # Main server
 ssh brande@129.159.134.3 'cd ~/app && docker compose pull && docker compose up -d'
 
-# Client server — shared infra (clients-router, auth-verifier, provisioner)
+# Client server — shared infra (clients-router, auth-verifier)
 ssh brande@129.159.159.251 'cd ~/app && docker compose pull && docker compose up -d'
 
 # Client server — a specific client's services
@@ -351,7 +353,7 @@ ssh brande@129.159.159.251 'cd ~/app/clients/<sub> && docker compose pull && doc
 ### Server setup
 
 See `docs/client-server-setup.md` for provisioning a new client VM from scratch
-(Docker, conductor, clients-router, secrets, DNS). See `docs/architecture.md`
+(Docker, reconciler, clients-router, secrets, DNS). See `docs/architecture.md`
 § VM Strategy for the hosting rationale.
 
 ## Repo Scripts
@@ -508,7 +510,7 @@ KB (11 entries), system prompts, greeting and og-meta were rebuilt 2026-07-03
 from the real site — clinic info, branches, doctors, URG.ENT urgent-care center,
 HMO arrangements — pending Nevo's review (see TASKS.md). Added by hand on the
 Oracle client VM (`129.159.159.251`), not via onboarding: the VM was already at
-the conductor's `MAX_TIER` capacity cap (also in TASKS.md).
+the (since-retired) conductor's `MAX_TIER` capacity cap.
 
 ## Caddy Routing
 
@@ -517,7 +519,7 @@ main VM — `/facebook*`, `/auth/*`, `/onboarding*`, static `/privacy` `/terms`,
 catch-all → landing-page), **clients router** (`services/clients_router/`, client
 VM — `*.qabu.net` → per-client services-router, `/bab/*` `forward_auth` (generic
 authed prefix; `/admin*` 301s to `/bab/admin...`), `/facebook-*`
-dispatcher-secret check, `/scaffold` → provisioner), **services router**
+dispatcher-secret check), **services router**
 (`services/services_router/`, per-client — generic `/{service}/*` →
 `{service}:4321` prefix-stripped, authed `/bab/{service}/*` → `{service}:4322`,
 `/widget.js` → widget, everything else → site:80), and **site Caddyfile**
@@ -578,11 +580,12 @@ These are reference-heavy — see `docs/architecture.md` for full detail:
   bot per client (Telegram allows one poller per token), read-only (`:ro` mounts +
   Read/Grep/Glob only). Allowed user ids in `data/telegram.json`. Future writes go
   via prompt-composer admin CRUD, with in-chat diff confirmation.
-- **§ Client Onboarding & Provisioning** — onboarding → provisioner → conductor
-  flow, the `config/` template, Docker Compose profiles (`site`, `facebook`,
-  `telegram`, `dashboard` — core services have none), subdomain regex
-  `^[a-z][a-z0-9-]{3,18}[a-z]$` (must stay in sync between onboarding and
-  conductor).
+- **§ Client Onboarding & Provisioning** — client creation is **manual** since
+  2026-07-17 (copy `config/` template, prune services, reconciler brings it
+  up); the provisioner → conductor scaffolding is retired, so the still-live
+  `/onboarding` page breaks at its final step (fate TBD, see TASKS.md).
+  Profiles survive only in the template as off-by-default markers. Subdomain
+  regex `^[a-z][a-z0-9-]{3,18}[a-z]$` (onboarding only now).
 - **§ Secrets** — `secrets/` layout (client_router / clients / main_server scopes),
   and the cross-VM shared secrets that must match (`jwt_signing_key`,
   `fb_dispatcher_secret`, `provision_secret`, `cloudflare_api_token`).

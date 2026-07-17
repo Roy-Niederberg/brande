@@ -46,12 +46,6 @@
 	redir /admin/* /bab{uri} 301
 	redir /admin /bab/admin/ 301
 
-	# Provisioner: scaffolds new client directories
-	@provision path /scaffold
-	handle @provision {
-		reverse_proxy provisioner:4321
-	}
-
 	# All other traffic → per-client services-router (subdomain derived from {labels.2})
 	reverse_proxy {labels.2}-services-router-1:80
 	handle_errors {

@@ -1,10 +1,11 @@
 # -----------------------------------------------------------------------------|
-# The basic compose file for any client. Include the basic three services.
-# -----------------------------------------------------------------------------|
-
-# -----------------------------------------------------------------------------|
-# The 'env'  file determine the  profiles which  determine the services included
-# for this client. This ./data/config.env is managed by the 'admin' service.
+# Template compose file for a new client (manual creation: copy this directory,
+# then edit). The qabu-reconciler converges each client's compose file with the
+# running containers — whatever is in the file runs; no env-file, no
+# COMPOSE_PROFILES. Services below marked with a 'profiles:' key are OFF by
+# default (nothing ever selects a profile, so compose never starts them): to
+# enable one for a client, delete its 'profiles:' line. Prefer deleting unused
+# blocks entirely so the client's file states exactly what runs.
 # -----------------------------------------------------------------------------|
 services:
 

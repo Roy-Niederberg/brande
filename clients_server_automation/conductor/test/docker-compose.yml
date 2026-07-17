@@ -1,8 +1,0 @@
-services:
-  test:
-    image: gcc:latest
-    volumes:
-      - ../src:/src:ro
-      - ./:/test:ro
-    working_dir: /test
-    command: bash test.sh

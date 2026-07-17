@@ -79,6 +79,13 @@ changed services get recreated.
 naming the path; the script itself just watches its cwd). Re-running
 `setup_server.sh` redeploys the script and restarts the service.
 
+On the **original client VM** (`129.159.159.251`, migrated off the conductor
+2026-07-17) the unit was installed by hand with
+`WorkingDirectory=/home/brande/app/clients` — the pre-`~/clients` layout.
+Its client compose files are materialized (no `profiles:`, no env-file;
+pre-migration backups sit next to them as
+`docker-compose.yml.bak-conductor-20260717`).
+
 Notes:
 
 - **No `pull`.** Deploys stay explicit: `docker compose pull` on the VM (or
