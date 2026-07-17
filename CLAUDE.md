@@ -96,6 +96,9 @@ did.
   username — renaming the user would have meant a recompile. Don't repeat that.)
 - Minimize third-party dependencies.
 - Whitelist `.gitignore` (not blacklist).
+- Roy's dev machines have `rg` (ripgrep) and `fd` — prefer them over `grep`/`find`
+  in ad-hoc shell commands. (Scripts checked into the repo that must run on the
+  VMs still use POSIX `grep`/`find` — the VMs are kept minimal.)
 - Everything runs in Docker - no node/npm/python on the host.
   To generate/regenerate `package-lock.json` for a service (since npm isn't on
   the host), run from the repo root:
@@ -359,9 +362,14 @@ Five shell scripts live at the repo root, all run from a local dev machine:
   the steps in `docs/client-server-setup.md`). Takes `<cloud-user>@<host>` (e.g.
   `ubuntu@1.2.3.4`), SSHes in, and provisions the `brande` user (password-sudo +
   your SSH key + docker group), makes `ufw` the sole firewall owner (22/80/443,
-  purging Oracle's stock iptables), and installs Docker. Idempotent; prompts
-  interactively for the `brande` sudo password at the end. Does NOT do role setup
-  (registry login, conductor, clients-router) — that's the rest of the doc.
+  purging Oracle's stock iptables), installs Docker, installs the
+  **qabu-reconciler** systemd service (event-driven via `entr`, no polling —
+  keeps running containers converged with `~/clients/*/docker-compose.yml`;
+  replaces the old conductor, see `docs/client-server-setup.md` § Reconciler),
+  and clones the clients repo blobless into `~/clients` after pausing for you
+  to add the VM's deploy key to GitLab. Idempotent; prompts interactively for
+  the `brande` sudo password. Does NOT do role setup (registry login,
+  clients-router) — that's the rest of the doc.
 
 - **`check_main.sh`** — health-checks `qabu.net` endpoints: landing page, static
   assets, `/privacy`, `/terms`, `/auth/*`, `/onboarding`, `/facebook` dispatcher,

@@ -405,6 +405,30 @@ Phase 3 work until there's a second paying client.
   (`compose config --services` with env-file) against running ones.
   (added 2026-07-03)
 
+- [both] [P1] **Migrate the Oracle client VM from conductor to qabu-reconciler,
+  then retire conductor + provisioner.** While simplifying the conductor
+  (2026-07-16 conversation) we concluded it was over-engineered — Unix socket,
+  client creation, subdomain validation, compiled-in paths/username, env-file
+  handling — and replaced it with `qabu-reconciler`: a ~20-line `entr`-based
+  shell script (same idiom as the backup service) installed by
+  `setup_server.sh`, whose one job is converging running containers with
+  `*/docker-compose.yml` under `~/clients` (event-driven, no polling, no
+  `pull` — deploys stay explicit). It's in `setup_server.sh` for **new** VMs;
+  the existing client VM (`129.159.159.251`) still runs the old conductor
+  watching `~/app/clients`. Migration decisions: when to move existing clients
+  to the `~/clients` layout (ties into the new `qabunet/clients` repo /
+  sparse-checkout setup), disabling the old conductor unit, deleting
+  `clients_server_automation/conductor/` from the repo, and what replaces the
+  provisioner for onboarding (for now Roy creates demo clients by hand — with
+  the reconciler that's just "mkdir + drop a docker-compose.yml"). Supersedes,
+  if completed: the "over conductor capacity / MAX_TIER" task, the "conductor
+  didn't react to config.env" investigation, and the "rebuild and redeploy
+  conductor binary" task — note the reconciler deliberately does NOT watch
+  `config.env`/`.env`, so the admin "Manage Services" COMPOSE_PROFILES button
+  needs rethinking (write profiles into the compose file itself, or drop the
+  button). Onboarding (`/onboarding` → provisioner → conductor socket) will be
+  broken on reconciler-only VMs until a replacement exists. (added 2026-07-16)
+
 - [roy] [P1] **Enable the Telegram agent for a first client (drlipokatz).**
   The `services/telegram_agent/` service is built (2026-07-02 conversation:
   per-client Claude Code in a container, one Telegram group per client with
@@ -572,7 +596,7 @@ Phase 3 work until there's a second paying client.
   `prompt_composer` (enriched v1 events) was deployed to those two clients at
   the same time; the other four still run the pre-v1 image and will pick up
   `:latest` on their next pull — their events stay textless until then. Note
-  the composer's new bare-500 error policy is now live on those two clients
+  prompt-composer's new bare-500 error policy is now live on those two clients
   while the widget still shows the old 'Unable to connect' text (see the
   widget/facebook_dm unavailable-message task below). **Remaining:**
   - ~~The notifier drains `events.jsonl` daily~~ — resolved 2026-07-16 by
