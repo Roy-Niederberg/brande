@@ -361,6 +361,35 @@ Phase 3 work until there's a second paying client.
   wildcard before the exact records exist takes every client down.
   (added 2026-07-04)
 
+- [claude] [P4] **Claim page → onboarding loses the `.co.il` TLD.** Found by
+  Roy while reviewing the onboarding demo-mode ribbon in QA (2026-07-17):
+  visiting `nonexisting.qabu.co.il` correctly shows the Hebrew "grab this
+  address" pitch page, but its CTA (`לתפוס את הכתובת`) links to
+  `qabu.net/onboarding?subdomain=nonexisting`, and onboarding hardcodes the
+  `.qabu.net` suffix — so the user who wanted `nonexisting.qabu.co.il` is
+  shown `nonexisting.qabu.net`. Confusing for exactly the Hebrew-clinic
+  audience the `.co.il` wildcard exists for. Fix when back on onboarding:
+  carry the TLD through the CTA (e.g. `&tld=co.il`) and have the page display
+  and check availability against the right suffix — note `/available/:sub`
+  and the `/taken` probe are `.qabu.net`-only today, and what a `.co.il`
+  "creation" would even mean is tied to the onboarding-fate decision.
+  Meanwhile creation is demo-mode 503, so impact is cosmetic. (added
+  2026-07-17)
+
+- [claude] [P4] **Hebrew (IDN) subdomains render as punycode on the claim
+  page.** Same review session (2026-07-17): browsing to
+  `משהובעברית.qabu.co.il` shows the claim page with the raw punycode
+  hostname (`xn--5dbahewz5a1cdr.qabu.co.il`) — technically correct (browsers
+  hand the page the ACE form) but looks broken to a Hebrew user, exactly the
+  audience that would type a Hebrew name. Fix when back on onboarding: the
+  claim page should decode punycode labels for display (small JS decoder or
+  `Intl`-based; no dependency if possible) and show `משהובעברית.qabu.co.il`,
+  while the actual subdomain policy stays a separate question — the
+  onboarding regex `^[a-z][a-z0-9-]{3,18}[a-z]$` deliberately rejects IDN, so
+  decide: display-only decoding (recommended), or actually supporting IDN
+  client subdomains (DNS, certs, and the regex all get harder — probably
+  never worth it). (added 2026-07-17)
+
 - [roy] [P1] **Nevo review: aram-ent KB + prompts (rewritten 2026-07-03 by
   Claude from aram-ent.co.il).** The KB (11 entries), system prompts (widget +
   facebook), greeting and og-meta were rebuilt from the real site — clinic

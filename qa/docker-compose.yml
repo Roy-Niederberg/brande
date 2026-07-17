@@ -54,7 +54,6 @@ services:
   client-onboarding:
     build: {context: ../services/client_onboarding/, target: production}
     networks: [main-network]
-    secrets: [provision_secret]
     volumes: [../secrets/main_server_secrets/invite_codes.txt:/app/data/invite_codes.txt]
 
   # ─── Client infra (simulates client VM shared services) ───
@@ -276,7 +275,6 @@ secrets:
   fb_webhook_verify_token: {file: ../secrets/main_server_secrets/fb_webhook_verify_token.secret}
   fb_app_secret:           {file: ../secrets/main_server_secrets/fb_app_secret.secret}
   fb_dispatcher_secret:    {file: ../secrets/main_server_secrets/fb_dispatcher_secret.secret}
-  provision_secret:        {file: ../secrets/main_server_secrets/provision_secret.secret}
 
   # Clients (shared)
   gemini_1:           {file: ../secrets/clients_secrets/gemini_1.secret}

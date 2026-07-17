@@ -81,21 +81,29 @@
       button { padding: 14px 48px; font-size: 20px; }
       .logo svg { width: 100vh; height: 100vh; }
     }
+    /* Corner ribbon: the container clips the band, so nothing spills off-screen.
+       The band is the container's diagonal (width ≈ size × √2), rotated 45°. */
     .ribbon {
-      position: fixed; top: 32px; right: -60px; transform: rotate(45deg);
-      background: #1B4F72; color: #FAF4E8; padding: 8px 70px;
-      font-size: 15px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase;
-      box-shadow: 0 4px 14px rgba(27, 79, 114, 0.35); pointer-events: none; z-index: 10;
+      position: fixed; top: 0; right: 0; width: 240px; height: 240px;
+      overflow: hidden; pointer-events: none; z-index: 10;
+    }
+    .ribbon span {
+      position: absolute; display: block; width: 400px; left: -70px; top: 86px;
+      transform: rotate(45deg); padding: 15px 0; text-align: center;
+      background: #F39C12; color: #1B4F72;
+      font-size: 15px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase;
+      box-shadow: 0 4px 14px rgba(27, 79, 114, 0.3);
     }
     .available { color: #1B4F72; font-size: 18px; }
     .taken { color: #c0392b; font-size: 18px; }
     @media (max-width: 500px) {
-      .ribbon { top: 22px; right: -70px; font-size: 12px; padding: 6px 64px; }
+      .ribbon { width: 160px; height: 160px; }
+      .ribbon span { width: 260px; left: -45px; top: 60px; padding: 9px 0; font-size: 11px; letter-spacing: 0.5px; }
     }
   </style>
 </head>
 <body>
-  <div class="ribbon">Under construction</div>
+  <div class="ribbon"><span>Under construction</span></div>
   <div class="logo">
     <svg viewBox="-603 -603 1206 1206" xmlns="http://www.w3.org/2000/svg">
       <path fill="#1B4F72" transform="rotate(135)" d="M -43.934 -600 L -43.934 0 C -102.948 -160.66 -102.944 -248.528 -175.736 -175.736 A 248.528 248.528 0 1 0 43.934 -244.614 L 43.934 -804.594 C 87.868 -512.132 248.528 -600 424.264 -424.264 A 600 600 0 1 1 -43.934 -600"/>
