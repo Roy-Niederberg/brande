@@ -390,6 +390,19 @@ Phase 3 work until there's a second paying client.
   client subdomains (DNS, certs, and the regex all get harder — probably
   never worth it). (added 2026-07-17)
 
+- [claude] [P4] **Claim page → onboarding theme flash (dark → light).** Third
+  find from Roy's 2026-07-17 review of the onboarding demo mode: the "this
+  address is available" claim page (`services/main_router/srv/claim/`) is
+  dark-themed while the onboarding page is light-themed, yet the two are
+  otherwise visually near-identical — so clicking "Claim this address" /
+  "לתפוס את הכתובת" causes a sudden, unpleasant dark→light flip mid-flow.
+  Fix when back on onboarding, together with the `.co.il` TLD task above
+  (same CTA hand-off): pick one theme for the pair — either follow
+  `prefers-color-scheme` on both (brand has defined dark-mode colors in
+  CLAUDE.md § Brand Colors), or just make the claim page light to match.
+  Whichever way, the two pages should feel like one continuous flow since
+  they share layout and typography. (added 2026-07-17)
+
 - [roy] [P1] **Nevo review: aram-ent KB + prompts (rewritten 2026-07-03 by
   Claude from aram-ent.co.il).** The KB (11 entries), system prompts (widget +
   facebook), greeting and og-meta were rebuilt from the real site — clinic
