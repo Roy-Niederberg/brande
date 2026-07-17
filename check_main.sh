@@ -29,6 +29,7 @@ check "Auth /verify"        401 "$(status https://qabu.net/auth/verify)"
 check "Auth /login"         302 "$(status https://qabu.net/auth/login)"
 check "Onboarding (public)" 200 "$(status https://qabu.net/onboarding)"
 check "Onboarding create-client unauth" 401 "$(post https://qabu.net/onboarding/create-client '{}')"
+check "Onboarding availability check"   200 "$(status https://qabu.net/onboarding/available/drlipokatz)"
 check "FB page signup"      302 "$(status https://qabu.net/facebook-page-signup)"
 check "FB dispatcher"       403 "$(status https://qabu.net/facebook)"
 

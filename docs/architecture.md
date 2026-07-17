@@ -661,10 +661,13 @@ the mounted files — fine for two owners, not exposed to end customers.
 4. `POST /create-client` (the only route behind `forward_auth` in the main
    router) re-validates the invite code server-side, then checks if the
    subdomain is taken (`https://{sub}.qabu.net/taken`)
-5. **Broken since 2026-07-17.** The scaffolding backend (provisioner +
-   conductor) was retired in the reconciler migration, so creation fails at
-   this step — `POST /scaffold` has no handler on the client VM anymore. The
-   page is still live pending a decision on its fate (see TASKS.md). The dead
+5. **Demo mode since 2026-07-17** (the scaffolding backend — provisioner +
+   conductor — was retired in the reconciler migration; kept deliberately as a
+   show-the-idea demo). The page carries an "Under construction" ribbon and a
+   live availability check (`GET /available/:sub`, debounced as you type,
+   backed by the `/taken` probe). `create-client` still validates auth +
+   invite + regex + availability, then answers `503`; the page explains that
+   creation is offline. Invite codes are no longer consumed. The retired
    steps used to be: try VMs in order (`v1.qabu.net`, ...) via `POST /scaffold`
    → provisioner validates `X-Provision-Secret` → conductor (Unix socket)
    copies the `config/` template, starts the stack → redirect to `/bab/admin/`.

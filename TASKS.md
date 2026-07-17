@@ -371,20 +371,6 @@ Phase 3 work until there's a second paying client.
   URG.ENT), and whether quoting URG.ENT prices in chat is desirable. Deployed
   to the VM and live. (added 2026-07-03)
 
-- [roy] [P1] **Decide the fate of `qabu.net/onboarding` — its final step is
-  broken since the conductor/provisioner retirement (2026-07-17).** The page
-  is still live and public: users can enter a subdomain + invite code and
-  sign in, but the closing `POST /scaffold` now has no handler on the client
-  VM, so creation fails with an error at the last step. Phase 1 needs no
-  programmatic creation (Roy creates demo clients by hand — copy the
-  `services/config/files/` template, prune services, the reconciler brings it
-  up), so options: take the page down (main router + compose), or keep the UI
-  and end with a "we'll contact you" message instead of scaffolding. Either
-  way `check_main.sh` health-checks `/onboarding` and needs a matching tweak,
-  and the invite-code flow + `provision_secret` plumbing in
-  `services/client_onboarding/` can be simplified or removed. (added
-  2026-07-17, split from the completed reconciler-migration task)
-
 - [both] [P2] **Admin "Manage Services" button is a silent no-op since the
   reconciler migration (2026-07-17).** The button edits `COMPOSE_PROFILES` in
   `private/config.env`, which nothing reads anymore: client compose files are

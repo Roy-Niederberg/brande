@@ -81,9 +81,21 @@
       button { padding: 14px 48px; font-size: 20px; }
       .logo svg { width: 100vh; height: 100vh; }
     }
+    .ribbon {
+      position: fixed; top: 32px; right: -60px; transform: rotate(45deg);
+      background: #1B4F72; color: #FAF4E8; padding: 8px 70px;
+      font-size: 15px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase;
+      box-shadow: 0 4px 14px rgba(27, 79, 114, 0.35); pointer-events: none; z-index: 10;
+    }
+    .available { color: #1B4F72; font-size: 18px; }
+    .taken { color: #c0392b; font-size: 18px; }
+    @media (max-width: 500px) {
+      .ribbon { top: 22px; right: -70px; font-size: 12px; padding: 6px 64px; }
+    }
   </style>
 </head>
 <body>
+  <div class="ribbon">Under construction</div>
   <div class="logo">
     <svg viewBox="-603 -603 1206 1206" xmlns="http://www.w3.org/2000/svg">
       <path fill="#1B4F72" transform="rotate(135)" d="M -43.934 -600 L -43.934 0 C -102.948 -160.66 -102.944 -248.528 -175.736 -175.736 A 248.528 248.528 0 1 0 43.934 -244.614 L 43.934 -804.594 C 87.868 -512.132 248.528 -600 424.264 -424.264 A 600 600 0 1 1 -43.934 -600"/>
@@ -144,6 +156,20 @@
     Object.assign(sizer.style, {position:'absolute',visibility:'hidden',whiteSpace:'pre'})
     document.body.appendChild(sizer)
 
+    // Live availability: debounce while typing, ignore stale responses.
+    let availTimer = null
+    const checkAvailable = v => {
+      fetch(`available/${encodeURIComponent(v)}`)
+        .then(r => r.ok ? r.json() : null)
+        .then(d => {
+          if (!d || input.value !== v) return
+          msg.textContent = d.available ? `${v}.qabu.net is available ✓` : `${v}.qabu.net is already taken`
+          msg.className = d.available ? 'available' : 'taken'
+          if (!d.available) btn.disabled = true
+        })
+        .catch(() => {})
+    }
+
     input.addEventListener('input', () => {
       const v = input.value.toLowerCase()
       input.value = v
@@ -156,6 +182,9 @@
       const valid = re && re.test(v)
       btn.disabled = !valid
       msg.textContent = ''
+      msg.className = ''
+      clearTimeout(availTimer)
+      if (valid) availTimer = setTimeout(() => checkAvailable(v), 500)
     })
 
     // Send the user through Google sign-in, then back here with the invite kept in the URL.
@@ -181,7 +210,13 @@
           return
         }
         if (resp.status === 401) return toSignIn()  // no/expired session — sign in and come back
-        const errors = {400: 'Invalid subdomain', 403: 'Invalid invitation code', 409: 'Subdomain already taken', 507: 'No available servers'}
+        if (resp.status === 503) {  // demo mode: creation is manual while Qabû is under construction
+          msg.innerHTML = 'Qabû is under construction — we\'re not creating new agents just yet.<br>Your name checks out though. We\'ll be in touch!'
+          msg.className = 'available'
+          btn.disabled = false
+          return
+        }
+        const errors = {400: 'Invalid subdomain', 403: 'Invalid invitation code', 409: 'Subdomain already taken'}
         msg.textContent = errors[resp.status] || 'Something went wrong'
         msg.className = 'error'
         btn.disabled = false

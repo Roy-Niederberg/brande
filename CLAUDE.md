@@ -582,10 +582,12 @@ These are reference-heavy — see `docs/architecture.md` for full detail:
   via prompt-composer admin CRUD, with in-chat diff confirmation.
 - **§ Client Onboarding & Provisioning** — client creation is **manual** since
   2026-07-17 (copy `config/` template, prune services, reconciler brings it
-  up); the provisioner → conductor scaffolding is retired, so the still-live
-  `/onboarding` page breaks at its final step (fate TBD, see TASKS.md).
-  Profiles survive only in the template as off-by-default markers. Subdomain
-  regex `^[a-z][a-z0-9-]{3,18}[a-z]$` (onboarding only now).
+  up); the provisioner → conductor scaffolding is retired. `/onboarding` is
+  kept in **demo mode** (Roy shows it to people): "Under construction" ribbon,
+  live subdomain-availability check, invite + Google sign-in still work,
+  creation answers 503 with a friendly message. Profiles survive only in the
+  template as off-by-default markers. Subdomain regex
+  `^[a-z][a-z0-9-]{3,18}[a-z]$` (onboarding only now).
 - **§ Secrets** — `secrets/` layout (client_router / clients / main_server scopes),
   and the cross-VM shared secrets that must match (`jwt_signing_key`,
   `fb_dispatcher_secret`, `provision_secret`, `cloudflare_api_token`).

@@ -1,21 +1,17 @@
 import express from 'express'
-import { readFile, writeFile } from 'fs/promises'
+import { readFile } from 'fs/promises'
 const app = express()
-const secret = (await readFile('/run/secrets/provision_secret', 'utf8')).trim()
 
 // Experiment phase: creation is invitation-only. Codes live in a bind-mounted
 // file (never in git), one 9-char [A-Z0-9] code per line, added by hand.
-// Single-use: a code is deleted from the file after a successful creation.
+// (Codes were single-use back when creation worked; in demo mode they're not
+// consumed — restore consumption if creation ever comes back.)
 const CODES_FILE = 'data/invite_codes.txt'
 const CODE_RE = /^[A-Z0-9]{9}$/
 const normCode = c => String(c ?? '').trim().toUpperCase()
 const readCodes = async () => (await readFile(CODES_FILE, 'utf8').catch(() => ''))
   .split('\n').map(normCode).filter(l => CODE_RE.test(l))
 const validInvite = async c => (await readCodes()).includes(normCode(c))
-const consumeInvite = async c => {
-  const lines = (await readFile(CODES_FILE, 'utf8')).split('\n')
-  await writeFile(CODES_FILE, lines.filter(l => normCode(l) !== normCode(c)).join('\n'))
-}
 
 app.r = (vrb,u,f)=>app[vrb](u,async (rq,rs,nxt)=>{try{await f(rq,rs,nxt)} catch(e) {nxt(e)}})
 
@@ -27,51 +23,38 @@ app.r('get', '/', (_, rs) => rs.sendFile('views/index.html', {root: './src'}))
 app.r('get', '/subdomain-regex', (_, rs) => rs.json({pattern: SUBDOMAIN_RE.source}))
 app.r('post', '/validate-invite', async (rq, rs) => rs.json({valid: await validInvite(rq.body.code)}))
 
-async function scaffold(s, tier) {
-  for (let i = 1; ; i++) {
-    const host = `v${i}.qabu.net`
-
-    const resp = await fetch(`https://${host}/scaffold`, {
-      method: 'POST', signal: AbortSignal.timeout(10000),
-      headers: { 'Content-Type': 'application/json', 'X-Provision-Secret': secret },
-      body: JSON.stringify({ subdomain: s, tier })
-    })
-
-    // try v1, v2, v3 ... till non-existin server
-    if (resp.headers.get('x-qabu') === 'not-found') return 
-
-    // 507 means the server is running but doesn't have the resources. Other error, we stop
-    if (resp.status !== 507) return 
-
-    // found verver with sufficient resources - return it
-    if (resp.ok) return host
-  }
+// A subdomain is taken if its services-router answers /taken; free if the
+// clients-router 404s with X-Qabu: not-found. Anything else is indeterminate.
+async function taken(s) {
+  const resp = await fetch(`https://${s}.qabu.net/taken`, {signal: AbortSignal.timeout(5000)})
+  if (await resp.text() === 'true') return true
+  if (resp.headers.get('x-qabu') === 'not-found') return false
+  throw new Error(`indeterminate /taken for ${s}: ${resp.status}`)
 }
 
+// Live availability check for the page (shown as the user types).
+app.r('get', '/available/:sub', async (rq, rs) => {
+  const s = rq.params.sub.toLowerCase()
+  if (!SUBDOMAIN_RE.test(s)) return rs.sendStatus(400)
+  rs.json({ available: !await taken(s) })
+})
+
+// DEMO MODE (since 2026-07-17): the scaffolding backend (provisioner +
+// conductor) is retired — clients are created by hand. The full flow up to
+// here still works (auth, invite, regex, availability); creation itself
+// answers 503 and the page explains. Invite codes are NOT consumed.
 // Caddy forward_auth already gates this route (Google sign-in); the header
 // check is defense in depth for direct in-network access.
 app.r('post', '/create-client', async (rq, rs) => {
-  const { subdomain, invite, tier = 1 } = rq.body
+  const { subdomain, invite } = rq.body
   if (!rq.headers['x-auth-email']) return rs.sendStatus(401)
   if (!await validInvite(invite)) return rs.sendStatus(403)
 
   const s = subdomain.toLowerCase()
   if (!SUBDOMAIN_RE.test(s)) return rs.sendStatus(400)
-  if (+tier < 1) return rs.sendStatus(400)
+  if (await taken(s)) return rs.sendStatus(409)
 
-  const resp = await fetch(`https://${s}.qabu.net/taken`, {signal: AbortSignal.timeout(5000)})
-  const body = await resp.text()
-  if (body === 'true') return rs.sendStatus(409)
-  if (resp.headers.get('x-qabu') !== 'not-found') return rs.sendStatus(500)
-
-  const vm = await scaffold(s, tier)
-  if (!vm) return rs.sendStatus(507)
-
-  // Client exists now — a consume failure must not fail the request, just log.
-  await consumeInvite(invite).catch(e => console.error('invite consume failed:', e.message))
-
-  // we should wait and check if the client is up and running and only then return it.
-  rs.json({ subdomain: s, vm })
+  rs.sendStatus(503)
 })
 
 // =============== Error handling middleware ====================================================//

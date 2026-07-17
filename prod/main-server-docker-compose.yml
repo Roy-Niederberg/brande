@@ -25,9 +25,9 @@ services:
 
   client-onboarding:
     image:    registry.gitlab.com/rny3/brande/client_onboarding:latest
-    secrets:  [provision_secret]
-    # One 9-char [A-Z0-9] invite code per line, hand-edited on the VM,
-    # deleted by the service after use. Create the file before `up`.
+    # One 9-char [A-Z0-9] invite code per line, hand-edited on the VM.
+    # Create the file before `up`. (Demo mode: codes gate the flow but are
+    # not consumed — creation is manual since the scaffolding retirement.)
     volumes:  [./data/invite_codes.txt:/app/data/invite_codes.txt]
 
   facebook-signup:
@@ -46,4 +46,3 @@ secrets:
   fb_dispatcher_secret:    {file: ./secrets/fb_dispatcher_secret.secret}
   jwt_signing_key:         {file: ./secrets/jwt_signing_key.secret}
   google_oauth:            {file: ./secrets/google_oauth.secret}
-  provision_secret:        {file: ./secrets/provision_secret.secret}
