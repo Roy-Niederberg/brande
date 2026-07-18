@@ -689,7 +689,7 @@ from git history if ever needed):
   to the conductor's Unix socket.
 - **conductor** — C++20 systemd daemon that managed the full client lifecycle
   (creation, file watching, reconciliation). Replaced by **qabu-reconciler**
-  (see `docs/client-server-setup.md` § Reconciler): an `entr`-based shell
+  (installed and documented by `setup_server.sh`): an `entr`-based shell
   script whose only job is converging running containers with each client's
   `docker-compose.yml`.
 

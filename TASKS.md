@@ -480,7 +480,13 @@ Phase 3 work until there's a second paying client.
     1. ~~**Blocker: `linux/arm64` images.**~~ **Solved** — `services/build.sh`
        now builds multi-arch (`linux/amd64` + `linux/arm64`) via buildx and
        pushes a single manifest list per tag (see CLAUDE.md § Building images).
-       No image blocker remains for deploying to these boxes.
+       **But only for images rebuilt since**: `auth_verifier` was still
+       amd64-only and broke the first GATE deploy on arm1 (exec format error,
+       2026-07-18); it and `site` were rebuilt multi-arch that day. Registry
+       audit 2026-07-18: every client-stack image now has arm64; still
+       amd64-only are main-VM-only services (`auth`, `facebook_dispatcher`,
+       `facebook_signup`, `landing_page`) — rebuild them if the main VM ever
+       goes ARM.
     2. **Two firewall layers** before they serve traffic: OCI VCN Security
        List/NSG (open 80/443) **and** the host's default iptables (Oracle images
        block everything but SSH at the OS level too — classic "opened 443 in OCI
@@ -498,11 +504,11 @@ Phase 3 work until there's a second paying client.
   the cramped 1 OCPU / 1 GB Oracle micros, and a step toward the
   **VM-per-client** ideal that `CLAUDE.md` calls out (multi-tenant is "a cost
   concession, not the ideal"). Note the pool of *Qabu-usable* ARM capacity is
-  now arm1 alone. With multi-arch images done and base provisioning
-  (`setup_server.sh`) already run, what remains is role setup per
-  `docs/client-server-setup.md` (registry login, clients-router,
-  secrets — the reconciler comes free with `setup_server.sh`) + DNS.
-  (added 2026-06-21; refreshed 2026-07-10.)
+  now arm1 alone. **arm1 is fully provisioned as a client VM (2026-07-18)**:
+  `setup_server.sh` (re-run: reconciler, registry login, sparse clone) +
+  `setup_clients_router.sh` (GATE stack, certs, `v2.qabu.net` verified) both
+  green — only client migration remains (see the migrate task below).
+  (added 2026-06-21; refreshed 2026-07-18.)
 
 - [roy] [P0] **Migrate clients VM from AMD E2.1.Micro to Oracle A1.Flex (ARM).**
   Triggered by 2026-04-23 OOM hang on the 1 GB AMD VM. Status 2026-07-05:
@@ -510,18 +516,20 @@ Phase 3 work until there's a second paying client.
   arm2-small 1/6, see the "Two free ARM VMs" task above; the quota went to
   two boxes instead of the originally recommended single 4/24) and
   `services/build.sh` already builds+pushes multi-arch images. Remaining:
-  - Role setup on the target VM per `docs/client-server-setup.md` (registry
-    login, clients-router, secrets; the reconciler is a shell script installed
-    by `setup_server.sh` — nothing needs an ARM build since the conductor
-    retired, 2026-07-17).
-  - Migrate clients one at a time: rsync data, update Cloudflare DNS, compose
-    up on new, verify with `check_clients.sh`, compose down on old. All
-    clients land on **arm1** (arm2-small went to Roy's personal use
-    2026-07-10, see the "Two free ARM VMs" task above; still ties into the
-    wildcard-DNS switchover task — per-client exact DNS records).
-  - Update `docs/client-server-setup.md` + fleet scripts (`check_clients.sh`,
-    `rsync_clients.sh`, `check_versions.sh`) afterwards. (added 2026-04-25;
-    refreshed 2026-07-05)
+  - ~~Role setup on the target VM~~ **Done 2026-07-18** via
+    `setup_clients_router.sh` (self-documented, replaces the retired
+    `docs/client-server-setup.md`): GATE stack up on arm1, wildcard certs
+    issued, `v2.qabu.net` verified end-to-end. Multi-arch gotcha found and
+    fixed on the way: `auth_verifier` + `site` images were still amd64-only
+    (rebuilt; audit says all client-stack images now have arm64).
+  - Migrate clients one at a time: `git sparse-checkout add <client>` on arm1,
+    rsync data, update Cloudflare DNS, verify with `check_clients.sh`, compose
+    down on old. All clients land on **arm1** (arm2-small went to Roy's
+    personal use 2026-07-10, see the "Two free ARM VMs" task above; still ties
+    into the wildcard-DNS switchover task — per-client exact DNS records).
+    Suggest starting with a low-stakes demo (`yomialpurrer`) as the dry run.
+  - Update fleet scripts (`check_clients.sh`, `rsync_clients.sh`,
+    `check_versions.sh`) afterwards. (added 2026-04-25; refreshed 2026-07-18)
 
 - [roy] [defer] **Migrate secrets to Infisical.** Currently rsynced to VMs
   manually. Pull at runtime instead — no rsync, no machine dependency.

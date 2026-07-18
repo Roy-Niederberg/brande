@@ -1,17 +1,25 @@
 #!/usr/bin/env bash
-# setup_server.sh — base host setup for a new Qabu VM (Oracle).
-# Creates the `brande` user, sets up the ufw firewall, installs Docker, installs
-# the qabu-reconciler systemd service (converges ~/clients/*/docker-compose.yml
-# with the running containers), and clones the repo (blobless, no checkout)
-# after you add its SSH key to GitLab.
-# Run from your dev machine against a FRESH Ubuntu 24.04 box you can SSH into as
-# the default cloud user (which has passwordless sudo).
+# setup_server.sh — base host setup for a new Qabu VM (Oracle). Role-neutral:
+# run it for any VM, then (for a client VM) ./setup_clients_router.sh — the
+# final banner walks you through what's next.
+#
+# What it does: creates the `brande` user, makes ufw the sole firewall owner
+# (22/80/443, purging Oracle's stock iptables — note OCI's Security List is a
+# SECOND, separate layer), installs Docker, installs the qabu-reconciler
+# systemd service (converges ~/clients/*/docker-compose.yml with the running
+# containers), prompts for a GitLab deploy token for the registry docker
+# login (create one token PER VM, named after it, scope read_registry — so a
+# retired/compromised VM can be revoked alone), and clones the clients repo
+# (blobless, cone-sparse: root files only) after pausing while you add its
+# generated SSH key to GitLab as a deploy key (name it after the VM too).
+#
+# Run from your dev machine against a FRESH Ubuntu 24.04 box you can SSH into
+# as the default cloud user (passwordless sudo; it stays as break-glass):
 #
 #   ./setup_server.sh ubuntu@129.159.154.37
 #
-# Idempotent — safe to re-run (re-running also redeploys the reconciler script).
-# Does NOT do role setup (registry login, clients-router) — see
-# docs/client-server-setup.md steps 1-8 for that.
+# Idempotent — safe to re-run (re-runs redeploy the reconciler, skip what
+# exists; the sudo-password prompt reappears — re-enter the same one).
 set -euo pipefail
 
 TARGET="${1:?usage: setup_server.sh <cloud-user>@<host>  e.g. ubuntu@1.2.3.4}"
@@ -60,6 +68,15 @@ echo "== git =="
 command -v git &>/dev/null && echo "  $(git --version)" || apt-get install -y git >/dev/null
 
 echo "== reconciler =="
+# Operational notes (replaces the old conductor):
+# - No `docker compose pull` in the loop: deploys stay explicit (pull on the
+#   VM, or bump the image tag). `up` still fetches images it doesn't have
+#   locally, so brand-new stacks start fine.
+# - Race window: events landing during a sweep (a few seconds) are missed
+#   until the next event — `sudo systemctl restart qabu-reconciler` forces one.
+# - Watch/debug: journalctl -fu qabu-reconciler
+# - The ORIGINAL client VM (129.159.159.251) predates this layout: its unit
+#   was hand-installed with WorkingDirectory=/home/brande/app/clients.
 apt-get install -y entr >/dev/null
 install -d -o "$USER_NAME" -g "$USER_NAME" "/home/$USER_NAME/clients"
 cat > /usr/local/bin/qabu-reconciler <<'RECONCILER'
@@ -111,7 +128,24 @@ REMOTE
 echo; echo "Set the sudo password for $USER_NAME:"
 ssh -t "$TARGET" "sudo passwd $USER_NAME"
 
-echo; echo "SSH public key — add to GitLab as a deploy key (Project → Settings →"
+# --- registry login: lets `docker compose pull/up` fetch images as $USER_NAME --
+registry_login() {
+  local user token
+  read -rp  "  deploy-token username: " user
+  read -rsp "  deploy token (gldt-...): " token; echo
+  printf %s "$token" | ssh "$TARGET" \
+    "sudo -iu $USER_NAME docker login registry.gitlab.com --username '$user' --password-stdin"
+}
+echo
+if ssh "$TARGET" "sudo -iu $USER_NAME grep -qs registry.gitlab.com /home/$USER_NAME/.docker/config.json"; then
+  echo "GitLab registry: already logged in"
+else
+  echo "GitLab registry login (for pulling docker images) — create a deploy token per VM, named after it"
+  echo "(GitLab: Project → Settings → Repository → Deploy tokens, scope read_registry):"
+  until registry_login; do echo "  login failed — check the token and try again"; done
+fi
+
+echo; echo "SSH public key (for client data backups)  — add to GitLab as a deploy key (Project → Settings →"
 echo "Repository → Deploy keys; tick 'Grant write permissions' so it can push):"
 ssh "$TARGET" "sudo cat /home/$USER_NAME/.ssh/id_ed25519.pub"
 
@@ -119,11 +153,18 @@ ssh "$TARGET" "sudo cat /home/$USER_NAME/.ssh/id_ed25519.pub"
 clone_repo() {
   ssh "$TARGET" "sudo -iu $USER_NAME bash -s" <<'REMOTE'
 set -euo pipefail
-echo "== clone qabunet/clients (no checkout, no blobs) =="
+echo "== clone qabunet/clients (sparse: root files only, no blobs) =="
 if [ -d clients/.git ]; then echo "  exists"; else
   GIT_SSH_COMMAND='ssh -o StrictHostKeyChecking=accept-new' \
     git clone --no-checkout --filter=blob:none git@gitlab.com:qabunet/clients.git
 fi
+cd clients
+# Cone sparse-checkout, no dirs: materializes only root files (.gitignore —
+# which guards future backup commits — README). Client dirs from OTHER VMs must
+# never materialize here: the reconciler would docker-compose them all up.
+# This VM's roster = `git sparse-checkout add <client>` per migrated client.
+git sparse-checkout set
+git checkout main
 REMOTE
 }
 echo
@@ -134,10 +175,16 @@ done
 
 cat <<EOF
 
-Base setup complete on $TARGET. Still manual:
-  - OCI Security List: open ingress TCP 80 + 443 for the subnet (console).
+Base setup complete on $TARGET.
   - $USER_NAME must re-login before the docker group takes effect.
-  - aarch64 box? services need linux/arm64 images.
-  - Role setup (registry login, clients-router): docs/client-server-setup.md.
+  - aarch64 box? services need linux/arm64 images (services/build.sh pushes multi-arch).
   - Reconciler is live: journalctl -fu qabu-reconciler
+
+If this is a CLIENT server, now run:
+  ./setup_clients_router.sh $USER_NAME@${TARGET#*@}
+It deploys the clients-router stack, then walks you through Cloudflare DNS
+(v{N}.qabu.net) + OCI Security List ingress (TCP 80+443, console) and verifies both.
+
+If this is the MAIN server, those two stay manual (OCI ingress 80+443, DNS),
+then deploy ~/app per CLAUDE.md § Building & Deploying.
 EOF

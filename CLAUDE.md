@@ -232,7 +232,6 @@ services/                   - Dockerized service source code
 docs/                       - Operational guides + architecture reference
   architecture.md           - Deep reference: VMs, routing, admin/site UI, capabilities, widget, onboarding, secrets, Facebook
   images/                   - Images for the project
-  client-server-setup.md    - How to provision a new client VM from scratch
 clients_server_automation/  - Host-level automation on the client VM
   backup/                   - entr loop that mirrors client data to a git repo
                               (qabu-reconciler lives in setup_server.sh, not here)
@@ -352,26 +351,39 @@ ssh brande@129.159.159.251 'cd ~/app/clients/<sub> && docker compose pull && doc
 
 ### Server setup
 
-See `docs/client-server-setup.md` for provisioning a new client VM from scratch
-(Docker, reconciler, clients-router, secrets, DNS). See `docs/architecture.md`
-§ VM Strategy for the hosting rationale.
+VM provisioning is self-documented in `setup_server.sh` +
+`setup_clients_router.sh` (headers + inline comments cover Docker, reconciler,
+clients-router, secrets, DNS). See `docs/architecture.md` § VM Strategy for
+the hosting rationale.
 
 ## Repo Scripts
 
-Five shell scripts live at the repo root, all run from a local dev machine:
+Six shell scripts live at the repo root, all run from a local dev machine:
 
-- **`setup_server.sh`** — base host setup for a **new** Oracle VM (run once, before
-  the steps in `docs/client-server-setup.md`). Takes `<cloud-user>@<host>` (e.g.
-  `ubuntu@1.2.3.4`), SSHes in, and provisions the `brande` user (password-sudo +
-  your SSH key + docker group), makes `ufw` the sole firewall owner (22/80/443,
-  purging Oracle's stock iptables), installs Docker, installs the
-  **qabu-reconciler** systemd service (event-driven via `entr`, no polling —
+- **`setup_server.sh`** — base host setup for a **new** Oracle VM (run once,
+  role-neutral; self-documented — read its header). Takes `<cloud-user>@<host>`
+  (e.g. `ubuntu@1.2.3.4`), SSHes in, and provisions the `brande` user
+  (password-sudo + your SSH key + docker group), makes `ufw` the sole firewall
+  owner (22/80/443, purging Oracle's stock iptables), installs Docker, installs
+  the **qabu-reconciler** systemd service (event-driven via `entr`, no polling —
   keeps running containers converged with `~/clients/*/docker-compose.yml`;
-  replaces the old conductor, see `docs/client-server-setup.md` § Reconciler),
-  and clones the clients repo blobless into `~/clients` after pausing for you
-  to add the VM's deploy key to GitLab. Idempotent; prompts interactively for
-  the `brande` sudo password. Does NOT do role setup (registry login,
-  clients-router) — that's the rest of the doc.
+  replaces the old conductor; operational notes are commented in the script),
+  prompts for a GitLab deploy token and does the registry `docker login` as
+  `brande`, and clones the clients repo blobless into `~/clients` (cone
+  sparse-checkout, root files only — a VM's sparse list is its client roster)
+  after pausing for you to add the VM's deploy key to GitLab. Idempotent;
+  prompts interactively for the `brande` sudo password. Its final banner points
+  client VMs at `setup_clients_router.sh`.
+
+- **`setup_clients_router.sh`** — client-VM role setup, run after
+  `setup_server.sh`. Takes `brande@<host>`; scps the shared clients-router
+  stack (compose from `prod/`, three secrets from
+  `secrets/client_router_secrets/`) into `~/clients/GATE/` and waits for the
+  reconciler to bring it up. `GATE` is uppercase + 4 chars so it can never
+  collide with a client subdomain (lowercase, min 5) and sorts first in the
+  sweep. Ends with an interactive gate: you add the `v{N}.qabu.net` DNS record
+  (proxied, like all fleet records) + open OCI ingress 80/443; it verifies via
+  Cloudflare API + https curl (52x = origin unreachable), retry on Enter.
 
 - **`check_main.sh`** — health-checks `qabu.net` endpoints: landing page, static
   assets, `/privacy`, `/terms`, `/auth/*`, `/onboarding`, `/facebook` dispatcher,
