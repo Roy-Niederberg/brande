@@ -19,6 +19,7 @@ app.get('/', (_, res) => {
         postText: 'Welcome to our page!' }
   const dir = d.direction || 'ltr'
   const align = dir === 'rtl' ? 'right' : 'left'
+  const postTitle = dir === 'rtl' ? `הפוסט של ${d.pageName}` : `${d.pageName}'s Post`
   const pic = '/mock-facebook/assets/profile-pic.jpg'
   const postImg = '/mock-facebook/assets/post-image.jpg'
   res.send(/*html*/`<!DOCTYPE html>
@@ -26,7 +27,7 @@ app.get('/', (_, res) => {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${d.pageName}'s Post</title>
+<title>${postTitle}</title>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
 body { font-family: Helvetica, Arial, sans-serif; background:#f0f2f5;
@@ -99,7 +100,7 @@ body { font-family: Helvetica, Arial, sans-serif; background:#f0f2f5;
 <body>
 <div class="wrap">
   <div class="hdr">
-    <div class="hdr-title">${d.pageName}'s Post</div>
+    <div class="hdr-title">${postTitle}</div>
     <button class="hdr-x">&times;</button>
   </div>
 
