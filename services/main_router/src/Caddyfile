@@ -48,6 +48,13 @@ qabu.net {
 		file_server
 	}
 
+	# Ad-hoc static shares (e.g. bake-off judge pages): scp into ~/app/srv/bakeoff/
+	# on the VM; no directory listing, so the exact filename is the access key.
+	handle /bakeoff* {
+		root * /srv
+		file_server
+	}
+
 	handle /privacy* {
 		root * /srv
 		try_files {path} {path}/index.html
