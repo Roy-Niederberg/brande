@@ -203,6 +203,26 @@ Phase 3 work until there's a second paying client.
   emitting IGNORE (users just see silence, thanks to the 204 seatbelt).
   (added 2026-07-14)
 
+- [both] [P2] **Groq-vs-Gemini-vs-DeepSeek Hebrew bake-off: add Nevo's real
+  questions, run, blind-judge.** While discussing simplifying the gatekeeper+main design
+  (2026-07-22), Roy floated moving the main model to Groq (loves the speed +
+  free quota, would become a paying customer). The open question is gpt-oss-120b's
+  Hebrew quality — its official evals skip Hebrew and multilingual reports are
+  mixed; context window (131k) is a non-issue. Claude built
+  `qa/bakeoff/bakeoff.mjs`: runs `qa/bakeoff/questions.json` (20 made-up
+  drlipokatz questions for now) against both models with the exact prod prompt+KB
+  composition, writes blind A/B/C results to `qa/bakeoff/out/results-*.md` with
+  the model mapping + latencies in `key-*.json`; answers are cached in
+  `out/answers-<client>.json` so re-runs only ask models with missing answers.
+  Third contender DeepSeek-V4-Flash (via DeepInfra, added 2026-07-22 — Hebrew is
+  "Tier 3: usable but verify" per public reviews, no better signal available)
+  needs Roy's key in `secrets/clients_secrets/deepinfra_1.secret`. Roy asked
+  Nevo for real patient questions — merge those into `questions.json`, re-run,
+  and blind-judge with Nevo. Note from the first run: the ~5-6k-token composed prompt means Groq's
+  free tier (8k TPM/org) allows ~1 call/min — relevant to the whole
+  "main-on-Groq" idea, not just the bake-off; check whether the 4 groq keys are
+  separate orgs, and what paid-tier TPM costs. (added 2026-07-22)
+
 - [claude] [defer] **Fix trailing SLEEP action in LLM responses.** The LLM
   sometimes appends a standalone `|| SLEEP 2500` as the last action with
   nothing after it. Capabilities instructions teach the SLEEP→CONTACT_FORM

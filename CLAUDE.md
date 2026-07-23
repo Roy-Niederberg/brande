@@ -607,6 +607,39 @@ These are reference-heavy — see `docs/architecture.md` for full detail:
   page ID (`page_routes.json`) to `{client}.qabu.net/facebook-{dm|comments}`;
   HMAC verify in, `X-Dispatcher-Secret` out; the per-client FB services.
 
+## LLM Keys & Billing
+
+Prompt-composer rotates two key buckets per provider (`services/prompt_composer/
+src/server.js`):
+
+- **Groq** (gatekeeper, `gpt-oss-120b`): 4 keys, all free tier.
+- **Gemini** (main model): 4 keys — the two `gemini-3.5-flash` keys are **free
+  tier**; the two `gemini-3.1-flash-lite` keys are on a **tier-1 paid billing
+  account**. Each request tries free flash first and falls through to paid
+  flash-lite when free quota is drained.
+
+So Qabu is **not** purely free-tier: overflow lands on paid Gemini keys
+(~$1/month as of 2026-07). Don't describe the LLM usage as "free tier only".
+
+### LLM Bake-off
+
+`qa/bakeoff/bakeoff.mjs` compares candidate main models on a client's exact
+prod prompt+KB composition (single-turn, gatekeeper skipped). Contenders as of
+2026-07: gemini flash + flash-lite, Groq gpt-oss-120b at medium + high
+reasoning, DeepSeek-V4-Flash (DeepInfra — key in
+`secrets/clients_secrets/deepinfra_1.secret`). Questions (incl. prompt-injection
+probes) in `questions.json`; answers cached in `out/answers-<client>.json`, so
+re-runs only ask what's missing. Each run emits `results-*.md`, `key-*.json`,
+and a blind-judging `judge-*.html` (from `judge-template.html`: 1-3 stars per
+answer, reveal gated until all rated, scores in localStorage). Judge pages are
+shared by scp'ing to the main VM's `~/app/srv/bakeoff/` — served at
+`qabu.net/bakeoff/<file>` (no dir listing; filename = access key).
+
+```sh
+docker run --rm -u "$(id -u):$(id -g)" -v "$(pwd):/repo" -w /repo node:22-alpine \
+  node qa/bakeoff/bakeoff.mjs [client]   # default: drlipokatz
+```
+
 ## Gotchas
 
 - YAML flow mappings `{file: ...}` break with `${VAR}` inside — use block style
